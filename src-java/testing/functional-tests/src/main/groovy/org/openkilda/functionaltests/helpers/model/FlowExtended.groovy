@@ -2,9 +2,9 @@ package org.openkilda.functionaltests.helpers.model
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.helpers.FlowNameGenerator.FLOW
-import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.helpers.model.FlowDirection.*
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.randomVlan
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_FLOW
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
@@ -411,7 +411,7 @@ class FlowExtended {
         northboundV2.rerouteFlow(flowId)
     }
 
-    Map<FlowDirection, PathDiscrepancyDto> validateAndCollectDiscrepancies() {
+    Map<FlowDirection, List<PathDiscrepancyDto>> validateAndCollectDiscrepancies() {
         def validationResponse = validate()
         assert validationResponse.findAll { !it.asExpected } == validationResponse.findAll { !it.discrepancies.isEmpty() },
                 "There is an error in the logic of flow validation"
@@ -829,34 +829,33 @@ class FlowExtended {
      * if (switchId == src/dst): 2 rules for main flow path + 1 egress for protected path = 3<br>
      * if (switchId != src/dst): 2 rules for main flow path + 2 rules for protected path = 4<br>
      *
-     * @param flowInvolvedSwitchesWithRules (map of switch-rules data for further verification)
+     * @param involvedSwitches (list of switches for further rules verification)
      */
-    void verifyRulesForProtectedFlowOnSwitches(HashMap<SwitchId, List<FlowRuleEntity>> flowInvolvedSwitchesWithRules) {
-        def flowDBInfo = retrieveDetailsFromDB()
+    void verifyRulesForProtectedFlowOnSwitches(List<SwitchExtended> involvedSwitches, def flowDBInfo) {
         long mainForwardCookie = flowDBInfo.forwardPath.cookie.value
         long mainReverseCookie = flowDBInfo.reversePath.cookie.value
         long protectedForwardCookie = flowDBInfo.protectedForwardPath.cookie.value
         long protectedReverseCookie = flowDBInfo.protectedReversePath.cookie.value
         assert protectedForwardCookie && protectedReverseCookie, "Flow doesn't have protected path(no protected path cookies in DB)"
 
-        def rulesOnSrcSwitch = flowInvolvedSwitchesWithRules.get(this.source.switchId)
+        def rulesOnSrcSwitch = involvedSwitches.find { it.switchId == this.source.switchId }.rulesManager.getRules()
         assert rulesOnSrcSwitch.find { it.cookie == mainForwardCookie }.tableId == INGRESS_RULE_MULTI_TABLE_ID
         assert rulesOnSrcSwitch.find { it.cookie == mainReverseCookie }.tableId == EGRESS_RULE_MULTI_TABLE_ID
         assert rulesOnSrcSwitch.find { it.cookie == protectedReverseCookie }.tableId == EGRESS_RULE_MULTI_TABLE_ID
         assert !rulesOnSrcSwitch*.cookie.contains(protectedForwardCookie)
 
-        def rulesOnDstSwitch = flowInvolvedSwitchesWithRules.get(this.destination.switchId)
+        def rulesOnDstSwitch = involvedSwitches.find { it.switchId == this.destination.switchId }.rulesManager.getRules()
         assert rulesOnDstSwitch.find { it.cookie == mainForwardCookie }.tableId == EGRESS_RULE_MULTI_TABLE_ID
         assert rulesOnDstSwitch.find { it.cookie == mainReverseCookie }.tableId == INGRESS_RULE_MULTI_TABLE_ID
         assert rulesOnDstSwitch.find { it.cookie == protectedForwardCookie }.tableId == EGRESS_RULE_MULTI_TABLE_ID
         assert !rulesOnDstSwitch*.cookie.contains(protectedReverseCookie)
 
         def flowPathInfo = retrieveAllEntityPaths()
-        List<SwitchId> mainFlowSwitches = flowPathInfo.flowPath.path.forward.getInvolvedSwitches()
-        List<SwitchId> mainFlowTransitSwitches = flowPathInfo.flowPath.path.forward.getTransitInvolvedSwitches()
+        List<SwitchId> mainFlowSwitches = flowPathInfo.getMainPathSwitches()
+        List<SwitchId> mainFlowTransitSwitches = flowPathInfo.getMainPathTransitSwitches()
 
-        List<SwitchId> protectedFlowSwitches = flowPathInfo.flowPath.protectedPath.forward.getInvolvedSwitches()
-        List<SwitchId> protectedFlowTransitSwitches = flowPathInfo.flowPath.protectedPath.forward.getTransitInvolvedSwitches()
+        List<SwitchId> protectedFlowSwitches = flowPathInfo.getProtectedPathSwitches()
+        List<SwitchId> protectedFlowTransitSwitches = flowPathInfo.getProtectedPathTransitSwitches()
 
         def commonSwitches = mainFlowSwitches.intersect(protectedFlowSwitches)
         def commonTransitSwitches = mainFlowTransitSwitches.intersect(protectedFlowTransitSwitches)
@@ -866,26 +865,29 @@ class FlowExtended {
 
         def transitTableId = TRANSIT_RULE_MULTI_TABLE_ID
         withPool {
-            flowInvolvedSwitchesWithRules.findAll { it.getKey() in commonTransitSwitches }.each { rulesPerSwitch ->
-                assert rulesPerSwitch.getValue().find { it.cookie == mainForwardCookie }?.tableId == transitTableId
-                assert rulesPerSwitch.getValue().find { it.cookie == mainReverseCookie }?.tableId == transitTableId
-                assert rulesPerSwitch.getValue().find { it.cookie == protectedForwardCookie }?.tableId == transitTableId
-                assert rulesPerSwitch.getValue().find { it.cookie == protectedReverseCookie }?.tableId == transitTableId
+            involvedSwitches.findAll { it.switchId in commonTransitSwitches }.each { sw ->
+                def rules = sw.rulesManager.getRules()
+                assert rules.find { it.cookie == mainForwardCookie }?.tableId == transitTableId
+                assert rules.find { it.cookie == mainReverseCookie }?.tableId == transitTableId
+                assert rules.find { it.cookie == protectedForwardCookie }?.tableId == transitTableId
+                assert rules.find { it.cookie == protectedReverseCookie }?.tableId == transitTableId
             }
         }
         //this loop checks rules on unique transit nodes
         withPool {
-            flowInvolvedSwitchesWithRules.findAll { it.getKey() in uniqueTransitSwitchesProtectedPath }
-                    .each { rulesPerSwitch ->
-                        assert rulesPerSwitch.getValue().find { it.cookie == protectedForwardCookie }?.tableId == transitTableId
-                        assert rulesPerSwitch.getValue().find { it.cookie == protectedReverseCookie }?.tableId == transitTableId
+            involvedSwitches.findAll { it.switchId in uniqueTransitSwitchesProtectedPath }
+                    .each { sw ->
+                        def rules = sw.rulesManager.getRules()
+                        assert rules.find { it.cookie == protectedForwardCookie }?.tableId == transitTableId
+                        assert rules.find { it.cookie == protectedReverseCookie }?.tableId == transitTableId
                     }
         }
         //this loop checks rules on unique main nodes
         withPool {
-            flowInvolvedSwitchesWithRules.findAll { it.getKey() in uniqueTransitSwitchesMainPath }.each { rulesPerSwitch ->
-                assert rulesPerSwitch.getValue().find { it.cookie == mainForwardCookie }?.tableId == transitTableId
-                assert rulesPerSwitch.getValue().find { it.cookie == mainReverseCookie }?.tableId == transitTableId
+            involvedSwitches.findAll { it.switchId in uniqueTransitSwitchesMainPath }.each { sw ->
+                def rules = sw.rulesManager.getRules()
+                assert rules.find { it.cookie == mainForwardCookie }?.tableId == transitTableId
+                assert rules.find { it.cookie == mainReverseCookie }?.tableId == transitTableId
             }
         }
     }

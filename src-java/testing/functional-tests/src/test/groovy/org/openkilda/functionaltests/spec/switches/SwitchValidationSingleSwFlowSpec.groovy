@@ -79,7 +79,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.all().withManufacturer(switchType).first()
 
         when: "Create a flow"
-        def flow = flowFactory.getRandom(sw, sw)
+        def flow = flowFactory.getSingleSwRandom(sw)
         def meterIds = sw.metersManager.getCreatedMeterIds()
         Long burstSize = sw.getExpectedBurst(flow.maximumBandwidth)
 
@@ -235,7 +235,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.all().withManufacturer(switchType).first()
 
         when: "Create a flow"
-        def flow = flowFactory.getRandom(sw, sw)
+        def flow = flowFactory.getSingleSwRandom(sw)
         def meterIds = sw.metersManager.getCreatedMeterIds()
         assert meterIds.size() == 2
         def createdCookies = sw.rulesManager.getRulesWithMeter().cookie
@@ -296,7 +296,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         when: "Create a flow"
         // No TraffGens because the Single switch flow is created at the same port, and no traffic is checked
-        def flow = flowFactory.getRandom(sw, sw, false)
+        def flow = flowFactory.getSingleSwRandom(sw, false)
         def metersIds = sw.metersManager.getCreatedMeterIds()
         Long burstSize = sw.getExpectedBurst(flow.maximumBandwidth)
 
@@ -359,7 +359,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.all().withManufacturer(switchType).first()
 
         when: "Create a flow"
-        def flow = flowFactory.getRandom(sw, sw)
+        def flow = flowFactory.getSingleSwRandom(sw)
         def createdCookies = sw.rulesManager.getRulesWithMeter().cookie
         def createdHexCookies = createdCookies.collect { Long.toHexString(it) }
 
@@ -500,7 +500,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         given: "A single-port single-switch flow"
         // No TraffGens because the Single switch flow is created at the same port, and no traffic is checked
         def sw = switches.all().withManufacturer(switchType).first()
-        def flow  = flowFactory.getRandom(sw, sw, false)
+        def flow  = flowFactory.getSingleSwRandom(sw,false)
 
         when: "Remove flow rules from the switch, so that they become missing"
         sw.rulesManager.delete(DeleteRulesAction.IGNORE_DEFAULTS)

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.xresilience
 
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -40,7 +41,8 @@ class ChaosSpec extends HealthCheckSpecification {
     @Ignore("https://github.com/telstra/open-kilda/issues/5222")
     def "Nothing breaks when multiple flows get rerouted due to randomly failing ISLs"() {
         setup: "Create multiple random flows"
-        def flowsAmount = topology.activeSwitches.size() * 10
+        def activeSwitches = switches.all().getListOfSwitches()
+        def flowsAmount = activeSwitches.size() * 10
         List<FlowExtended> flows = []
         List<SwitchPortVlan> busyEndpoints = []
         flowsAmount.times {
@@ -77,7 +79,7 @@ class ChaosSpec extends HealthCheckSpecification {
         }
 
         and: "All switches are valid"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(topology.activeSwitches*.dpId).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(activeSwitches).isEmpty()
     }
 
     def blinkPort(SwitchId swId, int port) {

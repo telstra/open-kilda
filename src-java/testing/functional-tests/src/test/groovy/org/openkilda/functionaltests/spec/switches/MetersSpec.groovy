@@ -36,7 +36,6 @@ import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.Constants
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -289,16 +288,14 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
         def flow = flowFactory.getRandom(switchPair)
 
         then: "The source and destination switches have only one meter in the flow's ingress rule"
-        def srcSwToInteract = switches.all().findSpecific(switchPair.src.dpId)
-        def dstSwToInteract = switches.all().findSpecific(switchPair.dst.dpId)
-        def srcSwFlowMeters = srcSwToInteract.metersManager.getMeters().findAll(flowMeters)
-        def dstSwFlowMeters = dstSwToInteract.metersManager.getMeters().findAll(flowMeters)
+        def srcSwFlowMeters = switchPair.src.metersManager.getMeters().findAll(flowMeters)
+        def dstSwFlowMeters = switchPair.dst.metersManager.getMeters().findAll(flowMeters)
 
         srcSwFlowMeters.size() == 1
         dstSwFlowMeters.size() == 1
 
-        def srcSwitchRules = srcSwToInteract.rulesManager.getRules().findAll { !Cookie.isDefaultRule(it.cookie) }
-        def dstSwitchRules = dstSwToInteract.rulesManager.getRules().findAll { !Cookie.isDefaultRule(it.cookie) }
+        def srcSwitchRules = switchPair.src.rulesManager.getRules().findAll { !Cookie.isDefaultRule(it.cookie) }
+        def dstSwitchRules = switchPair.dst.rulesManager.getRules().findAll { !Cookie.isDefaultRule(it.cookie) }
 
         def srcSwIngressFlowRules = srcSwitchRules.findAll { it.match.inPort == flow.source.portNumber.toString() }
         assert srcSwIngressFlowRules.size() == 2 //shared + simple ingress
@@ -332,14 +329,13 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
         !dstSwFlowEgressRule.instructions.goToMeter
 
         and: "Intermediate switches don't have meters in flow rules at all"
-        List<Switch> flowInvolvedSwitches = flow.retrieveAllEntityPaths().getInvolvedIsls()
-                .collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique() as List<Switch>
+        def transitSwitches = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
+                .findAll { it !in switchPair.toList() &&  !it.isOf12Version() }
 
-        flowInvolvedSwitches[1..-2].findAll { it.ofVersion != "OF_12" }.each { sw ->
-            def swToInteract =switches.all().findSpecific(sw.dpId)
-            assert swToInteract.metersManager.getMeters().findAll(flowMeters).empty
-            def defaultCookies =  swToInteract.collectDefaultCookies()
-            def flowRules = swToInteract.rulesManager.getRules().findAll { !(it.cookie in defaultCookies) }
+        transitSwitches.each { sw ->
+            assert sw.metersManager.getMeters().findAll(flowMeters).empty
+            def defaultCookies =  sw.collectDefaultCookies()
+            def flowRules = sw.rulesManager.getRules().findAll { !(it.cookie in defaultCookies) }
             flowRules.each { assert !it.instructions.goToMeter }
         }
 
@@ -490,12 +486,10 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
         flow.updateFlowBandwidthInDB(newBandwidth)
         //at this point existing meters do not correspond with the flow
         //now save some original data for further comparison before resetting meters
-        def srcToInteract = switches.all().findSpecific(swPair.src.dpId)
-        def dstToInteract = switches.all().findSpecific(swPair.dst.dpId)
-        Map<SwitchId, List<FlowRuleEntity>> originalRules = [srcToInteract, dstToInteract].collectEntries {
+        Map<SwitchId, List<FlowRuleEntity>> originalRules = [swPair.src, swPair.dst].collectEntries {
             [(it.switchId): it.rulesManager.getRules()]
         }
-        Map<SwitchId, List<MeterEntry>> originalMeters = [srcToInteract, dstToInteract].collectEntries {
+        Map<SwitchId, List<MeterEntry>> originalMeters = [swPair.src, swPair.dst].collectEntries {
             [(it.switchId): it.metersManager.getMeters()]
         }
 
@@ -506,7 +500,7 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
         [response.srcMeter, response.dstMeter].each { switchMeterEntries ->
             def originalFlowMeters = originalMeters[switchMeterEntries.switchId].findAll(flowMeters)
             switchMeterEntries.meterEntries.each { meterEntry ->
-                def sw = srcToInteract.switchId == switchMeterEntries.switchId ? srcToInteract : dstToInteract
+                def sw = swPair.src.switchId == switchMeterEntries.switchId ? swPair.src : swPair.dst
                 if (sw.isWb5164()) {
                     verifyRateSizeOnWb5164(newBandwidth, meterEntry.rate)
                     Long expectedBurstSize = sw.getExpectedBurst(newBandwidth)
@@ -523,19 +517,19 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
 
         //cannot be checked until https://github.com/telstra/open-kilda/issues/3335
 //        and: "Non-default meter rate and burst are actually changed to expected values both on src and dst switch"
-//        def srcFlowMeters = northbound.getAllMeters(src.dpId).meterEntries.findAll(flowMeters)
-//        def dstFlowMeters = northbound.getAllMeters(dst.dpId).meterEntries.findAll(flowMeters)
+//        def srcFlowMeters = northbound.getAllMeters(src.switchId).meterEntries.findAll(flowMeters)
+//        def dstFlowMeters = northbound.getAllMeters(dst.switchId).meterEntries.findAll(flowMeters)
 //        expect srcFlowMeters, sameBeanAs(response.srcMeter.meterEntries).ignoring("timestamp")
 //        expect dstFlowMeters, sameBeanAs(response.dstMeter.meterEntries).ignoring("timestamp")
 
         and: "Default meters are unchanged"
-        [srcToInteract, dstToInteract].each { SwitchExtended sw ->
+        [swPair.src, swPair.dst].each { SwitchExtended sw ->
             def actualDefaultMeters = sw.metersManager.getMeters().findAll(defaultMeters)
             assertThat(actualDefaultMeters).containsExactlyInAnyOrder(*originalMeters[sw.switchId].findAll(defaultMeters))
         }
 
         and: "Switch rules are unchanged"
-        [srcToInteract, dstToInteract].each { SwitchExtended sw ->
+        [swPair.src, swPair.dst].each { SwitchExtended sw ->
             def actualRules = sw.rulesManager.getRules()
             assertThat(actualRules).containsExactlyInAnyOrder(*originalRules[sw.switchId])
         }

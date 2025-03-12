@@ -7,8 +7,8 @@ import static org.springframework.beans.factory.config.ConfigurableBeanFactory.S
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.functionaltests.model.switches.Manufacturer
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
 
 import groovy.transform.Memoized
@@ -39,6 +39,8 @@ class SwitchPairs {
     @Autowired
     @Qualifier("islandNb")
     NorthboundService northbound
+    @Autowired
+    Switches switches
 
     SwitchPairs(List<SwitchPair> switchPairs) {
         this.switchPairs = switchPairs
@@ -51,7 +53,7 @@ class SwitchPairs {
     }
 
     SwitchPairs singleSwitch() {
-        switchPairs = topology.activeSwitches.collect { SwitchPair.singleSwitchInstance(it) }
+        switchPairs = switches.all().getListOfSwitches().collect { SwitchPair.singleSwitchInstance(it) }
         return this
     }
 
@@ -80,12 +82,12 @@ class SwitchPairs {
     }
 
     SwitchPairs withoutOf12Switches() {
-        switchPairs = switchPairs.findAll { it.src.ofVersion != "OF_12" && it.dst.ofVersion != "OF_12" }
+        switchPairs = switchPairs.findAll { !it.src.isOf12Version() && !it.dst.isOf12Version() }
         return this
     }
 
     SwitchPairs withTraffgensOnBothEnds() {
-        switchPairs = switchPairs.findAll { [it.src, it.dst].every { !it.traffGens.isEmpty() } }
+        switchPairs = switchPairs.findAll { [it.src, it.dst].every { !it.traffGenPorts.isEmpty() } }
         return this
     }
 
@@ -123,42 +125,52 @@ class SwitchPairs {
         return switchPairs.first()
     }
 
-    SwitchPairs includeSwitch(Switch sw) {
+    SwitchPairs includeSwitch(SwitchExtended sw) {
         switchPairs = switchPairs.findAll { it.src == sw || it.dst == sw }
         return this
     }
 
-    SwitchPair specificPair(Switch source, Switch destination) {
+    SwitchPair specificPair(SwitchExtended source, SwitchExtended destination) {
         switchPairs = switchPairs.findAll { it.src == source && it.dst == destination }
         return switchPairs.first()
     }
 
-    SwitchPairs includeSourceSwitch(Switch sw) {
+    SwitchPair specificPair(SwitchId srcId, SwitchId dstId) {
+        switchPairs = switchPairs.findAll { it.src.switchId == srcId && it.dst.switchId == dstId }
+        return switchPairs.first()
+    }
+
+    SwitchPairs includeSourceSwitch(SwitchExtended sw) {
         switchPairs = switchPairs.findAll { it.src == sw }
         return this
     }
 
-    SwitchPairs excludeSwitches(List<Switch> switchesList) {
+    SwitchPairs includeDestinationSwitch(SwitchExtended sw) {
+        switchPairs = switchPairs.findAll { it.dst == sw }
+        return this
+    }
+
+    SwitchPairs excludeSwitches(List<SwitchExtended> switchesList) {
         switchPairs = switchPairs.findAll { !(it.src in switchesList) && !(it.dst in switchesList) }
         return this
     }
 
-    SwitchPairs excludeDestinationSwitches(List<Switch> switchesList) {
-        switchPairs = switchPairs.findAll { it.dst !in switchesList }
+    SwitchPairs excludeDestinationSwitches(List<SwitchExtended> switchList) {
+        switchPairs = switchPairs.findAll { it.dst !in switchList }
         return this
     }
 
-    List<Switch> collectSwitches() {
+    List<SwitchExtended> collectSwitches() {
         switchPairs.collectMany { return [it.src, it.dst] }.unique()
     }
 
     SwitchPairs withAtLeastNTraffgensOnSource(int traffgensConnectedToSource) {
-        switchPairs = switchPairs.findAll { it.getSrc().getTraffGens().size() >= traffgensConnectedToSource }
+        switchPairs = switchPairs.findAll { it.getSrc().traffGenPorts.size() >= traffgensConnectedToSource }
         return this
     }
 
     SwitchPairs withAtLeastNTraffgensOnDestination(int traffgensConnectedToDestination) {
-        switchPairs = switchPairs.findAll { it.getDst().getTraffGens().size() >= traffgensConnectedToDestination }
+        switchPairs = switchPairs.findAll { it.dst.traffGenPorts.size() >= traffgensConnectedToDestination }
         return this
     }
 
@@ -172,36 +184,46 @@ class SwitchPairs {
     }
 
     SwitchPairs withBothSwitchesVxLanEnabled() {
-        switchPairs = switchPairs.findAll { [it.src, it.dst].every { sw -> switchHelper.isVxlanEnabled(sw.dpId) } }
+        switchPairs = switchPairs.findAll { [it.src, it.dst].every { sw -> sw.isVxlanEnabled() } }
         return this
     }
 
     SwitchPairs withSwitchesManufacturedBy(Manufacturer srcManufacturer, Manufacturer dstManufacturer) {
+        def switchIdsWithOF12 = switches.all().getListOfSwitches()
+                .findAll { it.isOf12Version() }.switchId
+
         switchPairs = switchPairs.findAll {
-            srcManufacturer.isSwitchMatch(it.getSrc())
-                    && dstManufacturer.isSwitchMatch(it.getDst())
-                    && it.hasOf13Path()
+            srcManufacturer.isSwitchMatch(it.src)
+                    && dstManufacturer.isSwitchMatch(it.dst)
+                    && (switchIdsWithOF12.isEmpty() || !it.possibleDefaultPaths()
+                    .find { it[1..-2].every { it.switchId in switchIdsWithOF12 }})
         }
         return this
     }
 
     SwitchPairs withSourceSwitchManufacturedBy(Manufacturer srcManufacturer) {
+        def switchIdsWithOF12 = switches.all().getListOfSwitches()
+                .findAll { it.isOf12Version() }.switchId
         switchPairs = switchPairs.findAll {
-            srcManufacturer.isSwitchMatch(it.getSrc()) && it.hasOf13Path()
+            srcManufacturer.isSwitchMatch(it.src)
+                    && (switchIdsWithOF12.isEmpty() || !it.possibleDefaultPaths()
+                    .find { it[1..-2].every { it.switchId in switchIdsWithOF12 }})
         }
         return this
     }
 
     SwitchPairs withSourceSwitchNotManufacturedBy(Manufacturer srcManufacturer) {
+        def notOF12VersionSwIds = switches.all().notOF12Version().switchId
         switchPairs = switchPairs.findAll {
-            !srcManufacturer.isSwitchMatch(it.getSrc()) && it.hasOf13Path()
+            !srcManufacturer.isSwitchMatch(it.src)
+                    && it.possibleDefaultPaths().find { it[1..-2].every{ it.switchId in notOF12VersionSwIds }}
         }
         return this
     }
 
     SwitchPairs withIslRttSupport() {
         this.assertAllSwitchPairsAreNeighbouring()
-        switchPairs = switchPairs.findAll { [it.src, it.dst].every { it.features.contains(NOVIFLOW_COPY_FIELD) } }
+        switchPairs = switchPairs.findAll { [it.src, it.dst].every { it.getDbFeatures().contains(NOVIFLOW_COPY_FIELD) } }
         return this
     }
 
@@ -221,27 +243,30 @@ class SwitchPairs {
     }
 
     SwitchPairs withDestinationSwitchConnectedToServer42() {
-        switchPairs = switchPairs.findAll { it.dst in topology.getActiveServer42Switches() }
+        def s42Switches = switches.all().withS42Support().getListOfSwitches()
+        switchPairs = switchPairs.findAll { it.dst in s42Switches }
         return this
     }
 
     SwitchPairs withOnlySourceSwitchConnectedToServer42() {
+        def s42Switches = switches.all().withS42Support().getListOfSwitches()
         switchPairs = switchPairs.findAll {
-            it.src in topology.getActiveServer42Switches() && !(it.dst in topology.getActiveServer42Switches())
+            it.src in s42Switches && !(it.dst in s42Switches)
         }
         return this
     }
 
     SwitchPairs withBothSwitchesConnectedToServer42() {
+        def s42Switches = switches.all().withS42Support().getListOfSwitches()
         switchPairs = switchPairs.findAll {
-            [it.dst, it.src].every { it in topology.getActiveServer42Switches() }
+            [it.dst, it.src].every { it in s42Switches }
         }
         return this
     }
 
     SwitchPairs withBothSwitchesConnectedToSameServer42Instance() {
         switchPairs = switchPairs.findAll {
-            it.src.prop?.server42MacAddress != null && it.src.prop?.server42MacAddress == it.dst.prop?.server42MacAddress
+            it.src.sw.prop?.server42MacAddress != null && it.src.sw.prop?.server42MacAddress == it.dst.sw.prop?.server42MacAddress
         }
         return this
     }
@@ -258,14 +283,18 @@ class SwitchPairs {
 
     @Memoized
     private List<SwitchPair> getSwitchPairsCached() {
-        return [topology.activeSwitches, topology.activeSwitches].combinations()
+        return [switches.all().getListOfSwitches(), switches.all().getListOfSwitches()].combinations()
                 .findAll { src, dst -> src != dst } //non-single-switch
                 .unique { it.sort() } //no reversed versions of same flows
-                .collect { Switch src, Switch dst ->
-                    String swPair = "${src.dpId}-${dst.dpId}"
+                .collect { SwitchExtended src, SwitchExtended dst ->
+                    String pair = "${src.switchId}-${dst.switchId}"
+                    String reversePair = "${dst.switchId}-${src.switchId}"
+                    def pathsBetweenPair = topology.switchesDbPathsNodes.containsKey(pair) ?
+                            topology.switchesDbPathsNodes.get(pair) :
+                            topology.switchesDbPathsNodes.get(reversePair).collect { it.reverse() }
                     new SwitchPair(src: src,
                             dst: dst,
-                            paths: topology.switchesDbPathsNodes.get(swPair),
+                            paths: pathsBetweenPair,
                             northboundService: northbound,
                             topologyDefinition: topology)
                 }

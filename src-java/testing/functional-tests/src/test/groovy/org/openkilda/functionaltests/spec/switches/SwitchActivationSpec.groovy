@@ -56,22 +56,21 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     def "Missing flow rules/meters are installed on a new switch before connecting to the controller"() {
         given: "A switch with missing flow rules/meters and not connected to the controller"
         def switchPair = switchPairs.all().neighbouring().random()
-        def srcSw = switches.all().findSpecific(switchPair.src.dpId)
         def flow = flowFactory.getRandom(switchPair)
 
-        def originalMeterIds = srcSw.metersManager.getMeters().meterId
-        assert originalMeterIds.size() == 1 + srcSw.collectDefaultMeters().size()
+        def originalMeterIds = switchPair.src.metersManager.getMeters().meterId
+        assert originalMeterIds.size() == 1 + switchPair.src.collectDefaultMeters().size()
 
-        def createdCookies = srcSw.rulesManager.getNotDefaultRules().cookie
-        def amountOfFlowRules = srcSw.collectFlowRelatedRulesAmount(flow)
+        def createdCookies = switchPair.src.rulesManager.getNotDefaultRules().cookie
+        def amountOfFlowRules = switchPair.src.collectFlowRelatedRulesAmount(flow)
         assert createdCookies.size() == amountOfFlowRules
 
         def nonDefaultMeterIds = originalMeterIds.findAll({it > MAX_SYSTEM_RULE_METER_ID})
-        srcSw.metersManager.delete(nonDefaultMeterIds[0])
-        srcSw.rulesManager.delete(DeleteRulesAction.IGNORE_DEFAULTS)
+        switchPair.src.metersManager.delete(nonDefaultMeterIds[0])
+        switchPair.src.rulesManager.delete(DeleteRulesAction.IGNORE_DEFAULTS)
 
         Wrappers.wait(WAIT_OFFSET) {
-            with(srcSw.validate()) {
+            with(switchPair.src.validate()) {
                 it.rules.missing*.cookie.containsAll(createdCookies)
                 it.rules.excess.empty
                 it.rules.misconfigured.empty
@@ -81,13 +80,13 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             }
         }
 
-        def blockData = srcSw.knockout(RW)
+        def blockData = switchPair.src.knockout(RW)
 
         when: "Connect the switch to the controller"
-        srcSw.revive(blockData)
+        switchPair.src.revive(blockData)
 
         then: "Missing flow rules/meters were synced during switch activation"
-        !srcSw.validateAndCollectFoundDiscrepancies().isPresent()
+        !switchPair.src.validateAndCollectFoundDiscrepancies().isPresent()
     }
 
     @Tags([SMOKE_SWITCHES, SWITCH_RECOVER_ON_FAIL])

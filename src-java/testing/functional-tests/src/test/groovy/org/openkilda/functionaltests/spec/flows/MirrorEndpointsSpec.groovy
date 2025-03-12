@@ -9,9 +9,14 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.FlowNameGenerator.FLOW
-import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
+import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.TRANSIT_VLAN
+import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.VXLAN
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.randomVlan
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
+import static org.openkilda.model.FlowPathDirection.FORWARD
+import static org.openkilda.model.FlowPathDirection.REVERSE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -27,16 +32,13 @@ import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.FlowExtended
-import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowPathDirection
 import org.openkilda.model.FlowPathStatus
 import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.FlowSegmentCookie
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
@@ -76,28 +78,26 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     FlowFactory flowFactory
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
 
     def setupSpec() {
         deleteAnyFlowsLeftoversIssue5480()
     }
 
     @Tags([SMOKE, SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
-    def "Able to CRUD a mirror endpoint on the src switch, mirror to the same switch diff port [#swPair.src.hwSwString, #mirrorDirection]#trafficDisclaimer"() {
+    def "Able to CRUD a mirror endpoint on the src switch, mirror to the same switch diff port #description"() {
         given: "A flow"
         assumeTrue(swPair as boolean, "Unable to find a switch pair")
         def flowEntity = flowFactory.getBuilder(swPair).withBandwidth(100000)
         if (profile == 'virtual') {
             // ovs switch doesn't support mirroring for the vxlan flows
-            flowEntity.withEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+            flowEntity.withEncapsulationType(TRANSIT_VLAN)
         }
         def flow = flowEntity.build().create()
 
         when: "Create a mirror point on src switch, pointing to a different port, random vlan"
-        def mirrorTg = swPair.src.traffGens ?[1]
-        def mirrorPort = mirrorTg?.switchPort ?: (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
+        def mirrorPort = swPair.src.getTgPortIfPresentOrRandom([flow.source.portNumber])
+        def mirrorTg = topology.traffGens.find { it.switchConnected.dpId == swPair.src.switchId && it.switchPort == mirrorPort }
+
         def mirrorPointPayload = flow.buildMirrorPointPayload(
                 flow.source.switchId, mirrorPort, randomVlan(), mirrorDirection as FlowPathDirection
         )
@@ -131,23 +131,20 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         }
 
         and: "Mirror flow rule has an OF group action and higher prio than flow rule"
-        def swRules = switchRulesFactory.get(swPair.src.dpId)
-        def rules = swRules.getRules()
-        def mirrorRule = findMirrorRule(rules, mirrorDirection)
-        def flowRule = findFlowRule(rules, mirrorDirection)
+        def mirrorRule = swPair.src.rulesManager.getFlowRules(mirrorDirection, true)
+        def flowRule = swPair.src.rulesManager.getFlowRules(mirrorDirection)
         def groupId = mirrorRule.instructions.applyActions.group
         mirrorRule.priority > flowRule.priority
         !groupId.empty
 
         and: "Flow rule of opposite direction does not have an OF group action and there is no mirror flow rule"
-        def oppositeDirection = mirrorDirection == FlowPathDirection.FORWARD ?
-                FlowPathDirection.REVERSE : FlowPathDirection.FORWARD
-        findFlowRule(rules, oppositeDirection).instructions.applyActions.group == null
-        findMirrorRule(rules, oppositeDirection) == null
+        def oppositeDirection = mirrorDirection == FORWARD ? REVERSE : FORWARD
+        swPair.src.rulesManager.getFlowRules(oppositeDirection).instructions.applyActions.group == null
+        swPair.src.rulesManager.getFlowRules(oppositeDirection, true) == null
 
         and: "Related switches and flow pass validation"
-        def flowInvolvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
+        def flowInvolvedSwitches = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
+        synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Traffic briefly runs through the flow"
@@ -166,15 +163,15 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def fl = flHelper.getFlsByRegions(swPair.src.getRegions())[0].floodlightService
         if (!trafficDisclaimer) {
             Wrappers.wait(2) { //leftover packets after traffexam may not be counted still, require a retry sometimes
-                mirrorRule = findMirrorRule(getFlowRules(swPair.src.dpId), mirrorDirection)
+                mirrorRule = swPair.src.rulesManager.getFlowRules(mirrorDirection, true)
                 assert mirrorRule.packetCount > 0
-                def mirrorGroup = fl.getGroupsStats(swPair.src.dpId).group.find { it.groupNumber == groupId }
+                def mirrorGroup = fl.getGroupsStats(swPair.src.switchId).group.find { it.groupNumber == groupId }
                 mirrorGroup.bucketCounters.each { assert it.packetCount.toLong() == mirrorRule.packetCount }
             }
         }
 
         and: "Original flow rule counter is not increased"
-        flowRule.packetCount == findFlowRule(getFlowRules(swPair.src.dpId), mirrorDirection).packetCount
+        flowRule.packetCount == swPair.src.rulesManager.getFlowRules(mirrorDirection).packetCount
 
         and: "System collects stat for mirror cookie in tsdb"
         if (!trafficDisclaimer) {
@@ -201,28 +198,28 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         flow.retrieveMirrorPoints().points.empty
 
         and: "Mirror flow rule is removed and flow rule is intact"
-        def rulesAfterRemove = getFlowRules(swPair.src.dpId)
-        !findMirrorRule(rulesAfterRemove, mirrorDirection)
-        findFlowRule(rulesAfterRemove, mirrorDirection)
+        !swPair.src.rulesManager.getFlowRules(mirrorDirection, true)
+        swPair.src.rulesManager.getFlowRules(mirrorDirection)
 
         and: "OF group is removed"
-        !fl.getGroupsStats(swPair.src.dpId).group.find { it.groupNumber == groupId }
+        !fl.getGroupsStats(swPair.src.switchId).group.find { it.groupNumber == groupId }
 
         and: "Src switch and flow pass validation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
+        !swPair.src.synchronizeAndCollectFixedDiscrepancies().isPresent()
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Delete the flow"
         flow.delete()
 
         then: "Src switch pass validation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
+        !swPair.src.synchronizeAndCollectFixedDiscrepancies().isPresent()
 
         where:
-        [swPair, mirrorDirection] << [getUniqueSwitchPairs({ it.src.traffGens && it.dst.traffGens }),
-                                      [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]].combinations()
+        [swPair, mirrorDirection] << [getUniqueSwitchPairs({ !it.src.traffGenPorts.isEmpty() && !it.dst.traffGenPorts.isEmpty() }),
+                                      [FORWARD, REVERSE]].combinations()
         //means there is no second traffgen for target switch and we are not checking the counter on receiving interface
-        trafficDisclaimer = swPair.src.traffGens.size() < 2 ? " !WARN: No mirrored traffic check!" : ""
+        trafficDisclaimer = swPair.src.traffGenPorts.size() < 2 ? " !WARN: No mirrored traffic check!" : ""
+        description = "[${swPair.src.hwSwString()}] $mirrorDirection $trafficDisclaimer"
     }
 
     @Tags([LOW_PRIORITY])
@@ -238,15 +235,14 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                 .build().create()
 
         when: "Create a mirror point"
-        def mirrorTg = swPair.src.traffGens.find {  it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
-        assumeTrue(mirrorTg != null) ?: "Could not find a free traffgen port which is not equal to the flow source port"
+        def mirrorTg = topology.getTraffGen(swPair.src.switchId, swPair.src.getTgPortIfPresentOrRandom([flow.source.portNumber]))
         def mirrorPointPayload = flow.buildMirrorPointPayload(
                 flow.source.switchId, mirrorTg.switchPort, randomVlan(), mirrorDirection)
         flow.createMirrorPointWithPayload(mirrorPointPayload)
 
         then: "Mirror point is created and Active"
         and: "Flow and switch pass validation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
+        !swPair.src.synchronizeAndCollectFixedDiscrepancies().isPresent()
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Swap flow paths"
@@ -256,7 +252,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         }
 
         then: "Flow and switch both pass validation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
+        !swPair.src.synchronizeAndCollectFixedDiscrepancies().isPresent()
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Flow passes main traffic"
@@ -272,30 +268,29 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
 
         where:
-        mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
+        mirrorDirection << [FORWARD, REVERSE]
     }
 
     // ovs switch doesn't support mirroring for the vxlan flows
     @Tags([TOPOLOGY_DEPENDENT, HARDWARE])
-    def "Can create mirror point on a VXLAN flow [#swPair.src.hwSwString, #mirrorDirection]#trafficDisclaimer"() {
+    def "Can create mirror point on a VXLAN flow #description"() {
         given: "A VXLAN flow"
         assumeTrue(swPair as boolean, "Unable to find required vxlan-enabled switches with traffgens")
         def flow = flowFactory.getBuilder(swPair)
-                .withEncapsulationType(FlowEncapsulationType.VXLAN)
+                .withEncapsulationType(VXLAN)
                 .build().create()
 
         when: "Create a mirror point"
-        def mirrorTg = swPair.src.traffGens.find {  it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
-        assumeTrue(mirrorTg != null) ?: "Could not find a free traffgen port which is not equal to the flow source port"
-        def mirrorPort = mirrorTg?.switchPort ?: (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
+        def mirrorPort = swPair.src.getTgPortIfPresentOrRandom([flow.source.portNumber])
+        def mirrorTg = topology.traffGens.find { it.switchConnected.dpId == swPair.src.switchId && it.switchPort == mirrorPort }
+
         def mirrorEpVlan = randomVlan()
-        flow.createMirrorPoint(flow.source.switchId, mirrorPort,
-                mirrorEpVlan, mirrorDirection as FlowPathDirection)
+        flow.createMirrorPoint(flow.source.switchId, mirrorPort, mirrorEpVlan, mirrorDirection as FlowPathDirection)
 
         then: "Mirror point is created and Active"
         and: "Related switches and flow pass validation"
-        def flowInvolvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
+        def flowInvolvedSwitches = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
+        synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Flow passes traffic on main path as well as to the mirror (if possible to check)"
@@ -313,20 +308,21 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         where:
         [swPair, mirrorDirection] << [getUniqueVxlanSwitchPairs(true),
-                                      [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]].combinations()
+                                      [FORWARD, REVERSE]].combinations()
         //means there is no second traffgen for target switch and we are not checking the counter on receiving interface
-        trafficDisclaimer = swPair.src.traffGens.size() < 2 ? " !WARN: No mirrored traffic check!" : ""
+        trafficDisclaimer = swPair.src.traffGenPorts.size() < 2 ? " !WARN: No mirrored traffic check!" : ""
+        description = "[${swPair.src.hwSwString()}] $mirrorDirection $trafficDisclaimer"
     }
 
-    def "Flow with mirror point can survive flow sync, #data.encap, #mirrorDirection"() {
+    def "Flow with mirror point can survive flow sync, #encap, #mirrorDirection"() {
         given: "A flow with given encapsulation type and mirror point"
         // ovs switch doesn't support mirroring for the vxlan flows
-        assumeFalse("virtual" == profile && data.encap == FlowEncapsulationType.VXLAN)
-        assumeTrue(swPair as boolean, "Unable to find enough switches for a $data.encap flow")
+        assumeFalse("virtual" == profile && encap == VXLAN)
+        assumeTrue(swPair as boolean, "Unable to find enough switches for a $encap flow")
         def flow = flowFactory.getBuilder(swPair)
-                .withEncapsulationType(data.encap)
+                .withEncapsulationType(encap)
                 .build().create()
-        def freePort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber)[0]
+        def freePort = (swPair.dst.getPorts() - flow.destination.portNumber)[0]
         flow.createMirrorPoint(flow.destination.switchId, freePort, randomVlan(), mirrorDirection as FlowPathDirection)
 
         when: "Call flow sync for the flow"
@@ -336,24 +332,25 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         }
 
         then: "Related switches and flow pass validation"
-        def flowInvolvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
+        def flowInvolvedSwitches = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
+        synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         where:
         [data, mirrorDirection] << [
                 [[
                          swPair: switchPairs.all().withBothSwitchesVxLanEnabled().random(),
-                         encap : FlowEncapsulationType.VXLAN
+                         encap : VXLAN
                  ],
                  [
                          swPair: switchPairs.all().random(),
-                         encap : FlowEncapsulationType.TRANSIT_VLAN
+                         encap : TRANSIT_VLAN
                  ]],
                 //^run all direction combinations for above data
-                [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
+                [FORWARD, REVERSE]
         ].combinations()
         swPair = data.swPair as SwitchPair
+        encap = data.encap as FlowEncapsulationType
     }
 
     @Tags([LOW_PRIORITY])
@@ -367,20 +364,20 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                 .build().create()
 
         when: "Create a mirror point on src"
-        def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
+        def freePort = (swPair.src.getPorts() - flow.source.portNumber)[0]
         flow.createMirrorPoint(flow.source.switchId, freePort, randomVlan(), mirrorDirection)
 
         then: "Mirror point is created and Active"
         and: "Flow and src switch both pass validation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
+        !swPair.src.synchronizeAndCollectFixedDiscrepancies().isPresent()
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         where:
-        mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
+        mirrorDirection << [FORWARD, REVERSE]
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
-    def "Can create a mirror point on the same port as flow, different vlan  [#swPair.dst.hwSwString, #encapType, #mirrorDirection]"() {
+    def "Can create a mirror point on the same port as flow, different vlan #description"() {
         given: "A flow"
         def flow = flowFactory.getBuilder(swPair)
                 .withEncapsulationType(encapType)
@@ -402,25 +399,26 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         database.getMirrorPoints().empty
 
         and: "Related switch pass validation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.dst.dpId).isPresent()
+        !swPair.dst.synchronizeAndCollectFixedDiscrepancies().isPresent()
 
         where:
         [swPair, mirrorDirection, encapType] <<
                 //[swPair, reverse/forward, transit_vlan]
                 ([getUniqueSwitchPairs().collect {
                     it.reversed //'reversed' since we test 'dst' here, but 'getUniqueSwitchPairs' method targets 'src'
-                }, [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]].combinations()
-                        .collect { it << FlowEncapsulationType.TRANSIT_VLAN; it } +
+                }, [FORWARD, REVERSE]].combinations()
+                        .collect { it << TRANSIT_VLAN; it } +
 
                 //[swPair, reverse/forward, vxlan]
                 [getUniqueVxlanSwitchPairs(false).collect { it.reversed },
-                 [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]].combinations()
-                        .collect { it << FlowEncapsulationType.VXLAN; it })
+                 [FORWARD, REVERSE]].combinations()
+                        .collect { it << VXLAN; it })
 
                         //https://github.com/telstra/open-kilda/issues/4374
                         .findAll { SwitchPair swPair, m, e ->
                             !swPair.dst.isWb5164()
                         }
+        description = "[${swPair.dst.hwSwString()} $encapType $mirrorDirection]"
 
     }
 
@@ -443,14 +441,15 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         flow.retrieveMirrorPoints().points.size() == 2
 
         and: "Mirrorring group for forward path has 3 buckets (main flow + 2 mirrors)"
-        def fwGroupId = findMirrorRule(getFlowRules(swPair.dst.dpId), FlowPathDirection.FORWARD).instructions.applyActions.group
+        def fwGroupId = swPair.dst.rulesManager.getFlowRules(FORWARD, true).instructions.applyActions.group
         def fl = flHelper.getFlsByRegions(swPair.dst.getRegions())[0].floodlightService
-        def fwMirrorGroup = fl.getGroupsStats(swPair.dst.dpId).group.find { it.groupNumber == fwGroupId }
+
+        def fwMirrorGroup = fl.getGroupsStats(swPair.dst.switchId).group.find { it.groupNumber == fwGroupId }
         fwMirrorGroup.bucketCounters.size() == 3
 
         when: "Add a Reverse mirror point on the different port with flow"
         def mirrorPointRvPayload = flow.buildMirrorPointPayload(
-                flow.destination.switchId, flow.destination.portNumber, 0, FlowPathDirection.REVERSE
+                flow.destination.switchId, flow.destination.portNumber, 0, REVERSE
         )
         flow.createMirrorPointWithPayload(mirrorPointRvPayload)
 
@@ -462,8 +461,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         }
 
         and: "Mirrorring group for reverse path has 2 buckets (main flow + 1 mirror)"
-        def rvGroupId = findMirrorRule(getFlowRules(swPair.dst.dpId), FlowPathDirection.REVERSE).instructions.applyActions.group
-        def rvMirrorGroup = fl.getGroupsStats(swPair.dst.dpId).group.find { it.groupNumber == rvGroupId }
+        def rvGroupId = swPair.dst.rulesManager.getFlowRules(REVERSE, true).instructions.applyActions.group
+        def rvMirrorGroup = fl.getGroupsStats(swPair.dst.switchId).group.find { it.groupNumber == rvGroupId }
         rvMirrorGroup.bucketCounters.size() == 2
     }
 
@@ -471,11 +470,11 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         given: "A flow with mirror point"
         def swPair = switchPairs.all().random()
         def flow = flowFactory.getRandom(swPair)
-        def freePort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber)[0]
+        def freePort = (swPair.dst.getPorts() - flow.destination.portNumber)[0]
         flow.createMirrorPoint(flow.destination.switchId, freePort, flow.destination.vlanId - 1)
 
         when: "Update flow port and vlan on the same endpoint where mirror is"
-        def newFlowPort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber - freePort)[0]
+        def newFlowPort = (swPair.dst.getPorts() - flow.destination.portNumber - freePort)[0]
         def newFlowVlan = flow.destination.vlanId - 2
         flow.partialUpdate(new FlowPatchV2().tap {
             destination = new FlowPatchEndpoint().tap {
@@ -485,16 +484,16 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         })
 
         then: "Flow and affected switch are valid"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.dst.dpId).isPresent()
+        !swPair.dst.synchronizeAndCollectFixedDiscrepancies().isPresent()
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Mirror rule has updated port/vlan values"
-        def mirrorRule = findMirrorRule(getFlowRules(swPair.dst.dpId), FlowPathDirection.FORWARD)
+        def mirrorRule = swPair.dst.rulesManager.getFlowRules(FORWARD, true)
         def setVlanInstruction = mirrorRule.instructions.applyActions.setFieldActions[0]
         setVlanInstruction.fieldName == "vlan_vid"
         setVlanInstruction.fieldValue == "$newFlowVlan"
         def fl = flHelper.getFlsByRegions(swPair.dst.getRegions())[0].floodlightService
-        def group = fl.getGroupsDesc(swPair.dst.dpId).groupDesc.find {
+        def group = fl.getGroupsDesc(swPair.dst.switchId).groupDesc.find {
             it.groupNumber == mirrorRule.instructions.applyActions.group
         }
         group.buckets.find { it.actions == "output=$newFlowPort" }
@@ -511,16 +510,15 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                 .build().create()
 
         when: "Create a mirror point"
-        def mirrorTg = swPair.src.traffGens.find {  it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
-        assumeTrue(mirrorTg != null) ?: "Could not find a free traffgen port which is not equal to the flow source port"
+        def tgPort = swPair.src.traffGenPorts.find { it != flow.source.portNumber}
+        def mirrorTg = topology.getTraffGen(swPair.src.switchId, tgPort)
         def mirrorVlanId = randomVlan()
-        flow.createMirrorPoint(
-                flow.source.switchId, mirrorTg.switchPort, mirrorVlanId, mirrorDirection)
+        flow.createMirrorPoint(flow.source.switchId, mirrorTg.switchPort, mirrorVlanId, mirrorDirection)
 
         then: "Mirror point is created and Active"
         and: "Related switches and flow pass validation"
-        def flowInvolvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
+        def flowInvolvedSwitches = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
+        synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Flow passes traffic on main path as well as to the mirror"
@@ -534,7 +532,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
 
         where:
-        mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
+        mirrorDirection << [FORWARD, REVERSE]
     }
 
     @Tags([LOW_PRIORITY])
@@ -550,14 +548,14 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                 .build().create()
 
         when: "Create a mirror point"
-        def mirrorTg = swPair.src.traffGens.find {  it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
-        assumeTrue(mirrorTg != null) ?: "Could not find a free traffgen port which is not equal to the flow source port"
+        def tgPort = swPair.src.traffGenPorts.find { it != flow.source.portNumber}
+        def mirrorTg = topology.getTraffGen(swPair.src.switchId, tgPort)
         def mirrorVlanId = randomVlan([flow.source.vlanId, flow.source.innerVlanId])
         flow.createMirrorPoint(flow.source.switchId, mirrorTg.switchPort, mirrorVlanId, mirrorDirection)
 
         then: "Mirror point is created, flow and switches are valid"
-        def flowInvolvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
+        def flowInvolvedSwitches = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
+        synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Traffic examination reports packets on mirror point"
@@ -571,7 +569,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
 
         where:
-        mirrorDirection << [FlowPathDirection.REVERSE, FlowPathDirection.FORWARD]
+        mirrorDirection << [REVERSE, FORWARD]
     }
 
     @Tags([LOW_PRIORITY])
@@ -589,11 +587,10 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def flow = flowFactory.getBuilder(swPair).build().create()
 
         when: "Try to add a mirror endpoint on the transit switch"
-        def freePort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber)[0]
+        def freePort = (swPair.dst.getPorts() - flow.destination.portNumber)[0]
         SwitchId mirrorEpSinkSwitch = data.sinkEndpointSwitch(involvedSwitches).dpId
         SwitchId mirrorPointSwitch = data.mirrorPointSwitch(involvedSwitches).dpId
-        flow.createMirrorPoint(mirrorEpSinkSwitch, freePort, randomVlan(),
-                FlowPathDirection.FORWARD, mirrorPointSwitch, false)
+        flow.createMirrorPoint(mirrorEpSinkSwitch, freePort, randomVlan(), FORWARD, mirrorPointSwitch, false)
 
         then: "Error is returned, cannot create mirror point on given sw"
         def error = thrown(HttpClientErrorException)
@@ -648,39 +645,39 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                 new MirrorErrorTestData("Unable to create a mirror endpoint on the src sw and sink back to dst sw", {
                     def swPair = switchPairs.all().random()
                     it.flow = flowFactory.getBuilder(swPair).build()
-                    it.port = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
+                    it.port = (swPair.src.getPorts() - flow.source.portNumber)[0]
                     it.mirrorSinkEndpointSwitchId = flow.source.switchId
-                    it.mirrorPointDirection = FlowPathDirection.FORWARD
-                    it.mirrorPointSwitchId = swPair.dst.dpId
+                    it.mirrorPointDirection = FORWARD
+                    it.mirrorPointSwitchId = swPair.dst.switchId
                     it.expectedError = new FlowMirrorPointNotCreatedExpectedError(
-                            ~/Invalid sink endpoint switch id: $swPair.src.dpId. In the current implementation, \
+                            ~/Invalid sink endpoint switch id: $swPair.src.switchId. In the current implementation, \
 the sink switch id cannot differ from the mirror point switch id./)
                 }),
                 new MirrorErrorTestData("Unable to create a mirror point with isl conflict", {
                     def swPair = switchPairs.all().random()
                     it.flow = flowFactory.getBuilder(swPair).build()
-                    it.port = topology.getBusyPortsForSwitch(swPair.dst)[0]
+                    it.port = topology.getBusyPortsForSwitch(swPair.dst.sw)[0]
                     it.mirrorSinkEndpointSwitchId = flow.destination.switchId
-                    it.mirrorPointDirection = FlowPathDirection.FORWARD
-                    it.mirrorPointSwitchId = swPair.dst.dpId
+                    it.mirrorPointDirection = FORWARD
+                    it.mirrorPointSwitchId = swPair.dst.switchId
                     it.expectedError = new FlowMirrorPointNotCreatedExpectedError(~/The port $it.port on the switch \
-\'$swPair.dst.dpId\' is occupied by an ISL \(destination endpoint collision\)./)
+\'$swPair.dst.switchId\' is occupied by an ISL \(destination endpoint collision\)./)
                 }),
                 new MirrorErrorTestData("Unable to create a mirror point with s42Port conflict", {
                     def swPair = switchPairs.all().withDestinationSwitchConnectedToServer42().random()
                     it.flow = flowFactory.getBuilder(swPair).build()
-                    def s42Port = swPair.dst.prop.server42Port
+                    def s42Port = swPair.dst.sw.prop.server42Port
                     it.port = s42Port
                     it.mirrorSinkEndpointSwitchId = flow.destination.switchId
-                    it.mirrorPointDirection = FlowPathDirection.FORWARD
-                    it.mirrorPointSwitchId = swPair.dst.dpId
+                    it.mirrorPointDirection = FORWARD
+                    it.mirrorPointSwitchId = swPair.dst.switchId
                     it.expectedError = new FlowMirrorPointNotCreatedExpectedError(~/Server 42 port in the switch \
-properties for switch \'$swPair.dst.dpId\' is set to \'$s42Port\'. It is not possible to create or update an endpoint \
+properties for switch \'$swPair.dst.switchId\' is set to \'$s42Port\'. It is not possible to create or update an endpoint \
 with these parameters./)
                 })
         ].collectMany {
-            [it.tap { mirrorPointDirection = FlowPathDirection.FORWARD },
-             it.clone().tap { mirrorPointDirection = FlowPathDirection.REVERSE }]
+            [it.tap { mirrorPointDirection = FORWARD },
+             it.clone().tap { mirrorPointDirection = REVERSE }]
         }
     }
 
@@ -702,7 +699,7 @@ with these parameters./)
                 getEndpointConflictError(mirrorPointPayload, otherFlow, "source")).matches(error)
 
         where:
-        mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
+        mirrorDirection << [FORWARD, REVERSE]
     }
 
     @Tags([LOW_PRIORITY])
@@ -710,9 +707,9 @@ with these parameters./)
         given: "A flow with mirror point"
         def swPair = switchPairs.all().random()
         def flow = flowFactory.getRandom(swPair)
-        def freePort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber)[0]
+        def freePort = (swPair.dst.getPorts() - flow.destination.portNumber)[0]
         def mirrorPointPayload = flow.buildMirrorPointPayload(
-                flow.destination.switchId, freePort, randomVlan(), mirrorDirection, swPair.dst.dpId)
+                flow.destination.switchId, freePort, randomVlan(), mirrorDirection, swPair.dst.switchId)
         flow.createMirrorPointWithPayload(mirrorPointPayload)
 
         Wrappers.wait(WAIT_OFFSET) {
@@ -735,7 +732,7 @@ with these parameters./)
                 getEndpointConflictError(otherFlow.destination, mirrorPointPayload)).matches(error)
 
         where:
-        mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
+        mirrorDirection << [FORWARD, REVERSE]
     }
 
     @Tags([LOW_PRIORITY])
@@ -747,7 +744,7 @@ with these parameters./)
                 .build().create()
 
         when: "Try to create a mirror for the flow (on the same endpoint)"
-        def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
+        def freePort = (swPair.src.getPorts() - flow.source.portNumber)[0]
         flow.createMirrorPoint(
                 flow.source.switchId, freePort, randomVlan(),
                 mirrorDirection, flow.source.switchId, false)
@@ -759,7 +756,7 @@ for endpoint switchId=\"$flow.source.switchId\" port=$flow.source.portNumber vla
 flow mirror point cannot be created this flow/).matches(error)
 
         where:
-        mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
+        mirrorDirection << [FORWARD, REVERSE]
     }
 
     @Tags([LOW_PRIORITY])
@@ -767,7 +764,7 @@ flow mirror point cannot be created this flow/).matches(error)
         given: "A flow with a mirror point"
         def swPair = switchPairs.all().random()
         def flow = flowFactory.getRandom(swPair)
-        def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
+        def freePort = (swPair.src.getPorts() - flow.source.portNumber)[0]
         flow.createMirrorPoint(
                 flow.source.switchId, freePort, randomVlan(),
                 mirrorDirection, flow.source.switchId, false)
@@ -786,7 +783,7 @@ flow mirror point cannot be created this flow/).matches(error)
                 ~/Flow mirror point is created for the flow $flow.flowId, LLDP or ARP can not be set to true./).matches(error)
 
         where:
-        mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
+        mirrorDirection << [FORWARD, REVERSE]
     }
 
     @Tags([LOW_PRIORITY])
@@ -794,19 +791,19 @@ flow mirror point cannot be created this flow/).matches(error)
         given: "A flow with a mirror endpoint"
         def swPair = switchPairs.all().random()
         def flow = flowFactory.getRandom(swPair)
-        def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
+        def freePort = (swPair.src.getPorts() - flow.source.portNumber)[0]
         flow.createMirrorPoint(flow.source.switchId, freePort)
 
         when: "Try to enable connected devices for switch where mirror is created"
-        def originalProps = switchHelper.getCachedSwProps(swPair.src.dpId)
-        switchHelper.updateSwitchProperties(swPair.src, originalProps.jacksonCopy().tap {
+        def originalProps = swPair.src.getCachedProps()
+        swPair.src.updateProperties(originalProps.jacksonCopy().tap {
             it.switchArp = true
             it.switchLldp = true
         })
 
         then: "Error is returned, cannot enable devices on a switch with mirror"
         def error = thrown(HttpClientErrorException)
-        new SwitchPropertiesNotUpdatedExpectedError("Flow mirror point is created on the switch $swPair.src.dpId, " +
+        new SwitchPropertiesNotUpdatedExpectedError("Flow mirror point is created on the switch $swPair.src.switchId, " +
                 "switchLldp or switchArp can not be set to true.").matches(error)
     }
 
@@ -814,21 +811,21 @@ flow mirror point cannot be created this flow/).matches(error)
     def "Cannot create mirror on a switch with enabled connected devices"() {
         given: "A switch with enabled connected devices"
         def swPair = switchPairs.all().random()
-        def originalProps = switchHelper.getCachedSwProps(swPair.src.dpId)
-        switchHelper.updateSwitchProperties(swPair.src, originalProps.jacksonCopy().tap {
+        def originalProps = swPair.src.getCachedProps()
+        swPair.src.updateProperties(originalProps.jacksonCopy().tap {
             it.switchArp = true
             it.switchLldp = true
         })
 
         when: "Try to create a mirror on the switch with devices"
         def flow = flowFactory.getRandom(swPair)
-        def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
+        def freePort = (swPair.src.getPorts() - flow.source.portNumber)[0]
         flow.createMirrorPoint(flow.source.switchId, freePort, randomVlan(),
-                FlowPathDirection.REVERSE, flow.source.switchId, false)
+                REVERSE, flow.source.switchId, false)
 
         then: "Error is returned, cannot create flow that conflicts with mirror point"
         def error = thrown(HttpClientErrorException)
-        new FlowMirrorPointNotCreatedExpectedError(~/Connected devices feature is active on the switch $swPair.src.dpId\
+        new FlowMirrorPointNotCreatedExpectedError(~/Connected devices feature is active on the switch $swPair.src.switchId\
 , flow mirror point cannot be created on this switch./).matches(error)
     }
 
@@ -837,7 +834,7 @@ flow mirror point cannot be created this flow/).matches(error)
         given: "A flow with mirror point"
         def swPair = switchPairs.all().random()
         def flow = flowFactory.getRandom(swPair)
-        def freePort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber)[0]
+        def freePort = (swPair.dst.getPorts() - flow.destination.portNumber)[0]
         def mirrorPoint = flow.deepCopy().destination.tap {
             it.vlanId = randomVlan()
             it.portNumber = freePort
@@ -863,29 +860,9 @@ flow mirror point cannot be created this flow/).matches(error)
                 getEndpointConflictError(mirrorPoint2, mirrorPointPayload)).matches(error)
 
         where:
-        mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
+        mirrorDirection << [FORWARD, REVERSE]
     }
 
-
-    List<FlowRuleEntity> getFlowRules(SwitchId swId) {
-        def swRules = switchRulesFactory.get(swId).getRules()
-        swRules.findAll { new FlowSegmentCookie(it.cookie).direction != FlowPathDirection.UNDEFINED }
-    }
-
-    static FlowRuleEntity findRule(List<FlowRuleEntity> rules, FlowPathDirection pathDirection, boolean isMirror) {
-        rules.find {
-            def cookie = new FlowSegmentCookie(it.cookie)
-            cookie.direction == pathDirection && cookie.isMirror() == isMirror
-        }
-    }
-
-    static FlowRuleEntity findFlowRule(List<FlowRuleEntity> rules, FlowPathDirection pathDirection) {
-        findRule(rules, pathDirection, false)
-    }
-
-    static FlowRuleEntity findMirrorRule(List<FlowRuleEntity> rules, FlowPathDirection pathDirection) {
-        findRule(rules, pathDirection, true)
-    }
 
     static Pattern getEndpointConflictError(FlowMirrorPointPayload mirrorEp, FlowExtended existingFlow, String srcOrDst) {
         FlowEndpointV2 flowEndpoint = existingFlow."$srcOrDst"
@@ -901,7 +878,7 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
     }
 
     static Exam getExam(FlowBidirectionalExam biExam, FlowPathDirection direction) {
-        direction == FlowPathDirection.FORWARD ? biExam.forward : biExam.reverse
+        direction == FORWARD ? biExam.forward : biExam.reverse
     }
 
     private static void sendTrafficAndVerifyOnMainFlow(TraffExamService traffExam, FlowExtended flow, FlowPathDirection mirrorDirection) {
@@ -921,10 +898,10 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
      */
     @Memoized
     List<SwitchPair> getUniqueSwitchPairs(Closure additionalConditions = { true }) {
-        def allTgSwitches = topology.activeSwitches.findAll { it.traffGens }
+        def allTgSwitches = switches.all().withTraffGens().getListOfSwitches()
                 //switches that have 2+ traffgens go to the beginning of the list
-                .sort { a, b -> b.traffGens.size() <=> a.traffGens.size() }
-        def unpickedUniqueTgSwitches = allTgSwitches.unique(false) { it.hwSwString }
+                .sort { a, b -> b.traffGenPorts.size() <=> a.traffGenPorts.size() }
+        def unpickedUniqueTgSwitches = allTgSwitches.unique(false) { it.hwSwString() }
         def tgPairs = switchPairs.all().getSwitchPairs().findAll {
             additionalConditions(it)
         }
@@ -941,7 +918,7 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
                 unpickedUniqueTgSwitches = unpickedUniqueTgSwitches - pair.src
             } else {
                 //if there is an untested src left, but there is no dst that matches 'additional conditions'
-                log.warn("Switches left untested: ${unpickedUniqueTgSwitches*.hwSwString}")
+                log.warn("Switches left untested: ${unpickedUniqueTgSwitches*.hwSwString()}")
                 break
             }
         }
@@ -949,11 +926,12 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
     }
 
     List<SwitchPair> getUniqueVxlanSwitchPairs(boolean needTraffgens) {
+        def vxlanSupportedSwIds = switches.all().withVxlanEnabled().getListOfSwitches().switchId
         getUniqueSwitchPairs({ SwitchPair swP ->
             def vxlanCheck = swP.paths.find {
-                it*.switchId.every { switchHelper.isVxlanEnabled(it) }
+                it*.switchId.every { it in vxlanSupportedSwIds }
             }
-            def tgCheck = needTraffgens ? swP.src.traffGens && swP.dst.traffGens : true
+            def tgCheck = needTraffgens ? !swP.src.traffGenPorts.isEmpty() && !swP.dst.traffGenPorts.isEmpty() : true
             vxlanCheck && tgCheck
         })
     }

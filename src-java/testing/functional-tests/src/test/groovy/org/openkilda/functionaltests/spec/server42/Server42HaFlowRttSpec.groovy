@@ -19,7 +19,6 @@ import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.functionaltests.model.stats.Origin
@@ -42,10 +41,6 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
     @Shared
     @Autowired
     FlowStats flowStats
-
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
 
     @Tags(TOPOLOGY_DEPENDENT)
     def "Create an Ha-Flow (#description) with server42 Rtt feature and check datapoints in tsdb"() {

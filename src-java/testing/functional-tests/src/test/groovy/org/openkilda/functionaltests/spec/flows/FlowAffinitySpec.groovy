@@ -86,7 +86,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         switchPairs.all().getSwitchPairs().find{ swP1Candidate ->
             swPair1 = swP1Candidate
             swPair2 = switchPairs.all().excludePairs([swP1Candidate]).getSwitchPairs().find { swP2Candidate ->
-                if (swP1Candidate.dst.dpId != swP2Candidate.dst.dpId) return false
+                if (swP1Candidate.dst.switchId != swP2Candidate.dst.switchId) return false
                 flowExpectedPath = swP1Candidate.retrieveAvailablePaths().find { path1Candidate ->
                     List<Tuple2<Path, Integer>> scoreList = []
                     swP2Candidate.retrieveAvailablePaths().each {
@@ -239,8 +239,8 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
     def "Able to create an affinity flow with a 1-switch flow"() {
         given: "A one-switch flow"
-        def sw = topology.activeSwitches[0]
-        def oneSwitchFlow = flowFactory.getRandom(sw, sw)
+        def sw = switches.all().random()
+        def oneSwitchFlow = flowFactory.getSingleSwRandom(sw)
 
         when: "Create an affinity flow targeting the one-switch flow"
         def swPair = switchPairs.all().includeSourceSwitch(sw).random()

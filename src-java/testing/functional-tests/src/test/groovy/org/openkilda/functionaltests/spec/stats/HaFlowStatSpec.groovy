@@ -152,11 +152,9 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
                 [
                         descr        : "shared port and subflow ports",
                         updateClosure: { HaFlowExtended payload ->
-                            payload.sharedEndpoint.portNumber = topologyHelper.getTraffgenPortBySwitchId(
-                                    payload.sharedEndpoint.switchId)
+                            payload.sharedEndpoint.portNumber = topology.getTraffGen(payload.sharedEndpoint.switchId).switchPort
                             payload.subFlows.each {
-                                it.endpointPort = topologyHelper.getTraffgenPortBySwitchId(
-                                        it.endpointSwitchId)
+                                it.endpointPort = topology.getTraffGen(it.endpointSwitchId).switchPort
                             }
                         }
                 ],
@@ -167,11 +165,11 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
                             def newEp1SwitchId = payload.subFlows.last().endpointSwitchId
                             def newEp2SwitchId = payload.sharedEndpoint.switchId
                             payload.subFlows.first().endpointSwitchId = newEp1SwitchId
-                            payload.subFlows.first().endpointPort = topologyHelper.getTraffgenPortBySwitchId(newEp1SwitchId)
+                            payload.subFlows.first().endpointPort = topology.getTraffGen(newEp1SwitchId).switchPort
                             payload.subFlows.last().endpointSwitchId = newEp2SwitchId
-                            payload.subFlows.last().endpointPort = topologyHelper.getTraffgenPortBySwitchId(newEp2SwitchId)
+                            payload.subFlows.last().endpointPort = topology.getTraffGen(newEp2SwitchId).switchPort
                             payload.sharedEndpoint.switchId = newSharedSwitchId
-                            payload.sharedEndpoint.portNumber = topologyHelper.getTraffgenPortBySwitchId(newSharedSwitchId)
+                            payload.sharedEndpoint.portNumber = topology.getTraffGen(newSharedSwitchId).switchPort
                         }
                 ]
         ]

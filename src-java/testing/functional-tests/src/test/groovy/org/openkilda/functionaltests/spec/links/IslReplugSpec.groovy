@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.links
 
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
+import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -88,8 +91,9 @@ class IslReplugSpec extends HealthCheckSpecification {
         def newIslIsRemoved = true
 
         and: "The src and dst switches of the isl pass switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(
-                [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique()).isEmpty()
+        def involvedSws = switches.all().findSpecific([isl.srcSwitch.dpId, isl.dstSwitch.dpId,
+                                                       notConnectedIsl.srcSwitch.dpId])
+        synchronizeAndCollectFixedDiscrepancies(involvedSws).isEmpty()
     }
 
     def "ISL status changes to MOVED when replugging ISL into another switch"() {
@@ -135,9 +139,10 @@ class IslReplugSpec extends HealthCheckSpecification {
         and: "The src and dst switches of the isl pass switch validation"
         /* Need wait because of parallel s42 tests. Sw validation may show a missing s42 rule. Just wait for it.
         If problem persists, add a 'read' resource lock for s42_toggle */
+        def involvedSws = switches.all().findSpecific([isl.srcSwitch.dpId, isl.dstSwitch.dpId,
+                                                       notConnectedIsl.srcSwitch.dpId])
         Wrappers.wait(WAIT_OFFSET) {
-            switchHelper.validateAndCollectFoundDiscrepancies(
-                    [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique()).isEmpty()
+            validateAndCollectFoundDiscrepancies(involvedSws).isEmpty()
         }
     }
 

@@ -8,6 +8,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.model.SwitchFeature
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -34,18 +35,13 @@ class DefaultFlowSpec extends HealthCheckSpecification {
     @Tags([SMOKE_SWITCHES])
    def "Systems allows to pass traffic via default/vlan and qinq flow when they are on the same port"() {
         given: "At least 3 traffGen switches"
-        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
+        def allTraffGenSwitches = switches.all().withTraffGens().getListOfSwitches()
         assumeTrue(allTraffGenSwitches.size() > 2, "Unable to find required switches in topology")
 
         when: "Create a vlan flow"
-        def (Switch srcSwitch, Switch dstSwitch) = allTraffGenSwitches
-        Switch newDstSwitch = allTraffGenSwitches.find { it != dstSwitch && it != srcSwitch }
-        assumeTrue([srcSwitch, dstSwitch, newDstSwitch].every { it.features.contains(SwitchFeature.MULTI_TABLE) },
- "MultiTable mode should be supported by the src and dst switches")
-
-        [srcSwitch, dstSwitch, newDstSwitch].collectEntries {
-            [(it): switchHelper.getCachedSwProps(it.dpId)]
-        }
+        def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = allTraffGenSwitches
+        SwitchExtended newDstSwitch = allTraffGenSwitches.find { it != dstSwitch && it != srcSwitch }
+        assert [srcSwitch, dstSwitch, newDstSwitch].every { it.getDbFeatures().contains(SwitchFeature.MULTI_TABLE) }
 
         def bandwidth = 1000
         def vlanFlow = flowFactory.getBuilder(srcSwitch, dstSwitch)
@@ -104,11 +100,11 @@ class DefaultFlowSpec extends HealthCheckSpecification {
     def "System allows tagged traffic via default flow(0<->0)"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
         given: "At least 2 traffGen switches"
-        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
+        def allTraffGenSwitches = switches.all().withTraffGens().getListOfSwitches()
         assumeTrue(allTraffGenSwitches.size() > 1, "Unable to find required switches in topology")
 
         when: "Create a default flow"
-        def (Switch srcSwitch, Switch dstSwitch) = allTraffGenSwitches
+        def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = allTraffGenSwitches
         def defaultFlow = flowFactory.getBuilder(srcSwitch, dstSwitch)
                 .withSourceVlan(0)
                 .withDestinationVlan(0).build()
@@ -144,11 +140,11 @@ class DefaultFlowSpec extends HealthCheckSpecification {
     @Tags([SMOKE_SWITCHES])
     def "Unable to send traffic from simple flow into default flow and vice versa"() {
         given: "At least 2 traffGen switches"
-        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
+        def allTraffGenSwitches = switches.all().withTraffGens().getListOfSwitches()
         assumeTrue(allTraffGenSwitches.size() > 1, "Unable to find required switches in topology")
 
         and: "A default flow"
-        def (Switch srcSwitch, Switch dstSwitch) = allTraffGenSwitches
+        def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = allTraffGenSwitches
         def defaultFlow = flowFactory.getBuilder(srcSwitch, dstSwitch)
                 .withSourceVlan(0)
                 .withDestinationVlan(0).build()
@@ -180,7 +176,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
 
     def "Unable to create two default flow on the same port"() {
         when: "Create first default flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().withTraffGens().getListOfSwitches()
         def defaultFlow1 = flowFactory.getBuilder(srcSwitch, dstSwitch)
                 .withSourceVlan(0).build()
                 .create()

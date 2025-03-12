@@ -84,8 +84,7 @@ class SwitchesSpec extends HealthCheckSpecification {
                 .build().create()
 
         and: "A single switch flow"
-        def srcSwitch = switches.all().findSpecific(switchPair.src.dpId)
-        def allowedPorts = srcSwitch.getPorts().findAll {
+        def allowedPorts = switchPair.src.getPorts().findAll {
             it != protectedFlow.source.portNumber
         }
         def r = new Random()
@@ -98,43 +97,42 @@ class SwitchesSpec extends HealthCheckSpecification {
         def flowPathInfo = protectedFlow.retrieveAllEntityPaths()
         def mainPath = flowPathInfo.getPathNodes(Direction.FORWARD, false)
         def protectedPath = flowPathInfo.getPathNodes(Direction.FORWARD, true)
-        def involvedSwitchIds = flowPathInfo.getInvolvedSwitches()
+        def involvedSwitchIds = switches.all().findSwitchesInPath(flowPathInfo)
 
         then: "The created flows are in the response list from the src switch"
-        def switchFlowsResponseSrcSwitch = srcSwitch.getFlows()
+        def switchFlowsResponseSrcSwitch = switchPair.src.getFlows()
         switchFlowsResponseSrcSwitch*.id.sort() == [protectedFlow.flowId, singleFlow.flowId].sort()
 
         and: "Only the protectedFlow is in the response list from the involved switch(except the src switch)"
-        involvedSwitchIds.findAll { it != switchPair.src.dpId }.each { switchId ->
-            def getSwitchFlowsResponse = switches.all().findSpecific(switchId).getFlows()
+        involvedSwitchIds.findAll { it != switchPair.src }.each { sw ->
+            def getSwitchFlowsResponse = sw.getFlows()
             assert getSwitchFlowsResponse.size() == 1
             assert getSwitchFlowsResponse[0].id == protectedFlow.flowId
         }
 
         when: "Get all flows going through the src switch based on the port of the main path"
-        def getSwitchFlowsResponse1 = srcSwitch.getFlows(mainPath[0].portNo)
+        def getSwitchFlowsResponse1 = switchPair.src.getFlows(mainPath[0].portNo)
 
         then: "Only the protected flow is in the response list"
         getSwitchFlowsResponse1.size() == 1
         getSwitchFlowsResponse1[0].id == protectedFlow.flowId
 
         when: "Get all flows going through the src switch based on the port of the protected path"
-        def getSwitchFlowsResponse2 = srcSwitch.getFlows(protectedPath[0].portNo)
+        def getSwitchFlowsResponse2 = switchPair.src.getFlows(protectedPath[0].portNo)
 
         then: "Only the protected flow is in the response list"
         getSwitchFlowsResponse2.size() == 1
         getSwitchFlowsResponse2[0].id == protectedFlow.flowId
 
         when: "Get all flows going through the src switch based on the dstPort of the single switch flow"
-        def getSwitchFlowsResponse3 = srcSwitch.getFlows(singleFlow.destination.portNumber)
+        def getSwitchFlowsResponse3 = switchPair.src.getFlows(singleFlow.destination.portNumber)
 
         then: "Only the single switch flow is in the response list"
         getSwitchFlowsResponse3.size() == 1
         getSwitchFlowsResponse3[0].id == singleFlow.flowId
 
         when: "Get all flows going through the dst switch based on the dstPort of the protected flow"
-        def dstSwitch = switches.all().findSpecific(switchPair.dst.dpId)
-        def getSwitchFlowsResponse4 = dstSwitch.getFlows(protectedFlow.destination.portNumber)
+        def getSwitchFlowsResponse4 = switchPair.dst.getFlows(protectedFlow.destination.portNumber)
 
         then: "Only the protected flow is in the response list"
         getSwitchFlowsResponse4.size() == 1
@@ -147,14 +145,14 @@ class SwitchesSpec extends HealthCheckSpecification {
                 .build().create()
 
         and: "Get all flows going through the src switch"
-        def getSwitchFlowsResponse5 = srcSwitch.getFlows()
+        def getSwitchFlowsResponse5 = switchPair.src.getFlows()
 
         then: "The created flows are in the response list"
         getSwitchFlowsResponse5.size() == 3
         getSwitchFlowsResponse5*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
 
         when: "Bring down all ports on src switch to make flow DOWN"
-        def switchIsls = topology.getRelatedIsls(switchPair.src)
+        def switchIsls = topology.getRelatedIsls(switchPair.src.switchId)
         islHelper.breakIsls(switchIsls)
 
         and: "Get all flows going through the src switch"
@@ -166,7 +164,7 @@ class SwitchesSpec extends HealthCheckSpecification {
             assert defaultFlow.retrieveFlowHistory().getEntriesByType(REROUTE_FAILED).last()
                     .payload.find { it.action == REROUTE_FAILED.payloadLastAction }
         }
-        def getSwitchFlowsResponse6 = srcSwitch.getFlows()
+        def getSwitchFlowsResponse6 = switchPair.src.getFlows()
 
         then: "The created flows are in the response list"
         getSwitchFlowsResponse6*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
@@ -189,14 +187,13 @@ class SwitchesSpec extends HealthCheckSpecification {
         def simpleFlow = flowFactory.getRandom(switchPair)
 
         and: "A single switch flow"
-        def singleFlow = flowFactory.getRandom(switchPair.src, switchPair.src)
+        def singleFlow = flowFactory.getSingleSwRandom(switchPair.src)
 
         when: "Deactivate the src switch"
-        def switchToDisconnect = switches.all().findSpecific(switchPair.src.dpId)
-        switchToDisconnect.knockout(RW)
+        switchPair.src.knockout(RW)
 
         and: "Get all flows going through the deactivated src switch"
-        def switchFlowsResponseSrcSwitch = switchToDisconnect.getFlows()
+        def switchFlowsResponseSrcSwitch = switchPair.src.getFlows()
 
         then: "The created flows are in the response list from the deactivated src switch"
         switchFlowsResponseSrcSwitch*.id.sort() == [simpleFlow.flowId, singleFlow.flowId].sort()
@@ -284,18 +281,19 @@ class SwitchesSpec extends HealthCheckSpecification {
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
         new SwitchNotFoundExpectedError("Switch '$NON_EXISTENT_SWITCH_ID' not found",
-        ~/Error in switch validation/)
+        ~/Error in switch validation/).matches(e)
+
 
         where:
         data << [
                 [descr    : "synchronizing rules on",
                  operation: { getNorthbound().synchronizeSwitchRules(NON_EXISTENT_SWITCH_ID) }],
                 [descr    : "synchronizing",
-                 operation: { switchHelper.synchronize(NON_EXISTENT_SWITCH_ID) }],
+                 operation: {  getNorthbound().synchronizeSwitch(NON_EXISTENT_SWITCH_ID, true) }],
                 [descr    : "validating rules on",
                  operation: { getNorthbound().validateSwitchRules(NON_EXISTENT_SWITCH_ID) }],
                 [descr    : "validating",
-                 operation: { switchHelper.validate(NON_EXISTENT_SWITCH_ID) }]
+                 operation: { getNorthboundV2().validateSwitch(NON_EXISTENT_SWITCH_ID) }]
         ]
     }
 

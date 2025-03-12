@@ -7,6 +7,8 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.VXLAN
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
+import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
@@ -31,7 +33,6 @@ import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchPairs
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.cookie.Cookie
@@ -73,10 +74,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Value('${flow.sla.check.interval.seconds}')
     Integer flowSlaCheckIntervalSeconds
 
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
-
     @Tags(TOPOLOGY_DEPENDENT)
     @IterationTag(tags = [HARDWARE], iterationNameRegex = /(NS|WB)/)
     def "Create a #flowDescription flow with server42 Rtt feature and check datapoints in tsdb"() {
@@ -85,11 +82,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         when: "Set server42FlowRtt toggle to true"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src and dst switches"
         def server42Switch = switchPair.src
-        [server42Switch, switchPair.dst].each { switchHelper.setServer42FlowRttForSwitch(it, true) }
+        [server42Switch, switchPair.dst].each { sw -> sw.setServer42FlowRttForSwitch(true) }
 
         and: "Create a flow"
         FlowExtended flow = expectedFlowEntity(flowFactory.getBuilder(switchPair)).create()
@@ -124,11 +121,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "server42FlowRtt feature toggle is set to true"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src and dst switches"
         def server42Switch = switchPair.src
-        [server42Switch, switchPair.dst].each { switchHelper.setServer42FlowRttForSwitch(it, true) }
+        [server42Switch, switchPair.dst].each { sw -> sw.setServer42FlowRttForSwitch(true) }
 
         when: "Create a flow for forward metric"
         def flow = flowFactory.getRandom(switchPair)
@@ -136,8 +133,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         and: "Create a reversed flow for backward metric"
         def reversedFlow = flowFactory.getBuilder(switchPair.reversed, false, flow.occupiedEndpoints())
         //don't pick same ports as flow1 in order to get expected amount of s42_input rules
-                .withSourcePort((topology.getAllowedPortsForSwitch(switchPair.dst) - flow.destination.portNumber)[0])
-                .withDestinationPort((topology.getAllowedPortsForSwitch(switchPair.src) - flow.source.portNumber)[0]).build()
+                .withSourcePort((switchPair.dst.getPorts() - flow.destination.portNumber)[0])
+                .withDestinationPort((switchPair.src.getPorts() - flow.source.portNumber)[0]).build()
                 .create()
 
         then: "Server42 input/ingress rules are installed"
@@ -149,12 +146,13 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                  * (if there are 10 flows on port number 5, then there will be installed one INPUT rule);
                  * - SERVER_42_FLOW_RTT_INGRESS is installed for each flow.
                  */
-                assert switchRulesFactory.get(sw.dpId).getServer42FlowRelatedRules().cookie.size() == 4
+                assert sw.rulesManager.getServer42FlowRelatedRules().cookie.size() == 4
             }
         }
 
         and: "Involved switches pass switch validation"
-        switchHelper.validateAndCollectFoundDiscrepancies(flow.retrieveAllEntityPaths().getInvolvedSwitches()).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
+        validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
 
         and: "Check if stats for forward and reverse flows are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
@@ -170,17 +168,18 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "server42FlowRtt feature enabled globally and on src/dst switch"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
-        [switchPair.src, switchPair.dst].each { sw -> switchHelper.setServer42FlowRttForSwitch(sw, true) }
+        [switchPair.src, switchPair.dst].each { sw -> sw.setServer42FlowRttForSwitch(true) }
 
         when: "Create a flow"
         def checkpointTime = new Date()
         def flow = flowFactory.getRandom(switchPair)
 
         then: "Involved switches pass switch validation"
+        def involvedSws = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
         Wrappers.wait(RULES_INSTALLATION_TIME) {  //wait for s42 rules
-            switchHelper.validateAndCollectFoundDiscrepancies(flow.retrieveAllEntityPaths().getInvolvedSwitches()).isEmpty()
+            validateAndCollectFoundDiscrepancies(involvedSws).isEmpty()
         }
 
         and: "Stats for both directions are available"
@@ -190,9 +189,9 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         when: "Disable flow rtt on dst switch"
-        switchHelper.setServer42FlowRttForSwitch(switchPair.dst, false)
+        switchPair.dst.setServer42FlowRttForSwitch(false)
         Wrappers.wait(RULES_INSTALLATION_TIME, 3) {
-            assert !switchHelper.validateAndCollectFoundDiscrepancies(switchPair.dst.dpId).isPresent()
+            assert !switchPair.dst.validateAndCollectFoundDiscrepancies().isPresent()
         }
         checkpointTime = new Date().getTime() + SERVER42_STATS_LAG * 1000
 
@@ -212,10 +211,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().withBothSwitchesConnectedToServer42().random()
         //enable server42 in featureToggle and on the switches
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
         def server42Switch = switchPair.src
-        [server42Switch, switchPair.dst].each { sw -> switchHelper.setServer42FlowRttForSwitch(sw, true) }
+        [server42Switch, switchPair.dst].each { sw -> sw.setServer42FlowRttForSwitch(true) }
 
         and: "A flow on the given switch pair"
         def flow = flowFactory.getRandom(switchPair)
@@ -226,14 +225,13 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         when: "Delete ingress server42 rule related to the flow on the src switch"
-        def switchRules = switchRulesFactory.get(switchPair.src.dpId)
-        def cookieToDelete = switchRules.getRulesByCookieType(CookieType.SERVER_42_FLOW_RTT_INGRESS).first().cookie
-        switchRules.delete(cookieToDelete)
+        def cookieToDelete = switchPair.src.rulesManager
+                .getRulesByCookieType(CookieType.SERVER_42_FLOW_RTT_INGRESS).first().cookie
+        switchPair.src.rulesManager.delete(cookieToDelete)
 
         then: "System detects missing rule on the src switch"
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(switchPair.src.dpId).get()
-                    .rules.missing*.getCookie() == [cookieToDelete]
+            assert switchPair.src.validate().rules.missing*.getCookie() == [cookieToDelete]
         }
         def timeWhenMissingRuleIsDetected = new Date().getTime()
 
@@ -257,8 +255,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Missing ingress server42 rule is reinstalled on the src switch"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert !switchHelper.validateAndCollectFoundDiscrepancies(switchPair.src.dpId).isPresent()
-            assert switchRules.getRulesByCookieType(CookieType.SERVER_42_FLOW_RTT_INGRESS).cookie.size() == 1
+            assert !switchPair.src.validateAndCollectFoundDiscrepancies().isPresent()
+            assert switchPair.src.rulesManager.getRulesByCookieType(CookieType.SERVER_42_FLOW_RTT_INGRESS).cookie.size() == 1
         }
         def timeWhenMissingRuleIsReinstalled = new Date().getTime()
 
@@ -273,17 +271,17 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         given: "Two switch pairs with different src switches and the same dst switch"
         def fl1SwPair = switchPairs.all().withOnlySourceSwitchConnectedToServer42().random()
         def fl2SwPair = switchPairs.all()
-                .excludeSwitches(topology.getActiveServer42Switches())
-                .includeSourceSwitch(fl1SwPair.getDst())
-                .excludeDestinationSwitches([fl1SwPair.getSrc()])
+                .excludeSwitches(switches.all().withS42Support().getListOfSwitches())
+                .includeSourceSwitch(fl1SwPair.dst)
+                .excludeDestinationSwitches([fl1SwPair.src])
                 .random()
                 .getReversed()
 
         and: "server42 is enabled on the src sw of the first switch pair"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
-        switchHelper.setServer42FlowRttForSwitch(fl1SwPair.src, true)
+        fl1SwPair.src.setServer42FlowRttForSwitch(true)
 
         and: "Two flows on the given switch pairs"
         def flow1 = flowFactory.getRandom(fl1SwPair)
@@ -325,9 +323,9 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         flow2.validateAndCollectDiscrepancies().isEmpty()
 
         and: "All switches are valid"
-        def involvedSwitches = [fl1SwPair.src, fl1SwPair.dst, fl2SwPair.src, fl2SwPair.dst]*.dpId.unique()
+        def involvedSwitches = (fl1SwPair.toList() + fl2SwPair.toList()).unique()
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
         }
 
         and: "server42 stats are available for the flow2 in the forward direction"
@@ -347,11 +345,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         when: "Set server42FlowRtt toggle to true"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src switch"
-        switchHelper.getCachedSwProps(switchPair.src.dpId).server42FlowRtt
-        switchHelper.setServer42FlowRttForSwitch(switchPair.src, true)
+        assert switchPair.src.getProps().server42FlowRtt
+        switchPair.src.setServer42FlowRttForSwitch(true)
 
         and: "Create a flow"
         def flow = flowFactory.getRandom(switchPair)
@@ -369,9 +367,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         when: "Disable server42FlowRtt on the src switch"
-        switchHelper.setServer42FlowRttForSwitch(switchPair.src, false)
+        switchPair.src.setServer42FlowRttForSwitch(false)
 
         then: "Stats from flow monitoring feature for forward direction are available"
+        !switchPair.src.getProps().server42FlowRtt
         Wrappers.wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 2, 1) {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
@@ -385,11 +384,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "server42FlowRtt toggle is set to true"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src and dst switches"
         def server42Switch = switchPair.src
-        [server42Switch, switchPair.dst].each { sw -> switchHelper.setServer42FlowRttForSwitch(sw, true) }
+        [server42Switch, switchPair.dst].each { sw -> sw.setServer42FlowRttForSwitch(true) }
 
         and: "A flow"
         FlowExtended flow = data.flowEntity(switchPair).create()
@@ -420,7 +419,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "The src switch is valid"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId()).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(switchPair.toList()).isEmpty()
 
         where:
         data << [
@@ -454,24 +453,18 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().withOnlySourceSwitchConnectedToServer42().random()
 
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
-        switchHelper.setServer42FlowRttForSwitch(switchPair.src, true)
+        switches.all().waitForS42SwRulesSetup()
+        switchPair.src.setServer42FlowRttForSwitch(true)
 
         when: "Update the server42 in switch properties on ths src switch(incorrect port)"
-        def newS42Port = topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
-            it.dpId == switchPair.src.dpId
-        }).last()
-        def originalSrcSwPros = switchHelper.getCachedSwProps(switchPair.src.dpId)
-        northbound.updateSwitchProperties(switchPair.src.dpId, originalSrcSwPros.jacksonCopy().tap {
-            server42Port = newS42Port
-        })
-        def swPropIsWrong = true
+        def newS42Port = switchPair.src.getPorts().last()
+        def originalSrcSwPros = switchPair.src.getCachedProps()
+        switchPair.src.updateProperties(originalSrcSwPros.jacksonCopy().tap { server42Port = newS42Port })
 
         then: "server42 rules on the switch are updated"
-        def amountOfS42Rules = switchHelper.getExpectedS42SwitchRulesBasedOnVxlanSupport(switchPair.src.dpId)
-        def switchRules = switchRulesFactory.get(switchPair.src.dpId)
+        def amountOfS42Rules = switchPair.src.getExpectedS42SwitchRulesBasedOnVxlanSupport()
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            def s42Rules = switchRules.getRules().findAll {
+            def s42Rules = switchPair.src.rulesManager.getRules().findAll {
                 it.cookie in  [SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE]
             }
             assert s42Rules.size() == amountOfS42Rules
@@ -479,7 +472,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "The src switch is valid"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.src.dpId).isPresent()
+        !switchPair.src.synchronizeAndCollectFixedDiscrepancies().isPresent()
 
         when: "Create a flow on the given switch pair"
         def flow = flowFactory.getRandom(switchPair)
@@ -491,11 +484,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         when: "Set correct config for the server42 on the src switch"
-        northbound.updateSwitchProperties(switchPair.src.dpId, originalSrcSwPros)
+        switchPair.src.updateProperties(originalSrcSwPros)
 
         then: "server42 related rules are updated according to the new config"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            def swRules = switchRules.getRules()
+            def swRules = switchPair.src.rulesManager.getRules()
             def flowS42Rules = swRules.findAll {
                 new Cookie(it.cookie).getType() in [CookieType.SERVER_42_FLOW_RTT_INPUT, CookieType.SERVER_42_FLOW_RTT_INGRESS]
             }
@@ -509,7 +502,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "The src switch is valid"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.src.dpId).isPresent()
+        !switchPair.src.synchronizeAndCollectFixedDiscrepancies().isPresent()
 
         and: "Flow rtt stats are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
@@ -525,17 +518,19 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "server42FlowRtt toggle is set to true"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src/dst switches"
-        [switchPair.src, switchPair.dst].each { sw -> switchHelper.setServer42FlowRttForSwitch(sw, true) }
+        [switchPair.src, switchPair.dst].each { sw -> sw.setServer42FlowRttForSwitch(true) }
 
         when: "Create a LAG port on the src switch"
-        def portsForLag = topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1]
-        def lagPort = switchHelper.createLagLogicalPort(switchPair.src.dpId, portsForLag as Set).logicalPortNumber
+        def portsForLag = switchPair.src.getPorts()[-2, -1]
+        def lagPort = switchPair.src.getLagPort(portsForLag as Set).create()
 
         and: "Create a flow"
-        def flow = flowFactory.getBuilder(switchPair).withSourcePort(lagPort).build().create()
+        def flow = flowFactory.getBuilder(switchPair)
+                .withSourcePort(lagPort.logicalPortNumber).build()
+                .create()
 
         then: "Stats from server42 for forward/reverse directions are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
@@ -546,17 +541,17 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
     def "Stats are available only if both global and switch toggles are 'on' on both endpoints"() {
         /*This test runs the last (by alphabet) on jenkins, because if it runs before other test,
-        switchHelper.waitForS42SwRulesSetup() call in the next tests fails. No idea why.*/
+        waitForS42SwRulesSetup() call in the next tests fails. No idea why.*/
         given: "Two active switches with having server42"
         def switchPair = switchPairs.all().withBothSwitchesConnectedToServer42().random()
         def statsWaitSeconds = 4
 
         and: "server42FlowRtt toggle is turned off"
         featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(false)
-        switchHelper.waitForS42SwRulesSetup(false)
+        switches.all().waitForS42SwRulesSetup(false)
 
         and: "server42FlowRtt is turned off on src and dst"
-        [switchPair.src, switchPair.dst].each{ sw -> switchHelper.setServer42FlowRttForSwitch(sw, false, false) }
+        [switchPair.src, switchPair.dst].each{ sw -> sw.setServer42FlowRttForSwitch(false, false) }
 
         and: "Flow for forward metric is created"
         def flow = flowFactory.getRandom(switchPair)
@@ -566,8 +561,9 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
 
         expect: "Involved switches pass switch validation"
+        def involvedSws = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
         Wrappers.wait(RULES_INSTALLATION_TIME) { //wait for s42 rules
-            switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.retrieveAllEntityPaths().getInvolvedSwitches()).isEmpty()
+            synchronizeAndCollectFixedDiscrepancies(involvedSws).isEmpty()
         }
 
         when: "Wait for several seconds"
@@ -581,7 +577,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         when: "Enable global rtt toggle"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
         and: "Wait for several seconds"
         def checkpointTime = new Date().getTime()
@@ -594,8 +590,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         flowStats.of(reversedFlow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
 
         when: "Enable switch rtt toggle on src and dst"
-        switchHelper.setServer42FlowRttForSwitch(switchPair.src, true)
-        switchHelper.setServer42FlowRttForSwitch(switchPair.dst, true)
+        switchPair.src.setServer42FlowRttForSwitch(true)
+        switchPair.dst.setServer42FlowRttForSwitch(true)
         checkpointTime = new Date().getTime()
 
         then: "Stats for forward and reverse flow are available"
@@ -606,7 +602,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         when: "Disable switch rtt toggle on dst (still enabled on src)"
-        switchHelper.setServer42FlowRttForSwitch(switchPair.dst, false)
+        switchPair.dst.setServer42FlowRttForSwitch(false)
         checkpointTime = new Date().getTime()
 
         then: "Stats for forward and reverse flow are available"

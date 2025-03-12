@@ -30,9 +30,11 @@ import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_BROADCAST
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.functionaltests.model.stats.SwitchStats
 import org.openkilda.functionaltests.model.stats.SwitchStatsMetric
 import org.openkilda.functionaltests.model.stats.SystemStats
+import org.openkilda.functionaltests.model.switches.Manufacturer
 import org.openkilda.model.SwitchId
 
 import groovy.time.TimeCategory
@@ -115,23 +117,23 @@ class TsdbSpec extends HealthCheckSpecification {
     }
 
     @Tags([HARDWARE])
-    def "GRPC stats are being logged for metric:#metric, sw: #sw.hwSwString"(metric, sw) {
+    def "GRPC stats are being logged for metric:#metric, sw: #sw.hwSwString()"(SwitchStatsMetric metric, SwitchExtended sw) {
         assumeTrue(featureToggles.getFeatureToggles().collectGrpcStats,
 "This test is skipped because 'collectGrpcStats' is disabled")
         expect: "At least 1 result in the past 15 minutes"
-        assert !switchStats.of(sw.getDpId(), 15).get(metric).getDataPoints().isEmpty()
+        assert !switchStats.of(sw.switchId, 15).get(metric).getDataPoints().isEmpty()
 
         where:
         [metric, sw] << ([hardwareOnlySwitchStats, getNoviflowSwitches()].combinations())
     }
 
     @Memoized
-    def getUniqueSwitches() {
-        topology.activeSwitches.unique { it.hwSwString }.collect {it.getDpId()}
+    List<SwitchId> getUniqueSwitches() {
+        switches.all().uniqueByHw().collect { it.switchId }
     }
 
     @Memoized
-    def getNoviflowSwitches() {
-        topology.activeSwitches.findAll { it.noviflow }.unique { it.hwSwString }
+    List<SwitchExtended> getNoviflowSwitches() {
+        switches.all().withManufacturer(Manufacturer.NOVIFLOW).uniqueByHw()
     }
 }

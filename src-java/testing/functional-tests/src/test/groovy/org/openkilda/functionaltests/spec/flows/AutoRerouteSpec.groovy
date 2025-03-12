@@ -13,6 +13,7 @@ import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.helpers.model.FlowActionType.REROUTE
 import static org.openkilda.functionaltests.helpers.model.FlowActionType.REROUTE_FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
@@ -90,14 +91,16 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         def flowIsls = initialPath.getInvolvedIsls(Direction.FORWARD) + initialPath.getInvolvedIsls(Direction.REVERSE)
 
         and: "Alt path ISLs have not enough bandwidth to host the flow"
-        def altIsls = topology.getRelatedIsls(switchPair.src) + topology.getRelatedIsls(switchPair.dst)
+        def altIsls = topology.getRelatedIsls(switchPair.src.switchId) + topology.getRelatedIsls(switchPair.dst.switchId)
         altIsls.removeAll(flowIsls)
 
         List<SwitchPortVlan> busyEndpoints = flow.occupiedEndpoints()
         altIsls.each { isl ->
             def linkProp = islUtils.toLinkProps(isl, [cost: "1"])
             islHelper.updateIslsCost([isl], 1)
-            def extraFlow = flowFactory.getBuilder(isl.srcSwitch, isl.dstSwitch, false, busyEndpoints)
+            //temporary solution, will be replaced after ISL global refactoring
+            def pair = switchPairs.all().specificPair(isl.srcSwitch.dpId, isl.dstSwitch.dpId)
+            def extraFlow = flowFactory.getBuilder(pair, false, busyEndpoints)
                     .withBandwidth(northbound.getLink(isl).availableBandwidth - flow.maximumBandwidth + 1).build()
                     .create()
             busyEndpoints.addAll(extraFlow.occupiedEndpoints())
@@ -162,21 +165,21 @@ class AutoRerouteSpec extends HealthCheckSpecification {
     @Tags([ISL_RECOVER_ON_FAIL, SWITCH_RECOVER_ON_FAIL])
     def "Single switch flow changes status on switch up/down events"() {
         given: "Single switch flow"
-        def sw = topology.getActiveSwitches()[0]
-        def flow = flowFactory.getRandom(sw, sw)
+        def sw = switches.all().first()
+        def flow = flowFactory.getSingleSwRandom(sw)
 
         when: "The switch is disconnected"
-        def blockData = switchHelper.knockoutSwitch(sw, RW)
+        def blockData = sw.knockout(RW)
 
         then: "Flow becomes 'Down'"
         wait(WAIT_OFFSET) {
             def flowInfo =  flow.retrieveDetails()
             assert flowInfo.status == FlowState.DOWN
-            assert flowInfo.statusInfo == "Switch $sw.dpId is inactive"
+            assert flowInfo.statusInfo == "Switch $sw.switchId is inactive"
         }
 
         when: "Other isl fails"
-        def islToFail = topology.isls.find() {isl-> isl.srcSwitch != sw && isl.dstSwitch != sw}
+        def islToFail = topology.isls.find() {isl-> isl.srcSwitch.dpId != sw.switchId && isl.dstSwitch.dpId != sw.switchId}
         islHelper.breakIsl(islToFail)
 
         then: "Flow remains 'DOWN'"
@@ -189,7 +192,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         assert flow.retrieveFlowStatus().status == FlowState.DOWN
 
         when: "The switch is connected back"
-        switchHelper.reviveSwitch(sw, blockData, true)
+        sw.revive(blockData, true)
 
         then: "Flow becomes 'Up'"
         wait(WAIT_OFFSET) {
@@ -335,20 +338,15 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         when: "Disconnect one of the switches not used by flow"
         def involvedSwitches = initialPath.getInvolvedSwitches()
-        def switchToDisconnect = topology.getActiveSwitches().find { !involvedSwitches.contains(it) }
-        def blockData = switchHelper.knockoutSwitch(switchToDisconnect, RW)
+        def switchToDisconnect = switches.all().getListOfSwitches().find { !(it.switchId in involvedSwitches) }
+        def blockData = switchToDisconnect.knockout(RW, true)
 
         then: "The switch is really disconnected from the controller"
-        wait(WAIT_OFFSET) { assert !(switchToDisconnect.dpId in northbound.getActiveSwitches()*.switchId) }
+        wait(WAIT_OFFSET) { assert !(switchToDisconnect.switchId in northbound.getActiveSwitches()*.switchId) }
 
         when: "Connect the switch back to the controller"
-        lockKeeper.reviveSwitch(switchToDisconnect, blockData)
-
         then: "The switch is really connected to the controller"
-        wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.ACTIVATED
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        switchToDisconnect.revive(blockData, true)
 
         and: "The flow is not rerouted and doesn't use more preferable path"
         TimeUnit.SECONDS.sleep(rerouteDelay + WAIT_OFFSET)
@@ -370,14 +368,14 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         allFlowPathsIsls.findAll { it != flowIsls }.each { islHelper.makePathIslsMorePreferable(it, flowIsls) }
 
         when: "Bring the flow port down on the source switch"
-        antiflap.portDown(flow.source.switchId, flow.source.portNumber)
+        switchPair.src.getPort(flow.source.portNumber).down()
 
         then: "The flow is not rerouted"
         TimeUnit.SECONDS.sleep(rerouteDelay)
         flow.retrieveAllEntityPaths() == initialPath
 
         when: "Bring the flow port down on the destination switch"
-        antiflap.portDown(flow.destination.switchId, flow.destination.portNumber)
+        switchPair.dst.getPort(flow.destination.portNumber).down()
 
         then: "The flow is not rerouted"
         TimeUnit.SECONDS.sleep(rerouteDelay)
@@ -398,13 +396,13 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         when: "Deactivate the src switch"
         def swToDeactivate = switchPair.src
         // it takes more time to DEACTIVATE a switch via the 'knockoutSwitch' method on the stage env
-        def blockData = switchHelper.knockoutSwitch(swToDeactivate, RW, false, WAIT_OFFSET * 4)
+        def blockData = swToDeactivate.knockout(RW, false, true, WAIT_OFFSET * 4)
 
         then: "Flow is UP"
         flow.retrieveFlowStatus().status == FlowState.UP
 
         when: "Activate the src switch"
-        switchHelper.reviveSwitch(swToDeactivate, blockData, true)
+        swToDeactivate.revive(blockData, true)
 
         then: "System doesn't try to reroute the flow on the switchUp event because flow is already in UP state"
         timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
@@ -440,8 +438,8 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         when: "Generate switchUp event on switch which is not related to the flow"
         def involvedSwitches = initialPath.getInvolvedSwitches()
-        def switchToManipulate = topology.activeSwitches.find { !(it.dpId in involvedSwitches) }
-        def blockData = switchHelper.knockoutSwitch(switchToManipulate, RW)
+        def switchToManipulate = switches.all().getListOfSwitches().find { !(it.switchId in involvedSwitches) }
+        def blockData = switchToManipulate.knockout(RW)
         wait(WAIT_OFFSET) {
             timedLoop(4) {
                 //waiting for the last retry in the scope of flow rerouting due to the ISL failure
@@ -453,7 +451,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             }
         }
         def expectedZeroReroutesTimestamp = System.currentTimeSeconds()
-        switchHelper.reviveSwitch(switchToManipulate, blockData)
+        switchToManipulate.revive(blockData)
 
         then: "Flow is not triggered for reroute due to switchUp event because switch is not related to the flow"
         TimeUnit.SECONDS.sleep(rerouteDelay * 2) // it helps to be sure that the auto-reroute operation is completed
@@ -502,7 +500,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         and: "Right when reroute starts: an ISL which is common for current path and potential backup path breaks too, \
 triggering one more reroute of the current path"
         //add latency to make reroute process longer to allow us break the target path while rules are being installed
-        switchHelper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(1000))
+        swPair.dst.shapeTraffic(new TrafficControlData(1000))
         //break the second ISL when the first reroute has started and is in progress
         wait(WAIT_OFFSET) {
             assert flow.retrieveFlowHistory().getEntriesByType(REROUTE).size() == 1
@@ -559,15 +557,15 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
 
         and: "Second switch pair where the srс switch from the first switch pair is a transit switch"
         Path secondFlowPath
-        def switchPair2 = switchPairs.all().getSwitchPairs().find { swP ->
+        def switchPair2 = switchPairs.all().nonNeighbouring().getSwitchPairs().find { swP ->
             swP.retrieveAvailablePaths().find { pathCandidate ->
                 secondFlowPath = pathCandidate
                 def involvedSwitches = pathCandidate.getInvolvedSwitches()
-                involvedSwitches.size() == 3 && involvedSwitches[1] == switchPair1.src.dpId &&
-                        involvedSwitches[-1] == switchPair1.dst.dpId
+                involvedSwitches.size() == 3 && involvedSwitches[1] == switchPair1.src.switchId &&
+                        involvedSwitches[-1] == switchPair1.dst.switchId
                 /**
                  * Because of this condition we have to include all reversed(mirrored) switch pairs during search.
-                 * Because all remaining switch pairs may use switchPair1.dst.dpId as their src
+                 * Because all remaining switch pairs may use switchPair1.dst.switchId as their src
                  */
             }
         } ?: assumeTrue(false, "No suiting switches found for the second flow")
@@ -604,10 +602,10 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
 
         when: "Disconnect the src switch of the first flow from the controller"
         def islToBreak = initialFirstFlowPath.getInvolvedIsls().first()
-        def blockData = switchHelper.knockoutSwitch(switchPair1.src, RW)
+        def blockData = switchPair1.src.knockout(RW)
 
         and: "Mark the switch as ACTIVE in db" // just to reproduce #3131
-        database.setSwitchStatus(switchPair1.src.dpId, SwitchStatus.ACTIVE)
+        switchPair1.src.setStatusInDb(SwitchStatus.ACTIVE)
 
         and: "Init auto reroute (bring ports down on the dstSwitch)"
         antiflap.portDown(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
@@ -635,9 +633,10 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
 
         and: "Flows are 'Down'"
         //to ensure a final 'down' wait for all non-rtl isls to fail and trigger reroutes
-        def nonRtIsls = topology.getRelatedIsls(switchPair1.src).findAll {
-            !it.srcSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) ||
-                    !it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+        def switchesWithIslRttEnabled = switches.all().getListOfSwitches()
+                .findAll { it.getDbFeatures().contains(NOVIFLOW_COPY_FIELD)}.switchId
+        def nonRtIsls = topology.getRelatedIsls(switchPair1.src.switchId).findAll {
+            !switchesWithIslRttEnabled.contains(it.srcSwitch.dpId) || !switchesWithIslRttEnabled.contains(it.dstSwitch.dpId)
         }
         wait(discoveryTimeout) {
             def allLinks = northbound.getAllLinks()
@@ -663,8 +662,8 @@ Failed to find path with requested bandwidth= ignored"
         }
 
         when: "Connect the switch back to the controller"
-        database.setSwitchStatus(switchPair1.src.dpId, SwitchStatus.INACTIVE) // set real status
-        switchHelper.reviveSwitch(switchPair1.src, blockData)
+        switchPair1.src.setStatusInDb(SwitchStatus.INACTIVE) // set real status
+        switchPair1.src.revive(blockData)
 
         then: "System tries to reroute the flow on switchUp event"
         /* there is a risk that flows won't find a path during reroute, because switch is online
@@ -673,7 +672,7 @@ Failed to find path with requested bandwidth= ignored"
         wait(WAIT_OFFSET) {
             [firstFlow, secondFlow].each { FlowExtended flow ->
                 assert flow.retrieveFlowHistory().getEntriesByType(REROUTE).find {
-                    it.details == "Reason: Switch '$switchPair1.src.dpId' online"
+                    it.details == "Reason: Switch '$switchPair1.src.switchId' online"
                 }
             }
         }
@@ -693,12 +692,14 @@ Failed to find path with requested bandwidth= ignored"
 
         and: "Alt path ISLs have not enough bandwidth to host the flow"
         def initialFlowIsls = initialPath.getInvolvedIsls()
-        def altIsls = topology.getRelatedIsls(topologyHelper.getSwitch(flow.getSource().getSwitchId())) - initialFlowIsls
+        def altIsls = topology.getRelatedIsls(switchPair.src.switchId) - initialFlowIsls
         List<SwitchPortVlan> busyEndpoints = flow.occupiedEndpoints()
         altIsls.each {isl ->
             def linkProp = islUtils.toLinkProps(isl, [cost: "1"])
             islHelper.updateIslsCost([isl], 1)
-            def extraFlow = flowFactory.getBuilder(isl.srcSwitch, isl.dstSwitch, false, busyEndpoints)
+            //temporary solution, will be replaced after ISL global refactoring
+            def pair = switchPairs.all().specificPair(isl.srcSwitch.dpId, isl.dstSwitch.dpId)
+            def extraFlow = flowFactory.getBuilder(pair, false, busyEndpoints)
                     .withBandwidth(northbound.getLink(isl).availableBandwidth - flow.maximumBandwidth + 1).build()
                     .create()
             busyEndpoints.addAll(extraFlow.occupiedEndpoints())

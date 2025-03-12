@@ -43,6 +43,11 @@ class SwitchTriplet {
         return "[$shared.name]-<$ep1.name>-<$ep2.name>"
     }
 
+    @JsonIgnore
+    List<SwitchExtended> toList() {
+        return [shared, ep1, ep2]
+    }
+
     String hwSwString() {
         return "[${shared.hwSwString()}]-<${ep1.hwSwString()}>-<${ep2.hwSwString()}>"
     }

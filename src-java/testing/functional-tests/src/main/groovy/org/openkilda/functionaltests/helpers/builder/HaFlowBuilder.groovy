@@ -37,7 +37,7 @@ class HaFlowBuilder {
 
         this.haFlowExtended.sharedEndpoint = HaFlowSharedEndpoint.builder()
                 .switchId(swT.shared.switchId)
-                .portNumber(swT.shared.getRandomPort(useTraffgenPorts, busyEndpoints.findAll { it.sw == swT.shared.switchId }*.port).port)
+                .portNumber(swT.shared.getRandomPortNumber(useTraffgenPorts, busyEndpoints.findAll { it.sw == swT.shared.switchId }*.port))
                 .vlanId(randomVlan(busyEndpoints.findAll { it.sw == swT.shared.switchId }*.vlan))
                 .build()
         def se = this.haFlowExtended.sharedEndpoint
@@ -46,7 +46,7 @@ class HaFlowBuilder {
             HaSubFlowExtended ep = HaSubFlowExtended.builder()
                     .haSubFlowId("${this.haFlowExtended.haFlowId}${SUBFLOW_SUFFIX_LIST.pop()}")
                     .endpointSwitchId(sw.switchId)
-                    .endpointPort(sw.getRandomPort(useTraffgenPorts, busyEndpoints.findAll { it.sw == sw.switchId }*.port).port)
+                    .endpointPort(sw.getRandomPortNumber(useTraffgenPorts, busyEndpoints.findAll { it.sw == sw.switchId }*.port))
                     .endpointVlan(randomVlan(busyEndpoints.findAll { it.sw == sw.switchId }*.vlan)).build()
             busyEndpoints << new SwitchPortVlan(sw.switchId, ep.endpointPort, ep.endpointVlan)
             return ep
