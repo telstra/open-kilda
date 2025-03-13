@@ -26,13 +26,11 @@ import org.openkilda.service.ApplicationSettingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
-
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
 import org.usermanagement.model.Permission;
@@ -42,13 +40,13 @@ import org.usermanagement.service.PermissionService;
 import org.usermanagement.service.RoleService;
 import org.usermanagement.util.MessageUtils;
 
+import java.io.IOException;
 import java.nio.file.AccessDeniedException;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-
+import javax.annotation.security.PermitAll;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -73,48 +71,58 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
 
     @Autowired
     private UserRepository userRepository;
-    
+
     @Autowired
     private ApplicationSettingService applicationSettingService;
 
     @Override
     public boolean preHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler)
-            throws AccessDeniedException {
+            throws IOException {
         String correlationId = request.getParameter(CORRELATION_ID);
         correlationId = correlationId == null ? UUID.randomUUID().toString() : correlationId;
 
         HttpSession session = request.getSession();
-        UserInfo userInfo = null;
         if (IConstants.SessionTimeout.TIME_IN_MINUTE == null) {
             IConstants.SessionTimeout.TIME_IN_MINUTE = Integer.valueOf(applicationSettingService
                     .getApplicationSettings().get(ApplicationSetting.SESSION_TIMEOUT.name()));
         }
         session.setMaxInactiveInterval(IConstants.SessionTimeout.TIME_IN_MINUTE * 60);
-        userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
-        if (userInfo != null) {
+        UserInfo userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
+        if (handler instanceof HandlerMethod) {
+            HandlerMethod handlerMethod = (HandlerMethod) handler;
+            PermitAll permitAllAnnotation = handlerMethod.getMethodAnnotation(PermitAll.class);
+            if (permitAllAnnotation != null) {
+                setCorIdAndGet(correlationId);
+                return true;
+            }
+            if (userInfo == null) {
+                setCorIdAndGet(correlationId);
+                response.sendRedirect(String.format("%s/%s", request.getContextPath(), "401"));
+                return true;
+            }
             validateUser(userInfo);
-            if (handler instanceof HandlerMethod) {
-                HandlerMethod handlerMethod = (HandlerMethod) handler;
-                Permissions permissions = handlerMethod.getMethod().getAnnotation(Permissions.class);
-                if (permissions != null) {
-                    validateAndPopulatePermisssion(userInfo, permissions);
-                }
+            Permissions permissions = handlerMethod.getMethod().getAnnotation(Permissions.class);
+            if (permissions != null) {
+                validateAndPopulatePermisssion(userInfo, permissions);
             }
             updateRequestContext(correlationId, request, userInfo);
-        } else {
-            RequestContext requestContext = serverContext.getRequestContext();
-            requestContext.setCorrelationId(correlationId);
         }
         return true;
     }
 
+    private void setCorIdAndGet(String correlationId) {
+        RequestContext requestContext = serverContext.getRequestContext();
+        requestContext.setCorrelationId(correlationId);
+    }
+
     @Override
     public void postHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler,
-            final ModelAndView modelAndView) throws Exception {
+                           final ModelAndView modelAndView) throws Exception {
         super.postHandle(request, response, handler, modelAndView);
         MDC.remove(CORRELATION_ID);
     }
-    
+
+
     private void validateUser(final UserInfo userInfo) throws AccessDeniedException {
         UserEntity userEntity = userRepository.findByUserId(userInfo.getUserId());
         if (userEntity == null || !userEntity.getActiveFlag()) {
@@ -123,7 +131,7 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
     }
 
     private void updateRequestContext(final String correlationId, final HttpServletRequest request,
-            final UserInfo userInfo) {
+                                      final UserInfo userInfo) {
         RequestContext requestContext = serverContext.getRequestContext();
         requestContext.setCorrelationId(userInfo.getUsername() + "_" + correlationId);
         requestContext.setUserId(userInfo.getUserId());
@@ -133,7 +141,7 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
         requestContext.setIs2FaEnabled(userInfo.getIs2FaEnabled());
         requestContext.setStatus(userInfo.getStatus());
         requestContext.setClientIpAddress(getClientIp(request));
-        
+
         MDC.put(CORRELATION_ID, requestContext.getCorrelationId());
     }
 
