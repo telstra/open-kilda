@@ -17,7 +17,6 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
-import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.messaging.payload.flow.FlowState
 
@@ -44,14 +43,19 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
                 .build().create()
 
         def initialHaFlowPaths = haFlow.retrievedAllEntityPaths()
-        def haFlowRulesToDelete = swT.shared.rulesManager.forHaFlow(haFlow)
+        def haFlowCookiesFromDB = haFlow.retrieveCookiesFromDb()
+        def haFlowRulesToDelete = swT.shared.rulesManager.getRules().findAll { swRule ->
+            haFlowCookiesFromDB.contains(swRule.getCookie())
+        }
         assert !haFlowRulesToDelete.isEmpty()
         withPool {
             haFlowRulesToDelete.eachParallel { FlowRuleEntity rule -> swT.shared.rulesManager.delete(rule) }
         }
 
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert swT.shared.rulesManager.forHaFlow(haFlow).isEmpty()
+            assert swT.shared.rulesManager.getRules().findAll { swRule ->
+                haFlowCookiesFromDB.contains(swRule.getCookie())
+            }.isEmpty()
         }
 
         when: "Synchronize the HA-Flow"
@@ -74,7 +78,7 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         withPool {
             switches.all().findSwitchesInPath(initialHaFlowPaths).eachParallel { SwitchExtended sw ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
-                    haRulesAreSynced(sw, haFlow, syncTime)
+                    haRulesAreSynced(sw, haFlowCookiesFromDB, syncTime)
                 }
             }
         }
@@ -119,10 +123,11 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
 
         and: "Missing HA-Flow rules are installed (existing ones are reinstalled) on UP involved switches"
         def upInvolvedSwitches = switches.all().findSpecific(initialHaFlowPaths.getInvolvedSwitches() - [downSwitch.switchId])
+        def haFlowCookiesFromDB = haFlow.retrieveCookiesFromDb()
         withPool {
             upInvolvedSwitches.eachParallel { SwitchExtended sw ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
-                    haRulesAreSynced(sw, haFlow, syncTime)
+                    haRulesAreSynced(sw, haFlowCookiesFromDB, syncTime)
                 }
             }
         }
@@ -133,9 +138,11 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         ]
     }
 
-    private void haRulesAreSynced(SwitchExtended sw, HaFlowExtended haFlow, Date syncTime) {
+    private void haRulesAreSynced(SwitchExtended sw, List<Long> haFlowCookiesFromDB, Date syncTime) {
         assert sw.validate().asExpected
-        def haRules = sw.rulesManager.forHaFlow(haFlow)
+        def haRules = sw.rulesManager.getRules().findAll { swRule ->
+            haFlowCookiesFromDB.contains(swRule.getCookie())
+        }
         assert !haRules.isEmpty()
         haRules.each {
             assert it.durationSeconds < TimeCategory.minus(new Date(), syncTime).toMilliseconds() / 1000.0

@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.spec.flows
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 
-import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
 import org.openkilda.functionaltests.helpers.model.SwitchExtended
 
 import groovy.util.logging.Slf4j
@@ -486,8 +485,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
     def "Removing flow while it is still in progress of being set up should not cause rule discrepancies"() {
         given: "A potential flow"
         def switchPair = switchPairs.all().neighbouring().random()
-        def flowExpectedPath = switchPair.retrieveAvailablePaths().min { islHelper.getCost(it.getInvolvedIsls()) }
-        def expectedInvolvedSwitches = switches.all().findSpecific(flowExpectedPath.getInvolvedSwitches())
 
         when: "Init creation of a new flow"
         def flow = flowFactory.getBuilder(switchPair).build().sendCreateRequest()
@@ -503,10 +500,10 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "Flow eventually gets into UP state"
         flow.waitForBeingInState(UP)
-        flow.retrieveAllEntityPaths().getInvolvedSwitches().sort() == expectedInvolvedSwitches.switchId.sort()
+        flow.retrieveAllEntityPaths().getInvolvedSwitches().sort() == switchPair.toList().switchId.sort()
 
         and: "All related switches have no discrepancies in rules"
-        expectedInvolvedSwitches.each {
+        switchPair.toList().each {
             def syncResult = it.synchronize()
             assert syncResult.rules.installed.isEmpty() && syncResult.rules.removed.isEmpty()
             assert syncResult.meters.installed.isEmpty() && syncResult.meters.removed.isEmpty()

@@ -9,6 +9,7 @@ import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
 import groovy.util.logging.Slf4j
@@ -27,12 +28,14 @@ class HaFlowFactory {
     NorthboundServiceV2 northboundV2
     @Autowired
     CleanupManager cleanupManager
+    @Autowired
+    Database database
 
     /*
     This method allows customization of the HA-Flow with desired parameters for further creation
      */
     HaFlowBuilder getBuilder(SwitchTriplet swT, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEndpoints = []) {
-        return new HaFlowBuilder(swT, northboundV2, topology, cleanupManager, useTraffgenPorts, busyEndpoints)
+        return new HaFlowBuilder(swT, northboundV2, topology, database, cleanupManager, useTraffgenPorts, busyEndpoints)
     }
 
     /*

@@ -295,13 +295,13 @@ but satisfies max_latency_tier2"
         def nanoMultiplier = 1000000
         def mainIslCost = mainPathLatency.intdiv(mainIsls.size()) * nanoMultiplier
         def alternativeIslCost = alternativePathLatency.intdiv(alternativeIsls.size()) * nanoMultiplier
-        [mainIsls[0], mainIsls[0].reversed].each {
-            database.updateIslLatency(it, mainIslCost + (mainPathLatency % mainIsls.size()) * nanoMultiplier)
-        }
-        mainIsls.tail().each { [it, it.reversed].each { database.updateIslLatency(it, mainIslCost) } }
-        [alternativeIsls[0], alternativeIsls[0].reversed].each {
-            database.updateIslLatency(it, alternativeIslCost + (alternativePathLatency % alternativeIsls.size()) * nanoMultiplier)
-        }
-        alternativeIsls.tail().each { [it, it.reversed].each { database.updateIslLatency(it, alternativeIslCost) } }
+
+        database.updateIslsLatency([mainIsls[0], mainIsls[0].reversed],
+                mainIslCost + (mainPathLatency % mainIsls.size()) * nanoMultiplier)
+        mainIsls.size() > 1 && database.updateIslsLatency(mainIsls.tail().collectMany { [it, it.reversed] }, mainIslCost)
+
+        database.updateIslsLatency([alternativeIsls[0], alternativeIsls[0].reversed],
+                alternativeIslCost + (alternativePathLatency % alternativeIsls.size()) * nanoMultiplier)
+        alternativeIsls.size() > 1 && database.updateIslsLatency(alternativeIsls.tail().collectMany { [it, it.reversed] }, alternativeIslCost)
     }
 }

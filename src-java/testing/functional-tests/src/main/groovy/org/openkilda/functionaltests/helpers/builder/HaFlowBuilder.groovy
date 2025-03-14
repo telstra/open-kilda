@@ -13,6 +13,7 @@ import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
 import groovy.util.logging.Slf4j
@@ -30,10 +31,11 @@ class HaFlowBuilder {
     HaFlowBuilder(SwitchTriplet swT,
                   NorthboundServiceV2 northboundV2,
                   TopologyDefinition topologyDefinition,
+                  Database database,
                   CleanupManager cleanupManager,
                   boolean useTraffgenPorts = true,
                   List<SwitchPortVlan> busyEndpoints = []) {
-        this.haFlowExtended = new HaFlowExtended(HA_FLOW.generateId(), northboundV2, topologyDefinition, cleanupManager)
+        this.haFlowExtended = new HaFlowExtended(HA_FLOW.generateId(), northboundV2, topologyDefinition, database, cleanupManager)
 
         this.haFlowExtended.sharedEndpoint = HaFlowSharedEndpoint.builder()
                 .switchId(swT.shared.switchId)
