@@ -14,7 +14,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
-import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
@@ -167,14 +166,14 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         def nanoMultiplier = 1000000
         def mainIslLatency = mainPathLatency.intdiv(mainIsls.size()) * nanoMultiplier
         def alternativeIslLatency = alternativePathLatency.intdiv(alternativeIsls.size()) * nanoMultiplier
-        [mainIsls[0], mainIsls[0].reversed].each {
-            database.updateIslLatency(it, mainIslLatency + (mainPathLatency % mainIsls.size()) * nanoMultiplier)
-        }
-        mainIsls.tail().each { [it, it.reversed].each { database.updateIslLatency(it, mainIslLatency) } }
-        [alternativeIsls[0], alternativeIsls[0].reversed].each {
-            database.updateIslLatency(it, alternativeIslLatency + (alternativePathLatency % alternativeIsls.size()) * nanoMultiplier)
-        }
-        alternativeIsls.tail().each { [it, it.reversed].each { database.updateIslLatency(it, alternativeIslLatency) } }
+
+        database.updateIslsLatency([mainIsls[0], mainIsls[0].reversed],
+                mainIslLatency + (mainPathLatency % mainIsls.size()) * nanoMultiplier)
+        mainIsls.size() > 1 && database.updateIslsLatency(mainIsls.tail().collectMany { [it, it.reversed] }, mainIslLatency)
+
+        database.updateIslsLatency([alternativeIsls[0], alternativeIsls[0].reversed],
+                alternativeIslLatency + (alternativePathLatency % alternativeIsls.size()) * nanoMultiplier)
+        alternativeIsls.size() > 1 && database.updateIslsLatency(alternativeIsls.tail().collectMany { [it, it.reversed] }, alternativeIslLatency)
     }
 
     void verifyLatencyInTsdb(flowId, expectedMs) {

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers.model
 
+import org.openkilda.testing.service.database.Database
+
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.google.common.collect.ImmutableList
 import groovy.transform.AutoClone
@@ -51,10 +53,10 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
  */
 
 @Slf4j
-@EqualsAndHashCode(excludes = 'northboundV2, topologyDefinition, cleanupManager')
+@EqualsAndHashCode(excludes = 'northboundV2, topologyDefinition, database, cleanupManager')
 @Builder
 @AutoClone
-@ToString(includeNames = true, excludes = 'northboundV2, topologyDefinition, cleanupManager')
+@ToString(includeNames = true, excludes = 'northboundV2, topologyDefinition, database, cleanupManager')
 class HaFlowExtended {
     String haFlowId
     FlowState status
@@ -91,19 +93,25 @@ class HaFlowExtended {
     @JsonIgnore
     TopologyDefinition topologyDefinition
 
+    @JsonIgnore
+    Database database
+
     HaFlowExtended(String haFlowId,
                    NorthboundServiceV2 northboundV2,
                    TopologyDefinition topologyDefinition,
+                   Database database,
                    CleanupManager cleanupManager) {
         this.haFlowId = haFlowId
         this.northboundV2 = northboundV2
         this.topologyDefinition = topologyDefinition
+        this.database = database
         this.cleanupManager = cleanupManager
     }
 
     HaFlowExtended(HaFlow haFlow,
                    NorthboundServiceV2 northboundV2,
                    TopologyDefinition topologyDefinition,
+                   Database database,
                    CleanupManager cleanupManager) {
         this.haFlowId = haFlow.haFlowId
         this.status = FlowState.getByValue(haFlow.status)
@@ -140,6 +148,7 @@ class HaFlowExtended {
 
         this.northboundV2 = northboundV2
         this.topologyDefinition = topologyDefinition
+        this.database = database
         this.cleanupManager = cleanupManager
     }
 
@@ -221,7 +230,7 @@ class HaFlowExtended {
                 FlowState.getByValue(it.status) == flowState
             }
         }
-        return new HaFlowExtended(flowDetails, northboundV2, topologyDefinition, cleanupManager)
+        return new HaFlowExtended(flowDetails, northboundV2, topologyDefinition, database, cleanupManager)
     }
 
     void waitForHistoryEvent(HaFlowActionType action, double timeout = WAIT_OFFSET) {
@@ -233,7 +242,7 @@ class HaFlowExtended {
     HaFlowExtended sendPartialUpdateRequest(HaFlowPatchPayload updateRequest) {
         log.debug("Updating ha-flow '${haFlowId}'(partial update)")
         def haFlow = northboundV2.partialUpdateHaFlow(haFlowId, updateRequest)
-        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, cleanupManager)
+        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, database, cleanupManager)
     }
 
     HaFlowExtended partialUpdate(HaFlowPatchPayload updateRequest) {
@@ -245,7 +254,7 @@ class HaFlowExtended {
     HaFlowExtended sendUpdateRequest(HaFlowUpdatePayload updateRequest) {
         log.debug("Updating ha-flow '${haFlowId}'")
         def haFlow = northboundV2.updateHaFlow(haFlowId, updateRequest)
-        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, cleanupManager)
+        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, database, cleanupManager)
     }
 
     HaFlowExtended update(HaFlowUpdatePayload updateRequest) {
@@ -262,13 +271,13 @@ class HaFlowExtended {
     HaFlowExtended retrieveDetails() {
         log.debug("Getting ha-flow details '${haFlowId}'")
         def haFlow = northboundV2.getHaFlow(haFlowId)
-        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, cleanupManager)
+        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, database, cleanupManager)
     }
 
     HaFlowExtended swap() {
         log.debug("Swap ha-flow '${haFlowId}'")
         def haFlow = northboundV2.swapHaFlowPaths(haFlowId)
-        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, cleanupManager)
+        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, database, cleanupManager)
     }
 
     HaFlowPingResult ping(HaFlowPingPayload haFlowPingPayload = new HaFlowPingPayload(2000)) {
@@ -327,6 +336,11 @@ class HaFlowExtended {
         } else {
             return null
         }
+    }
+
+    List<Long> retrieveCookiesFromDb() {
+        (database.getHaFlowCookies(haFlowId) + database.getHaSubFlowsCookies(subFlows*.haSubFlowId))
+                .collect { it.getValue() }
     }
 
     HaFlowBidirectionalExam traffExam(TraffExamService traffExam, long bandwidth = 0, Long duration = 5) {

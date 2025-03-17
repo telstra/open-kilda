@@ -43,13 +43,6 @@ class SwitchRules {
         this.switchId = switchId
     }
 
-    List<FlowRuleEntity> forHaFlow(HaFlowExtended haFlow) {
-        def haFlowCookies = (database.getHaFlowCookies(haFlow.haFlowId) + database.getHaSubFlowsCookies(haFlow.subFlows*.haSubFlowId))
-                .collect {it.getValue()}
-        def switchRules = getRules()
-        return switchRules.findAll {haFlowCookies.contains(it.getCookie())}
-    }
-
     Set<FlowRuleEntity> relatedToMeter(FlowMeter flowMeter) {
         return getRules().findAll {it.getInstructions().getGoToMeter() == flowMeter.getMeterId().getValue()}
     }

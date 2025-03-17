@@ -257,6 +257,18 @@ public class DatabaseSupportImpl implements Database {
         });
     }
 
+    @Override
+    public boolean updateIslsLatency(List<Isl> islsToUpdate, long latency) {
+        return transactionManager.doInTransaction(() -> {
+            Collection<org.openkilda.model.Isl> dbIsls = getIsls(islsToUpdate);
+            dbIsls.forEach(link -> {
+                        link.setLatency(latency);
+                    }
+            );
+            return dbIsls.size() > 0;
+        });
+    }
+
     /**
      * Set ISL's max bandwidth to be equal to its speed (the default situation).
      *
@@ -602,9 +614,9 @@ public class DatabaseSupportImpl implements Database {
      * @return YFlow
      */
     public YFlow getYFlow(String yFlowId) {
-        return yFlowRepository.findById(yFlowId)
+        return transactionManager.doInTransaction(() ->  yFlowRepository.findById(yFlowId)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        String.format("Y-Flow %s non found", yFlowId)));
+                        String.format("Y-Flow %s non found", yFlowId))));
     }
 
     @Override
