@@ -3,9 +3,8 @@ package org.openkilda.functionaltests.spec.switches
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
-import static org.openkilda.model.MeterId.LACP_REPLY_METER_ID
-import static org.openkilda.model.cookie.Cookie.DROP_SLOW_PROTOCOLS_LOOP_COOKIE
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.getLagCookies
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.randomVlan
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
@@ -17,31 +16,25 @@ import org.openkilda.functionaltests.error.LagNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.LagPort
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.grpc.speaker.model.LogicalPortDto
 import org.openkilda.messaging.model.grpc.LogicalPortType
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.model.cookie.CookieBase.CookieType
-import org.openkilda.model.cookie.PortColourCookie
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.grpc.GrpcService
 import org.openkilda.testing.service.traffexam.TraffExamService
 
+import jakarta.inject.Provider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-import jakarta.inject.Provider
-
-
 @See("https://github.com/telstra/open-kilda/blob/develop/docs/design/LAG-for-ports/README.md")
 @Narrative("Verify that flow can be created on a LAG port.")
 @Tags([HARDWARE])
 class LagPortSpec extends HealthCheckSpecification {
-    public static final long LACP_METER_ID = LACP_REPLY_METER_ID.value
-    public static final String LACP_COOKIE = Cookie.toString(DROP_SLOW_PROTOCOLS_LOOP_COOKIE)
 
     @Autowired
     @Shared
@@ -55,90 +48,88 @@ class LagPortSpec extends HealthCheckSpecification {
     @Shared
     Integer lagOffset = 2000
 
-    def "Able to CRUD LAG port with lacp_reply=#lacpReply on #sw.hwSwString"() {
+    def "Able to CRUD LAG port with lacp_reply=#lacpReply on #sw.hwSwString()"(SwitchExtended sw, boolean lacpReply) {
         given: "A switch"
-        def portsArrayCreate = topology.getAllowedPortsForSwitch(sw)[-2, -1] as Set<Integer>
-        def portsArrayUpdate = topology.getAllowedPortsForSwitch(sw)[1, -1] as Set<Integer>
+        def portsArrayCreate = sw.getPorts()[-2, -1] as Set<Integer>
+        def portsArrayUpdate = sw.getPorts()[1, -1] as Set<Integer>
         assert portsArrayCreate.sort() != portsArrayUpdate.sort()
 
         when: "Create a LAG"
-        def createResponse = switchHelper.createLagLogicalPort(sw.dpId, portsArrayCreate, lacpReply)
+        def lagPort = sw.getLagPort(portsArrayCreate).create(lacpReply)
 
         then: "Response reports successful creation of the LAG port"
-        with(createResponse) {
+        verifyAll(lagPort) {
             logicalPortNumber > 0
             portNumbers.sort() == portsArrayCreate.sort()
             it.lacpReply == lacpReply
         }
-        def lagPort = createResponse.logicalPortNumber
 
         and: "LAG port is really created"
-        def getResponse = northboundV2.getLagLogicalPort(sw.dpId)
+        def getResponse = sw.getAllLogicalPorts()
         getResponse.size() == 1
-        with(getResponse[0]) {
-            logicalPortNumber == lagPort
+        verifyAll(getResponse[0]) {
+            logicalPortNumber == lagPort.logicalPortNumber
             portNumbers.sort() == portsArrayCreate.sort()
         }
 
         and: "LAG port is really created on the switch(check GRPC)"
-        def swAddress = northbound.getSwitch(sw.dpId).address
-        with(grpc.getSwitchLogicalPortConfig(swAddress, lagPort)) {
-            logicalPortNumber == lagPort
-            name == "novi_lport" + lagPort.toString()
+        def swAddress = sw.getDetails().address
+        verifyAll(grpc.getSwitchLogicalPortConfig(swAddress, lagPort.logicalPortNumber)) {
+            logicalPortNumber == lagPort.logicalPortNumber
+            name == "novi_lport" + lagPort.logicalPortNumber.toString()
             portNumbers.sort() == portsArrayCreate.sort()
             type == LogicalPortType.LAG
         }
 
         and: "Switch is valid"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
+        !sw.validateAndCollectFoundDiscrepancies().isPresent()
 
         when: "Update the LAG port"
         def payloadUpdate = new LagPortRequest(portNumbers: portsArrayUpdate)
-        def updateResponse = northboundV2.updateLagLogicalPort(sw.dpId, lagPort, payloadUpdate)
+        def updateLagPort = lagPort.update(payloadUpdate)
 
         then: "Response reports successful updation of the LAG port"
-        with(updateResponse) {
-            logicalPortNumber == lagPort
+        verifyAll(updateLagPort) {
+            logicalPortNumber == lagPort.logicalPortNumber
             portNumbers.sort() == portsArrayUpdate.sort()
         }
 
         and: "LAG port is really updated"
-        with(northboundV2.getLagLogicalPort(sw.dpId)) {
+        verifyAll(sw.getAllLogicalPorts()) {
             it.size() == 1
-            it[0].logicalPortNumber == lagPort
+            it[0].logicalPortNumber == lagPort.logicalPortNumber
             it[0].portNumbers.sort() == portsArrayUpdate.sort()
         }
 
         and: "LAG port is really updated on the switch(check GRPC)"
-        with(grpc.getSwitchLogicalPortConfig(swAddress, lagPort)) {
-            logicalPortNumber == lagPort
-            name == "novi_lport" + lagPort.toString()
+        verifyAll(grpc.getSwitchLogicalPortConfig(swAddress, lagPort.logicalPortNumber)) {
+            logicalPortNumber == lagPort.logicalPortNumber
+            name == "novi_lport" + lagPort.logicalPortNumber.toString()
             portNumbers.sort() == portsArrayUpdate.sort()
             type == LogicalPortType.LAG
         }
 
         and: "Switch is valid"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
+        !sw.validateAndCollectFoundDiscrepancies().isPresent()
 
         when: "Delete the LAG port"
-        def deleteResponse = northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
+        def deleteResponse = lagPort.delete()
 
         then: "Response reports successful deletion of the LAG port"
-        with(deleteResponse) {
-            logicalPortNumber == lagPort
+        verifyAll(deleteResponse) {
+            logicalPortNumber == lagPort.logicalPortNumber
             portNumbers.sort() == portsArrayUpdate.sort()
         }
 
         and: "LAG port is really deleted from db"
-        northboundV2.getLagLogicalPort(sw.dpId).empty
-        def lagPortIsDeleted = true
+        sw.getAllLogicalPorts().empty
 
         and: "LAG port is really deleted from switch"
-        !grpc.getSwitchLogicalPorts(swAddress).find { it.logicalPortNumber == lagPort }
+        !grpc.getSwitchLogicalPorts(swAddress).find { it.logicalPortNumber == lagPort.logicalPortNumber }
 
         where:
         [sw, lacpReply] << [
-                 getTopology().getActiveSwitches().unique(false) { it.hwSwString }, // switches
+                 switches.all().uniqueByHw(), // switches
                  [false, true] // lacp reply
                 ].combinations()
     }
@@ -146,13 +137,13 @@ class LagPortSpec extends HealthCheckSpecification {
     def "Able to create a flow on a LAG port"() {
         given: "A switchPair with a LAG port on the src switch"
         def switchPair = switchPairs.all().withTraffgensOnBothEnds().random()
-        def traffgenSrcSwPort = switchPair.src.traffGens.switchPort[0]
-        def portsArray = (topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1] << traffgenSrcSwPort).unique()
-        def lagPort = switchHelper.createLagLogicalPort(switchPair.src.dpId, portsArray as Set).logicalPortNumber
+        def traffgenSrcSwPort = switchPair.src.traffGenPorts.first()
+        def portsArray = (switchPair.src.getPorts()[-2, -1] + [traffgenSrcSwPort]) as Set<Integer>
+        def lagPortNumber = switchPair.src.getLagPort(portsArray).create().logicalPortNumber
 
         when: "Create a flow"
         def flow = flowFactory.getBuilder(switchPair)
-                .withSourcePort(lagPort)
+                .withSourcePort(lagPortNumber)
                 .build().create()
 
         then: "Flow is valid and pingable"
@@ -177,13 +168,13 @@ class LagPortSpec extends HealthCheckSpecification {
         and: "A flow on the LAG port"
         def swPair = switchPairs.singleSwitch()
                 .withAtLeastNTraffgensOnSource(2).random()
-        def traffgenSrcSwPort = swPair.src.traffGens[0].switchPort
-        def traffgenDstSwPort = swPair.src.traffGens[1].switchPort
-        def lagPort = switchHelper.createLagLogicalPort(swPair.src.dpId, [traffgenSrcSwPort] as Set).logicalPortNumber
+        Integer traffgenSrcSwPort = swPair.src.traffGenPorts.first()
+        Integer traffgenDstSwPort = swPair.src.traffGenPorts.last()
+        def lagPortNumber = swPair.src.getLagPort([traffgenSrcSwPort] as Set<Integer>).create().logicalPortNumber
 
         when: "Create a flow"
         def flow = flowFactory.getBuilder(swPair)
-                .withSourcePort(lagPort)
+                .withSourcePort(lagPortNumber)
                 .withDestinationPort(traffgenDstSwPort)
                 .build().create()
 
@@ -206,48 +197,49 @@ class LagPortSpec extends HealthCheckSpecification {
     @Tags(SWITCH_RECOVER_ON_FAIL)
     def "LAG port is not deleted after switch reconnecting"() {
         given: "A switch with a LAG port"
-        def sw = topology.getActiveSwitches().first()
-        def portsArray = topology.getAllowedPortsForSwitch(sw)[-2, -1]
-        def lagPort = switchHelper.createLagLogicalPort(sw.dpId, portsArray as Set).logicalPortNumber
+        def sw = switches.all().random()
+        def portsArray = sw.getPorts()[-2, -1]
+        def lagPort = sw.getLagPort(portsArray as Set).create()
 
         when: "Disconnect the switch"
+        def blockData = sw.knockout(RW)
+
         and: "Connect the switch back"
-        def blockData = switchHelper.knockoutSwitch(sw, RW)
-        switchHelper.reviveSwitch(sw, blockData, true)
+        sw.revive(blockData, true)
 
         then: "The LAG port is still exist"
-        with(northboundV2.getLagLogicalPort(sw.dpId)[0]) {
-            logicalPortNumber == lagPort
+        with(sw.getAllLogicalPorts()[0]) {
+            logicalPortNumber == lagPort.logicalPortNumber
             portNumbers.sort() == portsArray.sort()
         }
 
         and: "Switch is valid"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
+        !sw.validateAndCollectFoundDiscrepancies().isPresent()
     }
 
     def "Unable to delete a LAG port in case flow on it"() {
         given: "A flow on a LAG port"
         def switchPair = switchPairs.all().random()
-        def portsArray = topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1]
-        def lagPort = switchHelper.createLagLogicalPort(switchPair.src.dpId, portsArray as Set).logicalPortNumber
-        def flow = flowFactory.getBuilder(switchPair).withSourcePort(lagPort).build().create()
+        def portsArray = switchPair.src.getPorts()[-2, -1]
+        def lagPort = switchPair.src.getLagPort(portsArray as Set).create()
+        def flow = flowFactory.getBuilder(switchPair).withSourcePort(lagPort.logicalPortNumber).build().create()
 
         when: "When delete LAG port"
-        northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
+        lagPort.sendDeleteRequest()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        new LagNotDeletedExpectedError(~/Couldn\'t delete LAG port \'$lagPort\' from switch $switchPair.src.dpId \
+        new LagNotDeletedExpectedError(~/Couldn\'t delete LAG port \'$lagPort.logicalPortNumber\' from switch $switchPair.src.switchId \
 because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
     }
 
     def "Unable to create LAG on a port with flow on it"() {
         given: "Active switch with flow on it"
-        def sw = topology.activeSwitches.first()
-        def flow = flowFactory.getRandom(sw, sw)
+        def sw = switches.all().random()
+        def flow = flowFactory.getSingleSwRandom(sw)
 
         when: "Create a LAG port with flow's port"
-        switchHelper.createLagLogicalPort(sw.dpId, [flow.source.portNumber] as Set)
+        sw.getLagPort([flow.source.portNumber] as Set).create()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -257,10 +249,10 @@ because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
 
     def "Unable to create a flow on port which is inside LAG group"() {
         given: "An active switch with LAG port on it"
-        def sw = topology.activeSwitches.first()
-        def portsArray = topology.getAllowedPortsForSwitch(sw)[-2, -1]
+        def sw = switches.all().random()
+        def portsArray = sw.getPorts()[-2, -1]
         def flowSourcePort = portsArray[0]
-        def lagPort = switchHelper.createLagLogicalPort(sw.dpId, portsArray as Set).logicalPortNumber
+        def lagPort = sw.getLagPort(portsArray as Set).create()
 
         when: "Create flow on ports which are in inside LAG group"
         flowFactory.getBuilder(sw, sw)
@@ -271,7 +263,7 @@ because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(~/Port $flowSourcePort \
-on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
+on switch $sw.switchId is used as part of LAG port $lagPort.logicalPortNumber/).matches(exc)
 
     }
 
@@ -279,11 +271,11 @@ on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
         given: "A flow with mirrorPoint"
         def swP = switchPairs.all().neighbouring().random()
         def flow = flowFactory.getRandom(swP, false)
-        def mirrorPort = topology.getAllowedPortsForSwitch(swP.src).last()
-        def mirrorEndpoint = flow.createMirrorPoint(swP.src.dpId, mirrorPort, randomVlan())
+        def mirrorPort = swP.src.getPorts().last()
+        def mirrorEndpoint = flow.createMirrorPoint(swP.src.switchId, mirrorPort, randomVlan())
 
         when: "Create a LAG port with port which is used as mirrorPort"
-        switchHelper.createLagLogicalPort(swP.src.dpId, [mirrorPort] as Set)
+        swP.src.getLagPort([mirrorPort] as Set).create()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -294,9 +286,9 @@ on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
 
     def "Unable to create a LAG port in case port is #data.description"() {
         when: "Create a LAG port on a occupied port"
-        def sw = topology.getActiveServer42Switches().first()
+        def sw = switches.all().withS42Support().first()
         def occupiedPort = data.portNumber(sw)
-        switchHelper.createLagLogicalPort(sw.dpId, [occupiedPort] as Set)
+        sw.getLagPort([occupiedPort] as Set).create()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -306,12 +298,12 @@ on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
         data << [
                 [
                         description: "occupied by server42",
-                        portNumber : { Switch s -> s.prop.server42Port },
+                        portNumber : { SwitchExtended swExtended -> swExtended.sw.prop.server42Port },
                         errorDescription: ~/Physical port number \d+ on switch .*? is server42 port./
                 ],
                 [
                         description: "occupied by isl",
-                        portNumber : { Switch s -> getTopology().getBusyPortsForSwitch(s)[0] },
+                        portNumber : { SwitchExtended swExtended -> swExtended.getIslPorts()[0] },
                         errorDescription: ~/Physical port number \d+ intersects with existing ISLs/
                 ],
                 [
@@ -321,7 +313,7 @@ on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
                 ],
                 [
                         description: "not exist",
-                        portNumber : { Switch s -> s.maxPort + 1 },
+                        portNumber : { SwitchExtended swExtended -> swExtended.sw.maxPort + 1 },
                         errorDescription: ~/Invalid portno value./
                 ]
         ]
@@ -329,25 +321,24 @@ on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
 
     def "Unable to create two LAG ports with the same physical port inside at the same time"() {
         given: "A switch with a LAG port"
-        def sw = topology.getActiveSwitches().first()
-        def availablePorts = topology.getAllowedPortsForSwitch(sw)
+        def sw = switches.all().random()
+        def availablePorts = sw.getPorts()
         def portsArray = availablePorts[-2, -1]
         def conflictPortsArray = availablePorts[-3, -1]
-        def payload = new LagPortRequest(portNumbers: portsArray)
-        def lagPort = switchHelper.createLagLogicalPort(sw.dpId, portsArray as Set).logicalPortNumber
+        sw.getLagPort(portsArray as Set).create()
 
         when: "Try to create the same LAG port with the same physical ports inside"
-        northboundV2.createLagLogicalPort(sw.dpId, new LagPortRequest(portNumbers: conflictPortsArray))
+        sw.getLagPort(conflictPortsArray as Set).create()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        new LagNotCreatedExpectedError(~/Physical ports \[${portsArray[-1]}]\ on switch $sw.dpId already \
+        new LagNotCreatedExpectedError(~/Physical ports \[${portsArray[-1]}]\ on switch $sw.switchId already \
 occupied by other LAG group\(s\)./).matches(exc)
     }
 
     def "Unable to proceed incorrect delete LAG port request (#data.description)"() {
         when: "Send invalid delete LAG port request"
-        getNorthboundV2().deleteLagLogicalPort(data.swIdForRequest(), data.logicalPortNumber)
+        northboundV2.deleteLagLogicalPort(data.swIdForRequest(), data.logicalPortNumber)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -357,7 +348,7 @@ occupied by other LAG group\(s\)./).matches(exc)
         data << [
                 [
                         description      : "non-existent LAG port",
-                        swIdForRequest   : { getTopology().getActiveSwitches().first().dpId },
+                        swIdForRequest   : { topology.switches.dpId.first() },
                         logicalPortNumber: 1999, // lagOffset - 1
                         errorDescription : ~/LAG port 1999 on switch .*? not found/
                 ],
@@ -372,75 +363,74 @@ occupied by other LAG group\(s\)./).matches(exc)
 
     def "System is able to detect and sync missed LAG port"() {
         given: "A switch with a LAG port"
-        def sw = topology.getActiveSwitches().first()
-        def portsArray = topology.getAllowedPortsForSwitch(sw)[-2,-1]
-        def lagPort = switchHelper.createLagLogicalPort(sw.dpId, portsArray as Set).logicalPortNumber
+        def sw = switches.all().random()
+        def portsArray = sw.getPorts()[-2,-1]
+        def lagPort = sw.getLagPort(portsArray as Set).create()
 
         when: "Delete LAG port via grpc"
-        grpc.deleteSwitchLogicalPort(northbound.getSwitch(sw.dpId).address, lagPort)
+        grpc.deleteSwitchLogicalPort(sw.getDetails().address, lagPort.logicalPortNumber)
 
         then: "System detects that LAG port is missed"
-        def lagPortMissingInfo = switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get().logicalPorts.missing
+        def lagPortMissingInfo = sw.validate().logicalPorts.missing
         lagPortMissingInfo.size() == 1
-        with (lagPortMissingInfo[0]) {
+        verifyAll(lagPortMissingInfo[0]) {
             type == LogicalPortType.LAG.toString()
-            logicalPortNumber == lagPort
+            logicalPortNumber == lagPort.logicalPortNumber
             physicalPorts.sort() == portsArray.sort()
         }
 
         when: "Synchronize the switch"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId)
+        sw.synchronizeAndCollectFixedDiscrepancies()
 
         then: "LAG port is reinstalled"
-        !switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).isPresent()
+        !sw.validateAndCollectFoundDiscrepancies().isPresent()
     }
 
     def "System is able to detect misconfigured LAG port"() {
         //system can't re-install misconfigured LAG port
         given: "A switch with a LAG port"
-        def sw = topology.getActiveSwitches().first()
-        def portsArray = topology.getAllowedPortsForSwitch(sw)[-3,-1]
-        def lagPort = switchHelper.createLagLogicalPort(sw.dpId, portsArray as Set).logicalPortNumber
+        def sw = switches.all().random()
+        def portsArray = sw.getPorts()[-3,-1]
+        def lagPort = sw.getLagPort(portsArray as Set).create()
 
         when: "Modify LAG port via grpc(delete, create with incorrect ports)"
-        def swAddress = northbound.getSwitch(sw.dpId).address
-        grpc.deleteSwitchLogicalPort(swAddress, lagPort)
-        def request = new LogicalPortDto(LogicalPortType.LAG, [portsArray[0]], lagPort)
+        def swAddress = sw.getDetails().address
+        grpc.deleteSwitchLogicalPort(swAddress, lagPort.logicalPortNumber)
+        def request = new LogicalPortDto(LogicalPortType.LAG, [portsArray[0]], lagPort.logicalPortNumber)
         grpc.createLogicalPort(swAddress, request)
 
         then: "System detects misconfigured LAG port"
-        !switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get().logicalPorts.misconfigured.empty
+        !sw.validate().logicalPorts.misconfigured.empty
     }
 
-    def "Able to create/update LAG port with duplicated port numbers on the #sw.hwSwString switch"() {
+    def "Able to create/update LAG port with duplicated port numbers on the switch"() {
         given: "Switch and two ports"
-        def sw = getTopology().getActiveSwitches().get(0)
-        def testPorts = topology.getAllowedPortsForSwitch(sw).take(2)
-        assert testPorts.size() > 1
+        def sw = switches.all().random()
+        def testPorts = sw.getPorts().take(2)
+        assert testPorts.size > 1
 
         when: "Create LAG port with duplicated port numbers"
-        def switchPortToCreate = testPorts.get(0)
-        def swAddress = northbound.getSwitch(sw.dpId).address
+        def switchPortToCreate = testPorts.first()
+        def swAddress = sw.getDetails().address
         def portListToCreate = [switchPortToCreate, switchPortToCreate]
-        def lagPortCreateResponse = switchHelper.createLagLogicalPort(sw.dpId, portListToCreate as Set)
+        def lagPort = sw.getLagPort(portListToCreate as Set).create()
 
         then: "Response shows that LAG port created successfully"
-        with(lagPortCreateResponse) {
+        verifyAll(lagPort) {
             logicalPortNumber > 0
-            portNumbers == [switchPortToCreate]
+            portNumbers == [switchPortToCreate] as Set
         }
-        def lagPort = lagPortCreateResponse.logicalPortNumber
 
         and: "Request on user side shows that LAG port created"
-        with(northboundV2.getLagLogicalPort(sw.dpId)[0]) {
-            logicalPortNumber == lagPort
+        verifyAll(sw.getAllLogicalPorts()[0]) {
+            logicalPortNumber == lagPort.logicalPortNumber
             portNumbers == [switchPortToCreate]
         }
 
         and: "Created port exists in a list of all LAG ports from switch side (GRPC)"
-        with(grpc.getSwitchLogicalPortConfig(swAddress, lagPort)) {
-            logicalPortNumber == lagPort
-            name == "novi_lport" + lagPort.toString()
+        verifyAll(grpc.getSwitchLogicalPortConfig(swAddress, lagPort.logicalPortNumber)) {
+            logicalPortNumber == lagPort.logicalPortNumber
+            name == "novi_lport" + lagPort.logicalPortNumber.toString()
             portNumbers == [switchPortToCreate]
             type == LogicalPortType.LAG
         }
@@ -449,24 +439,24 @@ occupied by other LAG group\(s\)./).matches(exc)
         def switchPortToUpdate = testPorts.get(1)
         def portListToUpdate = [switchPortToUpdate, switchPortToUpdate]
         def updatePayload = new LagPortRequest(portNumbers: portListToUpdate)
-        def lagPortUpdateResponse = northboundV2.updateLagLogicalPort(sw.dpId, lagPort, updatePayload)
+        def updatedLagPort = lagPort.update(updatePayload)
 
         then: "Response shows that LAG port updated successfully"
-        with(lagPortUpdateResponse) {
-            logicalPortNumber == lagPort
-            portNumbers == [switchPortToUpdate]
+        verifyAll(updatedLagPort) {
+            logicalPortNumber == lagPort.logicalPortNumber
+            portNumbers == [switchPortToUpdate] as Set
         }
 
         and: "Check on user side that LAG port updated successfully"
-        with(northboundV2.getLagLogicalPort(sw.dpId)[0]) {
-            logicalPortNumber == lagPort
+        verifyAll(sw.getAllLogicalPorts()[0]) {
+            logicalPortNumber == lagPort.logicalPortNumber
             portNumbers == [switchPortToUpdate]
         }
 
         and: "Check that LAG port updated successfully on switch side (via GRPC)"
-        with(grpc.getSwitchLogicalPortConfig(swAddress, lagPort)) {
-            logicalPortNumber == lagPort
-            name == "novi_lport" + lagPort.toString()
+        verifyAll(grpc.getSwitchLogicalPortConfig(swAddress, lagPort.logicalPortNumber)) {
+            logicalPortNumber == lagPort.logicalPortNumber
+            name == "novi_lport" + lagPort.logicalPortNumber.toString()
             portNumbers == [switchPortToUpdate]
             type == LogicalPortType.LAG
         }
@@ -474,50 +464,48 @@ occupied by other LAG group\(s\)./).matches(exc)
 
     def "Able to create and delete single LAG port with lacp_reply=#data.portLacpReply"() {
         given: "A switch"
-        def sw = topology.getActiveSwitches().first()
-        def portsArrayCreate = topology.getAllowedPortsForSwitch(sw)[-2, -1] as Set<Integer>
+        def sw = switches.all().random()
+        def portsArrayCreate = sw.getPorts()[-2, -1] as Set<Integer>
 
         when: "Create a LAG port"
-        def createResponse = switchHelper.createLagLogicalPort(
-                sw.dpId, portsArrayCreate, data.portLacpReply)
+        def lagPort = sw.getLagPort(portsArrayCreate).create(data.portLacpReply)
 
         then: "Response reports successful creation of the LAG port"
-        with(createResponse) {
+        verifyAll(lagPort) {
             logicalPortNumber > 0
             portNumbers.sort() == portsArrayCreate.sort()
             lacpReply == data.portLacpReply
         }
-        def portNumber = createResponse.logicalPortNumber
 
         and: "Correct rules and meters are on the switch"
-        assertSwitchHasCorrectLacpRulesAndMeters(
-                sw, data.mustContainCookies(portNumber), data.mustNotContainCookies(portNumber), data.mustContainLacpMeter)
+        sw.verifyLacpRulesAndMeters(data.mustContainCookies(lagPort),
+                data.mustNotContainCookies(lagPort), data.mustContainLacpMeter)
 
         when: "Delete the LAG port"
-        def deleteResponse = northboundV2.deleteLagLogicalPort(sw.dpId, portNumber)
+        def deleteResponse = lagPort.delete()
 
         then: "Response reports successful delete of the LAG port"
-        with(deleteResponse) {
-            logicalPortNumber == portNumber
+        verifyAll(deleteResponse) {
+            logicalPortNumber == lagPort.logicalPortNumber
             portNumbers.sort() == portsArrayCreate.sort()
             lacpReply == data.portLacpReply
         }
 
         and: "No LACP rules and meters on the switch"
-        assertSwitchHasCorrectLacpRulesAndMeters(sw, [], [LACP_COOKIE, getLagCookie(portNumber)], false)
+        sw.verifyLacpRulesAndMeters([], getLagCookies([lagPort], true), false)
 
         where:
         data << [
                 [
                         portLacpReply : false,
-                        mustContainCookies : { int port -> [] },
-                        mustNotContainCookies : { int port -> [LACP_COOKIE, getLagCookie(port)] },
+                        mustContainCookies : { LagPort port -> [] },
+                        mustNotContainCookies : { LagPort port -> getLagCookies([port], true) },
                         mustContainLacpMeter : false
                 ],
                 [
                         portLacpReply : true,
-                        mustContainCookies : { int port -> [LACP_COOKIE, getLagCookie(port)] },
-                        mustNotContainCookies : { int port -> [] },
+                        mustContainCookies : { LagPort port -> getLagCookies([port], true) },
+                        mustNotContainCookies : { LagPort port -> [] },
                         mustContainLacpMeter : true
                 ]
         ]
@@ -525,46 +513,43 @@ occupied by other LAG group\(s\)./).matches(exc)
 
     def "Able to create and delete LAG port with #data.description"() {
         given: "A switch with LAG port"
-        def sw = topology.getActiveSwitches().first()
-        def physicalPortsOfLag1 = topology.getAllowedPortsForSwitch(sw)[-2, -1] as Set<Integer>
-        def physicalPortsOfLag2 = topology.getAllowedPortsForSwitch(sw)[-4, -3] as Set<Integer>
-        def portNumber1 = switchHelper.createLagLogicalPort(
-                sw.dpId, physicalPortsOfLag1 as Set, data.existingPortLacpReply).logicalPortNumber
+        def sw = switches.all().random()
+        def physicalPortsOfLag1 = sw.getPorts()[-2, -1] as Set<Integer>
+        def physicalPortsOfLag2 = sw.getPorts()[-4, -3] as Set<Integer>
+        def initialLagPort = sw.getLagPort(physicalPortsOfLag1).create(data.existingPortLacpReply)
 
         when: "Create a LAG port"
-        def createResponse = northboundV2.createLagLogicalPort(
-                sw.dpId, new LagPortRequest(physicalPortsOfLag2, data.newPortLacpReply))
+        def lagPort = sw.getLagPort(physicalPortsOfLag2).create(data.newPortLacpReply)
 
         then: "Response reports successful creation of the LAG port"
-        with(createResponse) {
+        verifyAll(lagPort) {
             logicalPortNumber > 0
             portNumbers.sort() == physicalPortsOfLag2.sort()
             lacpReply == data.newPortLacpReply
         }
-        def portNumber2 = createResponse.logicalPortNumber
 
         and: "Correct rules and meters are on the switch"
-        assertSwitchHasCorrectLacpRulesAndMeters(
-                sw, data.mustContainCookies(portNumber1, portNumber2),
-                data.mustNotContainCookies(portNumber1, portNumber2), data.mustContainLacpMeter)
+        sw.verifyLacpRulesAndMeters(data.mustContainCookies(initialLagPort, lagPort),
+                data.mustNotContainCookies(initialLagPort, lagPort), data.mustContainLacpMeter)
 
         when: "Delete created LAG port"
-        def deleteResponse = northboundV2.deleteLagLogicalPort(sw.dpId, portNumber2)
+        def deleteResponse = lagPort.delete()
 
         then: "Response reports successful delete of the LAG port"
-        with(deleteResponse) {
-            logicalPortNumber == portNumber2
+        verifyAll(deleteResponse) {
+            logicalPortNumber == lagPort.logicalPortNumber
             portNumbers.sort() == physicalPortsOfLag2.sort()
             lacpReply == data.newPortLacpReply
         }
 
         and: "No LACP rules and meters of second LAG port on the switch"
         if (data.existingPortLacpReply) { // Switch must contain LACP rules and meter for first LAG port
-            assertSwitchHasCorrectLacpRulesAndMeters(sw,
-                    [LACP_COOKIE, getLagCookie(portNumber1)], [getLagCookie(portNumber2)], true)
+            sw.verifyLacpRulesAndMeters(getLagCookies([initialLagPort], true),
+                    getLagCookies([lagPort], false),  true)
+
         } else { // Switch must not contain any LACP rules and meter
-            assertSwitchHasCorrectLacpRulesAndMeters(sw,
-                    [], [LACP_COOKIE, getLagCookie(portNumber1), getLagCookie(portNumber2), ], false)
+            sw.verifyLacpRulesAndMeters([],
+                    getLagCookies([initialLagPort, lagPort], true), false)
         }
 
         where:
@@ -573,34 +558,32 @@ occupied by other LAG group\(s\)./).matches(exc)
                         description: "disabled LACP replies, near to LAG port with disabled LACP replies",
                         existingPortLacpReply : false,
                         newPortLacpReply : false,
-                        mustContainCookies : { int oldPort, newPort -> [] },
-                        mustNotContainCookies : { int oldPort, newPort -> [
-                                LACP_COOKIE, getLagCookie(oldPort), getLagCookie(newPort)] },
+                        mustContainCookies : { LagPort oldPort, newPort -> [] },
+                        mustNotContainCookies : { LagPort oldPort, newPort -> getLagCookies([oldPort, newPort], true) },
                         mustContainLacpMeter : false
                 ],
                 [
                         description: "enabled LACP replies, near to LAG port with disabled LACP replies",
                         existingPortLacpReply : false,
                         newPortLacpReply : true,
-                        mustContainCookies : { int oldPort, newPort -> [LACP_COOKIE, getLagCookie(newPort)] },
-                        mustNotContainCookies : { int oldPort, newPort -> [getLagCookie(oldPort)] },
+                        mustContainCookies : { LagPort oldPort, newPort -> getLagCookies([newPort], true) },
+                        mustNotContainCookies : { LagPort oldPort, newPort -> getLagCookies([oldPort], false) },
                         mustContainLacpMeter : true
                 ],
                 [
                         description: "disabled LACP replies, near to LAG port with enabled LACP replies",
                         existingPortLacpReply : true,
                         newPortLacpReply : false,
-                        mustContainCookies : { int oldPort, newPort -> [LACP_COOKIE, getLagCookie(oldPort)] },
-                        mustNotContainCookies : { int oldPort, newPort -> [getLagCookie(newPort)] },
+                        mustContainCookies : { LagPort oldPort, newPort -> getLagCookies([oldPort], true) },
+                        mustNotContainCookies : { LagPort oldPort, newPort -> getLagCookies([newPort], false) },
                         mustContainLacpMeter : true
                 ],
                 [
                         description: "enabled LACP replies, near to LAG port with enabled LACP replies",
                         existingPortLacpReply : true,
                         newPortLacpReply : true,
-                        mustContainCookies : { int oldPort, newPort -> [
-                                LACP_COOKIE, getLagCookie(oldPort), getLagCookie(newPort)] },
-                        mustNotContainCookies : { int oldPort, newPort -> [] },
+                        mustContainCookies : { LagPort oldPort, newPort -> getLagCookies([oldPort, newPort], true) },
+                        mustNotContainCookies : { LagPort oldPort, newPort -> [] },
                         mustContainLacpMeter : true
                 ]
         ]
@@ -608,34 +591,31 @@ occupied by other LAG group\(s\)./).matches(exc)
 
     def "Able to update #data.description for single LAG port"() {
         given: "A switch"
-        def sw = topology.getActiveSwitches().first()
-        def physicalPortsOfCreatedLag = topology.getAllowedPortsForSwitch(sw)[-2, -1] as Set<Integer>
-        def physicalPortsOfUpdatedLag = topology.getAllowedPortsForSwitch(sw)[-3, -2] as Set<Integer>
+        def sw = switches.all().random()
+        def physicalPortsOfCreatedLag = sw.getPorts()[-2, -1] as Set<Integer>
+        def physicalPortsOfUpdatedLag = sw.getPorts()[-3, -2] as Set<Integer>
 
         and: "A LAG port"
-        def createResponse = switchHelper.createLagLogicalPort(
-                sw.dpId, physicalPortsOfCreatedLag, data.oldlacpReply)
-        with(createResponse) {
+        def lagPort = sw.getLagPort(physicalPortsOfCreatedLag).create(data.oldlacpReply)
+        verifyAll(lagPort) {
             assert logicalPortNumber > 0
             assert portNumbers.sort() == physicalPortsOfCreatedLag.sort()
         }
-        def portNumber = createResponse.logicalPortNumber
 
         when: "Update the LAG port"
         def updatedPhysicalPorts = data.updatePorts ? physicalPortsOfUpdatedLag : physicalPortsOfCreatedLag
-        def updateResponse = northboundV2.updateLagLogicalPort(
-                sw.dpId, portNumber, new LagPortRequest(updatedPhysicalPorts, data.newlacpReply))
+        def updatedLagPort = lagPort.update(new LagPortRequest(updatedPhysicalPorts, data.newlacpReply))
 
         then: "Response reports successful update of the LAG port"
-        with(updateResponse) {
-            logicalPortNumber == portNumber
+        verifyAll(updatedLagPort) {
+            logicalPortNumber == lagPort.logicalPortNumber
             portNumbers.sort() == updatedPhysicalPorts.sort()
             lacpReply == data.newlacpReply
         }
 
         and: "Correct rules and meters are on the switch"
-        assertSwitchHasCorrectLacpRulesAndMeters(
-                sw, data.mustContainCookies(portNumber), data.mustNotContainCookies(portNumber), data.mustContainLacpMeter)
+        sw.verifyLacpRulesAndMeters(data.mustContainCookies(lagPort),
+                data.mustNotContainCookies(lagPort), data.mustContainLacpMeter)
 
         where:
         data << [
@@ -644,8 +624,8 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : false,
                         newlacpReply : false,
                         updatePorts: true,
-                        mustContainCookies : { int port -> [] },
-                        mustNotContainCookies : { int port -> [LACP_COOKIE, getLagCookie(port)] },
+                        mustContainCookies : { LagPort port -> [] },
+                        mustNotContainCookies : { LagPort port -> getLagCookies([port], true) },
                         mustContainLacpMeter : false,
                 ],
                 [
@@ -653,8 +633,8 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : true,
                         newlacpReply : true,
                         updatePorts: false,
-                        mustContainCookies : { int port -> [LACP_COOKIE, getLagCookie(port)] },
-                        mustNotContainCookies : { int port -> [] },
+                        mustContainCookies : { LagPort port -> getLagCookies([port], true) },
+                        mustNotContainCookies : { LagPort port -> [] },
                         mustContainLacpMeter : true,
                 ],
                 [
@@ -662,8 +642,8 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : false,
                         newlacpReply : true,
                         updatePorts: false,
-                        mustContainCookies : { int port -> [LACP_COOKIE, getLagCookie(port)] },
-                        mustNotContainCookies : { int port -> [] },
+                        mustContainCookies : { LagPort port -> getLagCookies([port], true) },
+                        mustNotContainCookies : { LagPort port -> [] },
                         mustContainLacpMeter : true,
                 ],
                 [
@@ -671,8 +651,8 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : true,
                         newlacpReply : false,
                         updatePorts: false,
-                        mustContainCookies : { int port -> [] },
-                        mustNotContainCookies : { int port -> [LACP_COOKIE, getLagCookie(port)] },
+                        mustContainCookies : { LagPort port -> [] },
+                        mustNotContainCookies : { LagPort port -> getLagCookies([port], true) },
                         mustContainLacpMeter : false,
                 ],
                 [
@@ -680,8 +660,8 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : false,
                         newlacpReply : true,
                         updatePorts: true,
-                        mustContainCookies : { int port -> [LACP_COOKIE, getLagCookie(port)] },
-                        mustNotContainCookies : { int port -> [] },
+                        mustContainCookies : { LagPort port -> getLagCookies([port], true) },
+                        mustNotContainCookies : { LagPort port -> [] },
                         mustContainLacpMeter : true,
                 ],
                 [
@@ -689,8 +669,8 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : true,
                         newlacpReply : false,
                         updatePorts: true,
-                        mustContainCookies : { int port -> [] },
-                        mustNotContainCookies : { int port -> [LACP_COOKIE, getLagCookie(port)] },
+                        mustContainCookies : { LagPort port -> [] },
+                        mustNotContainCookies : { LagPort port -> getLagCookies([port], true) },
                         mustContainLacpMeter : false,
                 ]
         ]
@@ -698,41 +678,36 @@ occupied by other LAG group\(s\)./).matches(exc)
 
     def "Able to update #data.description near to existing LAG port with lacp_reply=#data.existingPortLacpReply"() {
         given: "A switch"
-        def sw = topology.getActiveSwitches().first()
-        def physicalPortsOfLag1 = topology.getAllowedPortsForSwitch(sw)[-2, -1] as Set<Integer>
-        def physicalPortsOfCreatedLag2 = topology.getAllowedPortsForSwitch(sw)[-4, -3] as Set<Integer>
-        def physicalPortsOfUpdatedLag2 = topology.getAllowedPortsForSwitch(sw)[-5, -4] as Set<Integer>
+        def sw = switches.all().random()
+        def physicalPortsOfLag1 = sw.getPorts()[-2, -1] as Set<Integer>
+        def physicalPortsOfCreatedLag2 = sw.getPorts()[-4, -3] as Set<Integer>
+        def physicalPortsOfUpdatedLag2 = sw.getPorts()[-5, -4] as Set<Integer>
 
         and: "LAG port 1"
-        def portNumber1 = switchHelper.createLagLogicalPort(
-                sw.dpId, physicalPortsOfLag1, data.existingPortLacpReply).logicalPortNumber
+        def lagPort1 = sw.getLagPort(physicalPortsOfLag1).create(data.existingPortLacpReply)
 
         and: "LAG port 2"
-        def createResponse = northboundV2.createLagLogicalPort(
-                sw.dpId, new LagPortRequest(physicalPortsOfCreatedLag2, data.oldlacpReply))
-        with(createResponse) {
+        def lagPort2 = sw.getLagPort(physicalPortsOfCreatedLag2).create(data.oldlacpReply)
+        verifyAll(lagPort2) {
             assert logicalPortNumber > 0
             assert portNumbers.sort() == physicalPortsOfCreatedLag2.sort()
             assert lacpReply == data.oldlacpReply
         }
-        def portNumber2 = createResponse.logicalPortNumber
 
         when: "Update the LAG port"
         def updatedPhysicalPorts = data.updatePorts ? physicalPortsOfUpdatedLag2 : physicalPortsOfCreatedLag2
-        def updateResponse = northboundV2.updateLagLogicalPort(
-                sw.dpId, portNumber2, new LagPortRequest(updatedPhysicalPorts, data.newlacpReply))
+        def updatedLagPort2 = lagPort2.update(new LagPortRequest(updatedPhysicalPorts, data.newlacpReply))
 
         then: "Response reports successful update of the LAG port"
-        with(updateResponse) {
-            logicalPortNumber == portNumber2
+        verifyAll(updatedLagPort2) {
+            logicalPortNumber == lagPort2.logicalPortNumber
             portNumbers.sort() == updatedPhysicalPorts.sort()
             lacpReply == data.newlacpReply
         }
 
         and: "Correct rules and meters are on the switch"
-        assertSwitchHasCorrectLacpRulesAndMeters(
-                sw, data.mustContainCookies(portNumber1, portNumber2),
-                data.mustNotContainCookies(portNumber1, portNumber2), data.mustContainLacpMeter)
+        sw.verifyLacpRulesAndMeters(data.mustContainCookies(lagPort1, lagPort2),
+                data.mustNotContainCookies(lagPort1, lagPort2), data.mustContainLacpMeter)
 
         where:
         data << [
@@ -742,8 +717,8 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : false,
                         newlacpReply : false,
                         updatePorts: true,
-                        mustContainCookies : { int port1, port2 -> [] },
-                        mustNotContainCookies : { int port1, port2 -> [LACP_COOKIE, getLagCookie(port1), getLagCookie(port2)] },
+                        mustContainCookies : { LagPort port1, port2 -> [] },
+                        mustNotContainCookies : { LagPort port1, port2 -> getLagCookies([port1, port2], true) },
                         mustContainLacpMeter : false,
                 ],
                 [
@@ -752,8 +727,8 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : true,
                         newlacpReply : true,
                         updatePorts: true,
-                        mustContainCookies : { int port1, port2 -> [LACP_COOKIE, getLagCookie(port2)] },
-                        mustNotContainCookies : { int port1, port2 -> [getLagCookie(port1)] },
+                        mustContainCookies : { LagPort port1, port2 -> getLagCookies([port2], true) },
+                        mustNotContainCookies : { LagPort port1, port2 -> getLagCookies([port1], false) },
                         mustContainLacpMeter : true,
                 ],
                 [
@@ -762,8 +737,8 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : false,
                         newlacpReply : true,
                         updatePorts: false,
-                        mustContainCookies : { int port1, port2 -> [LACP_COOKIE, getLagCookie(port2)] },
-                        mustNotContainCookies : { int port1, port2 -> [getLagCookie(port1)] },
+                        mustContainCookies : { LagPort port1, port2 -> getLagCookies([port2], true) },
+                        mustNotContainCookies : { LagPort port1, port2 -> getLagCookies([port1], false)},
                         mustContainLacpMeter : true,
                 ],
                 [
@@ -772,8 +747,8 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : true,
                         newlacpReply : false,
                         updatePorts: false,
-                        mustContainCookies : { int port1, port2 -> [] },
-                        mustNotContainCookies : { int port1, port2 -> [LACP_COOKIE, getLagCookie(port1), getLagCookie(port2)] },
+                        mustContainCookies : { LagPort port1, port2 -> [] },
+                        mustNotContainCookies : { LagPort port1, port2 -> getLagCookies([port1, port2], true) },
                         mustContainLacpMeter : false,
                 ],
                 [
@@ -782,8 +757,8 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : false,
                         newlacpReply : false,
                         updatePorts: true,
-                        mustContainCookies : { int port1, port2 -> [LACP_COOKIE, getLagCookie(port1)] },
-                        mustNotContainCookies : { int port1, port2 -> [getLagCookie(port2)] },
+                        mustContainCookies : { LagPort port1, port2 -> getLagCookies([port1], true) },
+                        mustNotContainCookies : { LagPort port1, port2 -> getLagCookies([port2], false)},
                         mustContainLacpMeter : true,
                 ],
                 [
@@ -792,8 +767,8 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : true,
                         newlacpReply : true,
                         updatePorts: true,
-                        mustContainCookies : { int port1, port2 -> [LACP_COOKIE, getLagCookie(port1), getLagCookie(port2)] },
-                        mustNotContainCookies : { int port1, port2 -> [] },
+                        mustContainCookies : { LagPort port1, port2 -> getLagCookies([port1, port2], true) },
+                        mustNotContainCookies : { LagPort port1, port2 -> [] },
                         mustContainLacpMeter : true,
                 ],
                 [
@@ -802,8 +777,8 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : false,
                         newlacpReply : true,
                         updatePorts: false,
-                        mustContainCookies : { int port1, port2 -> [LACP_COOKIE, getLagCookie(port1), getLagCookie(port2)] },
-                        mustNotContainCookies : { int port1, port2 -> [] },
+                        mustContainCookies : { LagPort port1, port2 -> getLagCookies([port1, port2], true) },
+                        mustNotContainCookies : { LagPort port1, port2 -> [] },
                         mustContainLacpMeter : true,
                 ],
                 [
@@ -812,78 +787,55 @@ occupied by other LAG group\(s\)./).matches(exc)
                         oldlacpReply : true,
                         newlacpReply : false,
                         updatePorts: false,
-                        mustContainCookies : { int port1, port2 -> [LACP_COOKIE, getLagCookie(port1)] },
-                        mustNotContainCookies : { int port1, port2 -> [getLagCookie(port2)] },
+                        mustContainCookies : { LagPort port1, port2 -> getLagCookies([port1], true) },
+                        mustNotContainCookies : { LagPort port1, port2 -> getLagCookies([port2], false) },
                         mustContainLacpMeter : true,
                 ]
         ]
     }
 
-    private void assertSwitchHasCorrectLacpRulesAndMeters(
-            Switch sw, mustContainCookies, mustNotContainsCookies, mustContainLacpMeter) {
-        // validate switch
-        !switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).isPresent()
-
-        // check cookies
-        def hexCookies = northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.collect { Cookie.toString(it) }
-        assert hexCookies.containsAll(mustContainCookies)
-        assert hexCookies.intersect(mustNotContainsCookies).isEmpty()
-
-        // check meters
-        def meters = northbound.getAllMeters(sw.dpId).meterEntries*.meterId
-        if (mustContainLacpMeter) {
-            assert LACP_REPLY_METER_ID.value in meters
-        } else {
-            assert LACP_REPLY_METER_ID.value !in meters
-        }
-    }
-
     def "Unable decrease bandwidth on LAG port lower than connected flows bandwidth sum"() {
         given: "Flows on a LAG port with switch ports"
-        def switchPair = switchPairs.all().random()
-        def testPorts = topology.getAllowedPortsForSwitch(switchPair.src).takeRight(2).sort()
-        assert testPorts.size() > 1
-        def maximumBandwidth = testPorts.sum { northbound.getPort(switchPair.src.dpId, it).currentSpeed }
-        def lagPort = switchHelper.createLagLogicalPort(switchPair.src.dpId, testPorts as Set).logicalPortNumber
-        def flow = flowFactory.getBuilder(switchPair)
-                .withSourcePort(lagPort)
+        def switchPair = switchPairs.all().withoutWBSwitch().random()
+        def testPorts = switchPair.src.getPorts().takeRight(2).sort()
+        assert testPorts.size > 1
+        def maximumBandwidth = testPorts.sum { switchPair.src.getPort(it).retrieveDetails().currentSpeed }
+        def lagPort = switchPair.src.getLagPort(testPorts as Set).create()
+
+        flowFactory.getBuilder(switchPair)
+                .withSourcePort(lagPort.logicalPortNumber)
                 .withBandwidth(maximumBandwidth as Long)
                 .build().create()
 
         when: "Decrease LAG port bandwidth by deleting one port to make it lower than connected flows bandwidth sum"
         def updatePayload = new LagPortRequest(portNumbers: [testPorts.get(0)])
-        northboundV2.updateLagLogicalPort(switchPair.src.dpId, lagPort, updatePayload)
+        lagPort.update(updatePayload)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new LagNotUpdatedExpectedError(
-                switchPair.getSrc().getDpId(), lagPort, ~/Not enough bandwidth for LAG port $lagPort./).matches(exc)
+                switchPair.src.switchId, lagPort.logicalPortNumber, ~/Not enough bandwidth for LAG port $lagPort.logicalPortNumber./).matches(exc)
         then: "No bandwidth changed for LAG port and all connected ports are in place"
-        with(northboundV2.getLagLogicalPort(switchPair.src.dpId)[0]) {
-            logicalPortNumber == lagPort
+        verifyAll(switchPair.src.getAllLogicalPorts()[0]) {
+            logicalPortNumber == lagPort.logicalPortNumber
             portNumbers == testPorts
         }
     }
 
     def "Able to delete LAG port if it is already removed from switch"() {
         given: "A switch with a LAG port"
-        def sw = topology.getActiveSwitches().first()
-        def portsArray = topology.getAllowedPortsForSwitch(sw)[-2,-1]
-        def lagPort = switchHelper.createLagLogicalPort(sw.dpId, portsArray as Set).logicalPortNumber
+        def sw = switches.all().random()
+        def portsArray = sw.getPorts()[-2,-1]
+        def lagPort = sw.getLagPort(portsArray as Set).create()
 
         when: "Delete LAG port via grpc"
-        grpc.deleteSwitchLogicalPort(northbound.getSwitch(sw.dpId).address, lagPort)
+        grpc.deleteSwitchLogicalPort(sw.getDetails().address, lagPort.logicalPortNumber)
 
         then: "Able to delete LAG port from switch with no exception"
-        def deleteResponse = northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
-
-        with(deleteResponse) {
-            logicalPortNumber == lagPort
+        def deleteResponse = lagPort.delete()
+        verifyAll(deleteResponse) {
+            logicalPortNumber == lagPort.logicalPortNumber
             portNumbers.sort() == portsArray.sort()
         }
-    }
-
-    def getLagCookie(portNumber) {
-        new PortColourCookie(CookieType.LACP_REPLY_INPUT, portNumber).toString()
     }
 }

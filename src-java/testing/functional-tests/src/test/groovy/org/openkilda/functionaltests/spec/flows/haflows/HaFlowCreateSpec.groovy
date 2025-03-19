@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
+
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.haflow.HaFlowNotCreatedExpectedError
@@ -67,8 +69,8 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         haFlow.delete()
 
         and: "And involved switches pass validation"
-        def involvedSwitchIds = haFlowPath.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(haFlowPath)
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         where:
         //Not all cases may be covered. Uncovered cases will be shown as a 'skipped' test
@@ -165,12 +167,12 @@ and ${haFlowInvalidRequest.subFlows[1].endpointInnerVlan}./).matches(exc)
                 [name     : "se is wb and se!=yp",
                  condition: { SwitchTriplet swT ->
                      def yPoints = swT.findPotentialYPoints()
-                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.dpId
+                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.switchId
                  }],
                 [name     : "se is non-wb and se!=yp",
                  condition: { SwitchTriplet swT ->
                      def yPoints = swT.findPotentialYPoints()
-                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.dpId
+                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.switchId
                  }],
                 [name     : "ep on wb and different eps", //ep1 is not the same sw as ep2
                  condition: { SwitchTriplet swT -> swT.ep1.wb5164 && swT.ep1 != swT.ep2 }],
@@ -179,37 +181,37 @@ and ${haFlowInvalidRequest.subFlows[1].endpointInnerVlan}./).matches(exc)
                 [name     : "se+yp on wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = swT.findPotentialYPoints()
-                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared.dpId
+                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared.switchId
                  }],
                 [name     : "se+yp on non-wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = swT.findPotentialYPoints()
-                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared.dpId
+                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared.switchId
                  }],
                 [name     : "yp on wb and yp!=se!=ep",
                  condition: { SwitchTriplet swT ->
                      def yPoints = swT.findPotentialYPoints()
-                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.dpId && yPoints[0] != swT.ep1.dpId && yPoints[0] != swT.ep2.dpId
+                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.switchId && yPoints[0] != swT.ep1.switchId && yPoints[0] != swT.ep2.switchId
                  }],
                 [name     : "yp on non-wb and yp!=se!=ep",
                  condition: { SwitchTriplet swT ->
                      def yPoints = swT.findPotentialYPoints()
-                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.dpId && yPoints[0] != swT.ep1.dpId && yPoints[0] != swT.ep2.dpId
+                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.switchId && yPoints[0] != swT.ep1.switchId && yPoints[0] != swT.ep2.switchId
                  }],
                 [name     : "ep+yp on wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = swT.findPotentialYPoints()
-                     swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1.dpId || yPoints[0] == swT.ep2.dpId)
+                     swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1.switchId || yPoints[0] == swT.ep2.switchId)
                  }],
                 [name     : "ep+yp on non-wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = swT.findPotentialYPoints()
-                     !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1.dpId || yPoints[0] == swT.ep2.dpId)
+                     !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1.switchId || yPoints[0] == swT.ep2.switchId)
                  }],
                 [name     : "yp==se",
                  condition: { SwitchTriplet swT ->
                      def yPoints = swT.findPotentialYPoints()
-                     yPoints.size() == 1 && yPoints[0] == swT.shared.dpId && swT.shared != swT.ep1 && swT.shared != swT.ep2
+                     yPoints.size() == 1 && yPoints[0] == swT.shared.switchId && swT.shared != swT.ep1 && swT.shared != swT.ep2
                  }]
         ]
         requiredCases.each { it.picked = false }

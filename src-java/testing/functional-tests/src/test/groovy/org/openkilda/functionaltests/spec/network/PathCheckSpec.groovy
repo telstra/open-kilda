@@ -57,11 +57,10 @@ class PathCheckSpec extends HealthCheckSpecification {
         given: "Path of at least three switches"
         def switchPair = switchPairs.all().nonNeighbouring().random()
         def path = switchPair.retrieveAvailablePaths().first()
-        def srcSwitch = switchPair.getSrc()
 
         and: "Source switch supports only Transit VLAN encapsulation"
-        def backupSwitchProperties = switchHelper.getCachedSwProps(srcSwitch.getDpId())
-        switchHelper.updateSwitchProperties(srcSwitch, backupSwitchProperties.jacksonCopy().tap {
+        def backupSwitchProperties = switchPair.src.getCachedProps()
+        switchPair.src.updateProperties(backupSwitchProperties.jacksonCopy().tap {
             it.supportedTransitEncapsulation = [TRANSIT_VLAN.toString()]
         })
 
@@ -76,7 +75,7 @@ class PathCheckSpec extends HealthCheckSpecification {
 
         then: "Path check result has multiple lack of bandwidth errors and at least one encapsulation support one"
         verifyAll(pathCheckResult) {
-            assert !getValidationMessages().findAll { it == "The switch ${srcSwitch.getDpId()} doesn\'t support the encapsulation type VXLAN." }.isEmpty()
+            assert !getValidationMessages().findAll { it == "The switch ${switchPair.src.switchId} doesn\'t support the encapsulation type VXLAN." }.isEmpty()
             assert getValidationMessages().findAll { it.contains("not enough bandwidth") }.size() ==
                     path.getInvolvedIsls().size() * 2
             assert getPceResponse().contains("Failed to find path with requested bandwidth")
@@ -170,7 +169,7 @@ class PathCheckSpec extends HealthCheckSpecification {
         Path pathToCheck = switchPairs.all().neighbouring().excludePairs([firstSwitchPair, secondSwitchPair])
                 .includeSwitch(firstSwitchPair.src).random().retrieveAvailablePaths().first()
 
-        if(pathToCheck.retrieveNodes().last().switchId != firstSwitchPair.src.dpId) {
+        if(pathToCheck.retrieveNodes().last().switchId != firstSwitchPair.src.switchId) {
             //it is required for the further correct path view building
             pathToCheck.nodes.setNodes(pathToCheck.nodes.nodes.reverse())
         }

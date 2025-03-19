@@ -60,6 +60,8 @@ public interface Database {
 
     boolean updateIslLatency(Isl isl, long latency);
 
+    boolean updateIslsLatency(List<Isl> isls, long latency);
+
     boolean resetCosts();
 
     boolean resetCosts(List<Isl> isls);

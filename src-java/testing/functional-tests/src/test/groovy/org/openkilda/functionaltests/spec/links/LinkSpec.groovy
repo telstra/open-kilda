@@ -6,6 +6,8 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
+import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
@@ -145,13 +147,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         and: "Forward flow from source switch to some 'internal' switch"
         def islToInternal = flow1.retrieveAllEntityPaths().getInvolvedIsls().first()
-        def flow3 = flowFactory.getBuilder(islToInternal.srcSwitch, islToInternal.dstSwitch, false, busyEndpoints)
+        def switchPair2 = switchPairs.all().specificPair(islToInternal.srcSwitch.dpId, islToInternal.dstSwitch.dpId)
+        def flow3 = flowFactory.getBuilder(switchPair2, false, busyEndpoints)
                 .withPinned(true).build()
                 .create()
         busyEndpoints.addAll(flow3.occupiedEndpoints())
 
         and: "Reverse flow from 'internal' switch to source switch"
-        def flow4 = flowFactory.getBuilder(islToInternal.dstSwitch, islToInternal.srcSwitch, false, busyEndpoints)
+        def flow4 = flowFactory.getBuilder(switchPair2, false, busyEndpoints)
                 .withPinned(true).build()
                 .create()
 
@@ -172,7 +175,7 @@ class LinkSpec extends HealthCheckSpecification {
         [flow3, flow4].each { assert !(it.flowId in linkFlows*.id) }
 
         when: "Bring all ports down on source switch that are involved in current and alternative paths"
-        def allSourceSwithIsls = topology.getRelatedIsls(switchPair.src)
+        def allSourceSwithIsls = topology.getRelatedIsls(switchPair.src.switchId)
         islHelper.breakIsls(allSourceSwithIsls)
 
         then: "All flows go to 'Down' status"
@@ -213,14 +216,15 @@ class LinkSpec extends HealthCheckSpecification {
     def "ISL should immediately fail if the port went down while switch was disconnected"() {
         when: "A switch disconnects"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
-        def blockData = switchHelper.knockoutSwitch(isl.srcSwitch, RW)
+        def srcSw = switches.all().findSpecific(isl.srcSwitch.dpId)
+        def blockData = srcSw.knockout(RW)
 
         and: "One of its ports goes down"
         //Bring down port on a-switch, which will lead to a port down on the Kilda switch
         aSwitchPorts.setDown([isl.aswitch.inPort])
 
         and: "The switch reconnects back with a port being down"
-        switchHelper.reviveSwitch(isl.srcSwitch, blockData)
+        srcSw.revive(blockData)
 
         then: "The related ISL immediately goes down"
         Wrappers.wait(WAIT_OFFSET) {
@@ -230,14 +234,13 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         when: "The switch disconnects again"
-        blockData = lockKeeper.knockoutSwitch(isl.srcSwitch, RW)
+        blockData = lockKeeper.knockoutSwitch(srcSw.sw, RW)
 
         and: "The DOWN port is brought back to UP state"
         aSwitchPorts.setUp([isl.aswitch.inPort])
 
         and: "The switch reconnects back with a port being up"
-        lockKeeper.reviveSwitch(isl.srcSwitch, blockData)
-        Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(isl.srcSwitch.dpId).state == SwitchChangeType.ACTIVATED }
+        srcSw.revive(blockData)
 
         then: "The related ISL is discovered again"
         Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
@@ -501,8 +504,9 @@ class LinkSpec extends HealthCheckSpecification {
         def isl = topology.islsForActiveSwitches.first()
 
         when: "Source and destination switches of the ISL suddenly disconnect"
-        def srcBlockData = switchHelper.knockoutSwitch(isl.srcSwitch, RW)
-        def dstBlockData = switchHelper.knockoutSwitch(isl.dstSwitch, RW)
+        switches.all().findSpecific([isl.srcSwitch.dpId, isl.dstSwitch.dpId]).each { sw ->
+            sw.knockout(RW)
+        }
 
         then: "ISL gets failed after discovery timeout"
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
@@ -516,18 +520,16 @@ class LinkSpec extends HealthCheckSpecification {
     def "Able to update max bandwidth for a link"() {
         given: "An active ISL"
         // Find such an ISL that is the only ISL between switches.
-        def isl = topology.islsForActiveSwitches.find { item ->
-            topology.islsForActiveSwitches.findAll {
-                item.srcSwitch == it.srcSwitch && item.dstSwitch == it.dstSwitch
-            }.size() == 1
-        }
+        def swPair = switchPairs.all().neighbouring()
+                .withExactlyNIslsBetweenSwitches(1).random()
+        def isl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
         def islInfo = islUtils.getIslInfo(isl).get()
         def initialMaxBandwidth = islInfo.maxBandwidth
         def initialAvailableBandwidth = islInfo.availableBandwidth
 
         when: "Create a flow going through this ISL"
         def flowMaxBandwidth = 12345
-        flowFactory.getBuilder(isl.srcSwitch, isl.dstSwitch).withBandwidth(flowMaxBandwidth).build().create()
+        flowFactory.getBuilder(swPair).withBandwidth(flowMaxBandwidth).build().create()
 
         and: "Update max bandwidth for the link"
         def offset = 10000
@@ -689,7 +691,7 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         and: "Source and destination switches pass switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId()).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(switchPair.toList()).isEmpty()
     }
 
     def "System detects a 1-way ISL as a Failed ISL"() {
@@ -726,10 +728,9 @@ class LinkSpec extends HealthCheckSpecification {
 
         and: "The src/dst switches are valid"
         //https://github.com/telstra/open-kilda/issues/3906
-        def switchesNotAffectedBy3906 = [isl.srcSwitch, isl.dstSwitch].findAll {
-            !it.prop || (it.prop.server42IslRtt == "DISABLED")
-        }
-        switchHelper.validateAndCollectFoundDiscrepancies(switchesNotAffectedBy3906*.getDpId()).isEmpty()
+        def switchesNotAffectedBy3906 = switches.all().findSpecific([isl.srcSwitch.dpId, isl.dstSwitch.dpId])
+                .findAll { it.getProps().server42IslRtt == "DISABLED" }
+        validateAndCollectFoundDiscrepancies(switchesNotAffectedBy3906).isEmpty()
     }
 
     Isl getIsl() {

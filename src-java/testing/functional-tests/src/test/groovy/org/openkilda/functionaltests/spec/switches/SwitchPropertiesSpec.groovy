@@ -1,23 +1,28 @@
 package org.openkilda.functionaltests.spec.switches
 
-import groovy.transform.AutoClone
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.TRANSIT_VLAN
+import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.VXLAN
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
+import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.CLASS
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotFoundExpectedError
 import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotUpdatedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.SwitchFeature
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+
+import groovy.transform.AutoClone
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
+import spock.lang.Shared
 
 import java.util.regex.Pattern
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
-import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
 @Narrative("""Switch properties are created automatically once switch is connected to the controller
 and deleted once switch is deleted.
@@ -26,43 +31,46 @@ Main purpose of that is to understand which feature is supported by a switch(enc
 
 class SwitchPropertiesSpec extends HealthCheckSpecification {
 
+    @Shared
+    SwitchExtended switchUnderTest
+
+    @Autowired @Shared
+    CleanupManager cleanupManager
+
+    def setupSpec() {
+        switchUnderTest = switches.all().first()
+        def initialProps = switchUnderTest.getCachedProps()
+        cleanupManager.addAction(OTHER, { northbound.updateSwitchProperties(switchUnderTest.switchId, initialProps) }, CLASS)
+    }
+
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to manipulate with switch properties"() {
         given: "A switch that supports VXLAN"
-        def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
-                || it.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN) }
-        assumeTrue(sw as boolean, "Wasn't able to find vxlan-enabled switch")
-        def initSwitchProperties = switchHelper.getCachedSwProps(sw.dpId)
+        def sw = switches.all().findWithVxlanFeatureEnabled()
+        def initSwitchProperties = sw.getProps()
         assert !initSwitchProperties.supportedTransitEncapsulation.empty
         //make sure that two endpoints have the same info
-        with(northboundV2.getAllSwitchProperties().switchProperties.find { it.switchId == sw.dpId }){
-            supportedTransitEncapsulation.sort() == initSwitchProperties.supportedTransitEncapsulation.sort()
-        }
+        assert sw.getPropsV1().supportedTransitEncapsulation.sort() == initSwitchProperties.supportedTransitEncapsulation.sort()
 
         when: "Update switch properties"
-        SwitchPropertiesDto switchProperties = new SwitchPropertiesDto()
         def newTransitEncapsulation = (initSwitchProperties.supportedTransitEncapsulation.size() == 1) ?
-                [FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase(),
-                 FlowEncapsulationType.VXLAN.toString().toLowerCase()].sort() :
-                [FlowEncapsulationType.VXLAN.toString().toLowerCase()]
-        switchProperties.tap {
+                [TRANSIT_VLAN.toString(), VXLAN.toString()].sort() : [VXLAN.toString()]
+
+        SwitchPropertiesDto switchProperties = initSwitchProperties.jacksonCopy().tap {
             supportedTransitEncapsulation = newTransitEncapsulation
             multiTable = true
         }
-        def updateSwPropertiesResponse = switchHelper.updateSwitchProperties(sw, switchProperties)
+        def updateSwPropertiesResponse = sw.updateProperties(switchProperties)
 
         then: "Correct response is returned"
         updateSwPropertiesResponse.supportedTransitEncapsulation.sort() == newTransitEncapsulation
 
         and: "Switch properties is really updated"
-        with(northbound.getSwitchProperties(sw.dpId)) {
-            it.supportedTransitEncapsulation.sort() == newTransitEncapsulation
-        }
+        sw.getPropsV1().supportedTransitEncapsulation.sort() == newTransitEncapsulation
 
         and: "Changes are shown in getAllSwitchProperties response"
-        with(northboundV2.getAllSwitchProperties().switchProperties.find { it.switchId == sw.dpId }){
-            supportedTransitEncapsulation.sort() == newTransitEncapsulation
-        }
+        sw.getProps().supportedTransitEncapsulation.sort() == newTransitEncapsulation
+
     }
 
     def "Informative error is returned when trying to get/update switch properties with non-existing id"() {
@@ -75,7 +83,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         when: "Try to update switch properties info for non-existing switch"
         def switchProperties = new SwitchPropertiesDto()
         switchProperties.tap {
-            supportedTransitEncapsulation = [FlowEncapsulationType.VXLAN.toString()]
+            supportedTransitEncapsulation = [VXLAN.toString()]
             multiTable = true
         }
         northbound.updateSwitchProperties(NON_EXISTENT_SWITCH_ID, switchProperties)
@@ -85,13 +93,10 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         new SwitchPropertiesNotFoundExpectedError(NON_EXISTENT_SWITCH_ID, ~/Failed to update switch properties./).matches(exc)    }
 
     def "Informative error is returned when trying to update switch properties with incorrect information(#invalidType)"() {
-        given: "A switch"
-        def sw = topology.activeSwitches.first()
-
         when: "Try to update switch properties info for non-existing switch"
         def switchProperties = new SwitchPropertiesDto()
         switchProperties.supportedTransitEncapsulation = supportedTransitEncapsulation
-        northbound.updateSwitchProperties(sw.dpId, switchProperties)
+        northbound.updateSwitchProperties(switchUnderTest.switchId, switchProperties)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -108,23 +113,20 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
     }
 
     def "Error is returned when trying to #data.desc"() {
-        given: "A switch"
-        def sw = topology.activeSwitches.first()
-
         when: "Try to update switch properties with incorrect server 42 properties combination"
         def switchProperties = new SwitchPropertiesDto()
-        switchProperties.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
+        switchProperties.supportedTransitEncapsulation = [TRANSIT_VLAN.toString()]
         switchProperties.multiTable = true
         switchProperties.server42FlowRtt = data.server42FlowRtt
         switchProperties.server42Port = data.server42Port
         switchProperties.server42Vlan = data.server42Vlan
         switchProperties.server42MacAddress = data.server42MacAddress
         switchProperties.server42IslRtt = data.server42IslRtt
-        northbound.updateSwitchProperties(sw.dpId, switchProperties)
+        northbound.updateSwitchProperties(switchUnderTest.switchId, switchProperties)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        new SwitchPropertiesNotUpdatedExpectedError(String.format(data.error, sw.dpId),
+        new SwitchPropertiesNotUpdatedExpectedError(String.format(data.error, switchUnderTest.switchId),
                 data.description ?: ~/Failed to update switch properties./).matches(exc)
 
         where:

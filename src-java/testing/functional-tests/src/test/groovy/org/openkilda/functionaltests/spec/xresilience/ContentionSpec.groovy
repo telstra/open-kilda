@@ -1,12 +1,14 @@
 package org.openkilda.functionaltests.spec.xresilience
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
@@ -110,14 +112,14 @@ class ContentionSpec extends BaseSpecification {
         def newPathIsls = availablePaths.find { it != mainPathIsls }
         availablePaths.findAll { it != newPathIsls }.each { islHelper.makePathIslsMorePreferable(newPathIsls, it) }
 
-        List<SwitchId> relatedSwitches = (flowPathInfo.getInvolvedSwitches()
-                + islHelper.retrieveInvolvedSwitches(newPathIsls).dpId).unique() as List<SwitchId>
+        List<SwitchExtended> relatedSwitches = switches.all().findSpecific((flowPathInfo.getInvolvedSwitches() +
+                islHelper.retrieveInvolvedSwitches(newPathIsls).dpId).unique() as List<SwitchId>)
 
         when: "Flow reroute is simultaneously requested together with sync rules requests for all related switches"
         withPool {
             def rerouteTask = { flow.reroute() }
             rerouteTask.callAsync()
-            3.times { relatedSwitches.eachParallel { switchHelper.synchronize(it, removeExcess) } }
+            3.times { relatedSwitches.eachParallel { it.synchronize(removeExcess) } }
         }
 
         then: "Flow is Up and path has changed"
@@ -128,7 +130,7 @@ class ContentionSpec extends BaseSpecification {
 
         and: "Related switches have no rule discrepancies"
         Wrappers.wait(WAIT_OFFSET) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(relatedSwitches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(relatedSwitches).isEmpty()
         }
 
         and: "Flow is healthy"

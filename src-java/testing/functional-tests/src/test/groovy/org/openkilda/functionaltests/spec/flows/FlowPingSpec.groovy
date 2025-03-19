@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.model.switches.Manufacturer.CENTEC
 import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_RULE
 import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
@@ -18,16 +19,10 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
-import org.openkilda.functionaltests.helpers.model.Path
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.model.SwitchId
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.PingInput
-import org.openkilda.northbound.dto.v1.flows.PingOutput.PingOutputBuilder
-import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -50,20 +45,16 @@ class FlowPingSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     FlowFactory flowFactory
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
 
     @Tags([TOPOLOGY_DEPENDENT])
-    def "Able to ping a flow with vlan between #switchPairDescription"(Switch srcSwitch, Switch dstSwitch) {
+    def "Able to ping a flow with vlan between #switchPairDescription"(SwitchExtended srcSwitch, SwitchExtended dstSwitch) {
         given: "A flow with random vlan"
         def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
                 .withEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN).build()
                 .create()
 
         when: "Ping the flow"
-        def switchRules =  switchRulesFactory.get(srcSwitch.dpId)
-        def unicastCounterBefore = switchRules.getRules().find {
+        def unicastCounterBefore = srcSwitch.rulesManager.getRules().find {
             it.cookie == VERIFICATION_UNICAST_RULE.cookie
         }.byteCount
         def response = flow.ping()
@@ -85,7 +76,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         and: "Unicast rule packet count is increased and logged to otsdb"
 
         Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
-            assert switchRules.getRules().find {
+            assert srcSwitch.rulesManager.getRules().find {
                 it.cookie == VERIFICATION_UNICAST_RULE.cookie
             }.byteCount > unicastCounterBefore
 
@@ -105,8 +96,7 @@ class FlowPingSpec extends HealthCheckSpecification {
                 .create()
 
         when: "Ping the flow"
-        def switchRules =  switchRulesFactory.get(switchPair.src.dpId)
-        def unicastCounterBefore = switchRules.getRules().find {
+        def unicastCounterBefore = switchPair.src.rulesManager.getRules().find {
             it.cookie == VERIFICATION_UNICAST_VXLAN_RULE_COOKIE.cookie //rule for the vxlan differs from vlan
         }.byteCount
         def response = flow.ping()
@@ -123,14 +113,14 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         and: "Unicast rule packet count is increased and logged to otsdb"
         Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
-            assert switchRules.getRules().find {
+            assert switchPair.src.rulesManager.getRules().find {
                 it.cookie == VERIFICATION_UNICAST_VXLAN_RULE_COOKIE.cookie
             }.byteCount > unicastCounterBefore
         }
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
-    def "Able to ping a flow with no vlan between #switchPairDescription"(Switch srcSwitch, Switch dstSwitch) {
+    def "Able to ping a flow with no vlan between #switchPairDescription"(SwitchExtended srcSwitch, SwitchExtended dstSwitch) {
         given: "A flow with no vlan"
         def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
                 .withSourceVlan(0)
@@ -158,12 +148,10 @@ class FlowPingSpec extends HealthCheckSpecification {
     @IterationTag(tags = [SMOKE], iterationNameRegex = /forward path/)
     def "Flow ping can detect a broken path(#description) for a vlan flow"() {
         given: "A flow with at least 1 a-switch link"
-        def switches = topology.activeSwitches.findAll { !it.centec && it.ofVersion != "OF_12" }
         List<List<Isl>> allPaths = []
         List<Isl> aswitchPathIsls = []
         //select src and dst switches that have an a-switch path
-        def swPair = switchPairs.all().getSwitchPairs().find {
-            if(!(it.src in switches && it.dst in switches)) return false
+        def swPair = switchPairs.all().withSourceSwitchNotManufacturedBy(CENTEC).getSwitchPairs().find {
             allPaths = it.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
             aswitchPathIsls = allPaths.find { it.find { isl ->  isl.aswitch }}
             aswitchPathIsls
@@ -236,9 +224,9 @@ class FlowPingSpec extends HealthCheckSpecification {
 
     def "Unable to ping a single-switch flow"() {
         given: "A single-switch flow"
-        def sw = topology.activeSwitches.find { !it.centec && it.ofVersion != "OF_12" }
+        def sw = switches.all().notOF12Version().find { !it.isCentec() }
         assert sw
-        def flow = flowFactory.getRandom(sw, sw)
+        def flow = flowFactory.getSingleSwRandom(sw)
 
         when: "Ping the flow"
         def response = flow.ping()
@@ -274,13 +262,12 @@ class FlowPingSpec extends HealthCheckSpecification {
        assert flow.pingAndCollectDiscrepancies().isEmpty()
 
         when: "Break the flow by removing flow rules from the intermediate switch"
-        def intermediateSwId = flow.retrieveAllEntityPaths().getInvolvedSwitches()[1]
-        def rulesToDelete = switchRulesFactory.get(intermediateSwId).getRules().findAll {
+        def intermediateSw = switches.all().findSpecific(flow.retrieveAllEntityPaths().getInvolvedSwitches()[1])
+        def rulesToDelete = intermediateSw.rulesManager.getRules().findAll {
             !new Cookie(it.cookie).serviceFlag
         }*.cookie
-        rulesToDelete.each { cookie ->
-            switchHelper.deleteSwitchRules(intermediateSwId, cookie)
-        }
+
+        rulesToDelete.each { cookie -> intermediateSw.rulesManager.delete(cookie) }
 
         then: "Ping shows that path is broken"
         assert flow.pingAndCollectDiscrepancies().keySet() == [FlowDirection.FORWARD, FlowDirection.REVERSE].toSet()
@@ -289,16 +276,17 @@ class FlowPingSpec extends HealthCheckSpecification {
     def "Able to turn on periodic pings on a flow"() {
         when: "Create a flow with periodic pings turned on"
         def endpointSwitches = switchPairs.all().nonNeighbouring().random()
-        flowFactory.getBuilder(endpointSwitches).withPeriodicPing(true).build()
+        def flow = flowFactory.getBuilder(endpointSwitches).withPeriodicPing(true).build()
                 .create()
 
         then: "Packet counter on catch ping rules grows due to pings happening"
-        def srcSwitchPacketCount = getPacketCountOfVlanPingRule(endpointSwitches.src.dpId)
-        def dstSwitchPacketCount = getPacketCountOfVlanPingRule(endpointSwitches.dst.dpId)
+        String encapsulationType = flow.encapsulationType.toString()
+        def srcSwitchPacketCount = endpointSwitches.src.rulesManager.pingRule(encapsulationType).packetCount
+        def dstSwitchPacketCount = endpointSwitches.dst.rulesManager.pingRule(encapsulationType).packetCount
 
         Wrappers.wait(pingInterval + WAIT_OFFSET / 2) {
-            def srcPacketCountNow = getPacketCountOfVlanPingRule(endpointSwitches.src.dpId)
-            def dstPacketCountNow = getPacketCountOfVlanPingRule(endpointSwitches.dst.dpId)
+            def srcPacketCountNow = endpointSwitches.src.rulesManager.pingRule(encapsulationType).packetCount
+            def dstPacketCountNow = endpointSwitches.dst.rulesManager.pingRule(encapsulationType).packetCount
 
             srcPacketCountNow > srcSwitchPacketCount && dstPacketCountNow > dstSwitchPacketCount
         }
@@ -307,8 +295,8 @@ class FlowPingSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Unable to create a single-switch flow with periodic pings"() {
         when: "Try to create a single-switch flow with periodic pings"
-        def singleSwitch = topology.activeSwitches.first()
-        flowFactory.getBuilder(singleSwitch, singleSwitch)
+        def singleSwitch = switches.all().first()
+        flowFactory.getSingleSwBuilder(singleSwitch)
                 .withPeriodicPing(true).build()
                 .create()
 
@@ -317,19 +305,14 @@ class FlowPingSpec extends HealthCheckSpecification {
         new FlowNotCreatedExpectedError(~/Couldn\'t turn on periodic pings for one-switch flow/).matches(e)
     }
 
-    def getPacketCountOfVlanPingRule(SwitchId switchId) {
-        return switchRulesFactory.get(switchId).getRules()
-                .findAll{it.cookie == Cookie.VERIFICATION_UNICAST_RULE_COOKIE}[0].packetCount
-    }
 
     /**
      * Returns all switch combinations with unique description, excluding single-switch combinations,
      * combinations with Centec switches and OF_12 switches
      */
     def getOfSwitchCombinations() {
-        def switches = topology.activeSwitches.findAll {
-            it.ofVersion != "OF_12" && !it.centec
-        }
+        def switches = switches.all().notOF12Version().findAll { !it.isCentec() }
+
         [switches, switches].combinations().findAll { src, dst ->
             src != dst
         }.unique { [it*.description.sort(), it*.ofVersion.sort()] }

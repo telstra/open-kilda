@@ -7,10 +7,11 @@ import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FA
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.functionaltests.helpers.model.FlowActionType.REROUTE
 import static org.openkilda.functionaltests.helpers.model.FlowActionType.REROUTE_FAILED
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.isDefaultMeter
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
+import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -32,7 +33,6 @@ import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.FlowStatusHistoryEvent
 import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.StatusInfo
@@ -76,10 +76,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Shared
     FlowFactory flowFactory
 
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
-
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
@@ -104,10 +100,10 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         !flowPathInfo.flowPath.protectedPath.isPathAbsent()
 
         and: "Rules for main and protected paths are created"
+        def involvedSwitches = switches.all().findSwitchesInPath(flowPathInfo)
+        def flowDBInfo = flow.retrieveDetailsFromDB()
         Wrappers.wait(WAIT_OFFSET) {
-            HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
-                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
-            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+            flow.verifyRulesForProtectedFlowOnSwitches(involvedSwitches, flowDBInfo)
         }
 
         and: "Validation of flow must be successful"
@@ -139,26 +135,15 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         }
 
         and: "Source switch passes validation"
-        def initialSrcValidation =  switchHelper.validate(switchPair.src.dpId)
+        def initialSrcValidation =  switchPair.src.validate()
         initialSrcValidation.isAsExpected()
 
         and: "Cookies are created by flow"
-        HashMap<SwitchId, Integer> initialAmountOfFlowRules = [switchPair.src.dpId, switchPair.dst.dpId]
-                .collectEntries {swId ->
-            def createdCookies = switchRulesFactory.get(swId).getRules()
-                    .findAll { !new Cookie(it.cookie).serviceFlag }*.cookie
-
-            def swProps = switchHelper.getCachedSwProps(swId)
-            def amountOfServer42Rules = 0
-
-            if(swProps.server42FlowRtt){
-                amountOfServer42Rules +=1
-                swId == switchPair.src.dpId && flow.source.vlanId && ++amountOfServer42Rules
-                swId == switchPair.dst.dpId && flow.destination.vlanId && ++amountOfServer42Rules
-            }
-            def amountOfFlowRules = 3 + amountOfServer42Rules
+        HashMap<SwitchId, Integer> initialAmountOfFlowRules = [switchPair.src, switchPair.dst].collectEntries { sw ->
+            def createdCookies = sw.rulesManager.getNotDefaultRules().cookie
+            def amountOfFlowRules = sw.collectFlowRelatedRulesAmount(flow)
             assert createdCookies.size() == amountOfFlowRules
-            [(swId): amountOfFlowRules]
+            [(sw.switchId): amountOfFlowRules]
         }
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
@@ -168,26 +153,24 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         updatedFlow.statusDetails
         initialFlowInfo.lastUpdated < updatedFlow.lastUpdated
 
-        def flowPathInfoAfterUpdating = updatedFlow.retrieveAllEntityPaths()
-        !flowPathInfoAfterUpdating.flowPath.protectedPath.isPathAbsent()
-        def protectedPathSwitches = flowPathInfoAfterUpdating.flowPath.protectedPath.forward.getInvolvedSwitches()
+        def pathAfterUpdating = updatedFlow.retrieveAllEntityPaths()
+        !pathAfterUpdating.flowPath.protectedPath.isPathAbsent()
+        def protectedPathSwitches = switches.all().findSpecific(pathAfterUpdating.getProtectedPathSwitches())
 
         def flowInfoFromDb = flow.retrieveDetailsFromDB()
         def protectedFlowCookies = [flowInfoFromDb.protectedForwardPath.cookie.value, flowInfoFromDb.protectedReversePath.cookie.value]
 
         and: "Rules for main and protected paths are created"
+        def involvedSwitches = switches.all().findSwitchesInPath(pathAfterUpdating)
+        def flowDBInfo = flow.retrieveDetailsFromDB()
         Wrappers.wait(WAIT_OFFSET) {
-            HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules  = flowPathInfo.getInvolvedSwitches()
-                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
-            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
-
-            def cookiesAfterEnablingProtectedPath = flowInvolvedSwitchesWithRules.get(switchPair.src.dpId)
-                    .findAll { !new Cookie(it.cookie).serviceFlag }*.cookie
+            flow.verifyRulesForProtectedFlowOnSwitches(involvedSwitches, flowDBInfo)
+            def cookiesAfterEnablingProtectedPath = switchPair.src.rulesManager.getNotDefaultRules().cookie
             // initialAmountOfFlowRules was collected for flow without protected path + one for protected path
-            assert cookiesAfterEnablingProtectedPath.size() == initialAmountOfFlowRules.get(switchPair.src.dpId) + 1
+            assert cookiesAfterEnablingProtectedPath.size() == initialAmountOfFlowRules.get(switchPair.src.switchId) + 1
         }
 
-        def srcValidation =  switchHelper.validate(switchPair.src.dpId)
+        def srcValidation =  switchPair.src.validate()
         srcValidation.isAsExpected()
         srcValidation.rules.proper.cookie.findAll(REQUIRED_COOKIE).size() == initialSrcValidation.rules.proper.cookie.findAll(REQUIRED_COOKIE).size() + 1
 
@@ -202,9 +185,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             assert flow.retrieveFlowStatus().status == FlowState.UP
             protectedPathSwitches.each { sw ->
-                def rules = switchRulesFactory.get(sw).getRules().findAll {
-                    !new Cookie(it.cookie).serviceFlag
-                }
+                def rules = sw.rulesManager.getNotDefaultRules()
                 assert rules.findAll { it.cookie in protectedFlowCookies }.isEmpty()
             }
         }
@@ -232,25 +213,25 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         initialMainPath.intersect(initialProtectedPath).isEmpty()
 
         and: "Rules for main and protected paths are created"
+        def involvedSwitches = switches.all().findSwitchesInPath(flowPathInfo)
+        def flowDBInfo = flow.retrieveDetailsFromDB()
         Wrappers.wait(WAIT_OFFSET) {
-            HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
-                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
-            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+            flow.verifyRulesForProtectedFlowOnSwitches(involvedSwitches, flowDBInfo)
         }
 
         and: "Number of flow-related cookies has been collected for both source and destination switch"
-        HashMap<SwitchId, Integer> initialAmountOfFlowRules = [switchPair.src.dpId, switchPair.dst.dpId]
+        HashMap<SwitchId, Integer> initialAmountOfFlowRules = [switchPair.src, switchPair.dst]
                 .collectEntries {
-                    [(it): switchHelper.validate(it).rules.proper.cookie.findAll(REQUIRED_COOKIE).size()]
+                    [(it.switchId): it.validate().rules.proper.cookie.findAll(REQUIRED_COOKIE).size()]
                 } as HashMap<SwitchId, Integer>
 
         and: "No rule discrepancies on every switch of the flow on the main path"
-        def mainPathSwitches = flowPathInfo.flowPath.path.forward.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(mainPathSwitches).isEmpty()
+        def mainPathSwitches = switches.all().findSpecific(flowPathInfo.getMainPathSwitches())
+        synchronizeAndCollectFixedDiscrepancies(mainPathSwitches).isEmpty()
 
         and: "No rule discrepancies on every switch of the flow on the protected path)"
-        def protectedPathSwitches = flowPathInfo.flowPath.protectedPath.forward.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(protectedPathSwitches).isEmpty()
+        def protectedPathSwitches = switches.all().findSpecific(flowPathInfo.getProtectedPathSwitches())
+        synchronizeAndCollectFixedDiscrepancies(protectedPathSwitches).isEmpty()
 
         and: "The flow allows traffic(on the main path)"
         def traffExam = traffExamProvider.get()
@@ -264,8 +245,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         }
 
         when: "Swap flow paths"
-        def srcSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.src.dpId)
-        def dstSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.dst.dpId)
+        def srcSwitchCreatedMeterIds = switchPair.src.metersManager.getCreatedMeterIds()
+        def dstSwitchCreatedMeterIds = switchPair.dst.metersManager.getCreatedMeterIds()
         def flowLastUpdate = flow.retrieveDetails().lastUpdated
 
         flow.swapFlowPath()
@@ -285,44 +266,43 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Rules are updated"
+        def involvedSwitchesAfterUpdating = switches.all().findSwitchesInPath(flowPathInfoAfterSwapping)
+        def flowDBInfoAfterUpdating = flow.retrieveDetailsFromDB()
         Wrappers.wait(WAIT_OFFSET) {
-            HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules = flowPathInfoAfterSwapping.getInvolvedSwitches()
-                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
-            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+            flow.verifyRulesForProtectedFlowOnSwitches(involvedSwitchesAfterUpdating, flowDBInfoAfterUpdating)
         }
 
         and: "New meter is created on the src and dst switches"
-        def newSrcSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.src.dpId)
-        def newDstSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.dst.dpId)
+        def newSrcSwitchCreatedMeterIds = switchPair.src.metersManager.getCreatedMeterIds()
+        def newDstSwitchCreatedMeterIds = switchPair.dst.metersManager.getCreatedMeterIds()
         //added || x.empty to allow situation when meters are not available on src or dst
         newSrcSwitchCreatedMeterIds.sort() != srcSwitchCreatedMeterIds.sort() || srcSwitchCreatedMeterIds.empty
         newDstSwitchCreatedMeterIds.sort() != dstSwitchCreatedMeterIds.sort() || dstSwitchCreatedMeterIds.empty
 
 
         and: "Old meter is deleted on the src and dst switches"
-        [switchPair.src.dpId, switchPair.dst.dpId].each { switchId ->
-            def switchValidateInfo = switchHelper.validate(switchId)
+        [switchPair.src, switchPair.dst].each { sw ->
+            def switchValidateInfo = sw.validate()
             if (switchValidateInfo.meters) {
                 assert switchValidateInfo.meters.proper.findAll({ dto -> !isDefaultMeter(dto) }).size() == 1
             }
-            assert switchValidateInfo.rules.proper.cookie.findAll(REQUIRED_COOKIE).size() == initialAmountOfFlowRules.get(switchId)
+            assert switchValidateInfo.rules.proper.cookie.findAll(REQUIRED_COOKIE).size() == initialAmountOfFlowRules.get(sw.switchId)
             assert switchValidateInfo.isAsExpected()
         }
 
-        and: "Transit switches store the correct info about rules and meters"
-        List<SwitchId> involvedTransitSwitches = (islHelper.retrieveInvolvedSwitches(initialMainPath)[1..-2]
-                + islHelper.retrieveInvolvedSwitches(initialProtectedPath[1..-2])).dpId.unique() as List<SwitchId>
+        and: "Initial transit switches store the correct info about rules and meters"
+        def transitSwitches = involvedSwitches.findAll { !(it in switchPair.toList()) }
         Wrappers.wait(WAIT_OFFSET) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(involvedTransitSwitches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(transitSwitches).isEmpty()
         }
 
         and: "No rule discrepancies on every switch of the flow on the main path"
-        def newMainSwitches = flowPathInfoAfterSwapping.flowPath.path.forward.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(newMainSwitches).isEmpty()
+        def newMainSwitches = switches.all().findSpecific(flowPathInfoAfterSwapping.getMainPathSwitches())
+        synchronizeAndCollectFixedDiscrepancies(newMainSwitches).isEmpty()
 
         and: "No rule discrepancies on every switch of the flow on the protected path)"
-        def newProtectedSwitches = flowPathInfoAfterSwapping.flowPath.protectedPath.forward.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(newProtectedSwitches).isEmpty()
+        def newProtectedSwitches = switches.all().findSpecific(flowPathInfoAfterSwapping.getProtectedPathSwitches())
+        synchronizeAndCollectFixedDiscrepancies(newProtectedSwitches).isEmpty()
 
         and: "The flow allows traffic(on the protected path)"
         withPool {
@@ -652,15 +632,15 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY, ISL_PROPS_DB_RESET])
     def "Able to update a flow to enable protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
-        def isls = topology.getIslsForActiveSwitches()
-        def (srcSwitch, dstSwitch) = [isls.first().srcSwitch, isls.first().dstSwitch]
+        def swPair = switchPairs.all().neighbouring().random()
+        def isls = topology.getRelatedIsls(swPair.src.switchId)
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
         islHelper.setAvailableBandwidth(isls[1..-1], 90)
 
         when: "Create flow without protected path"
-        def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
+        def flow = flowFactory.getBuilder(swPair)
                 .withBandwidth(bandwidth)
                 .withProtectedPath(false).build()
                 .create()
@@ -681,15 +661,15 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Tags(ISL_PROPS_DB_RESET)
     def "Able to create a flow with protected path when there is not enough bandwidth and ignoreBandwidth=true"() {
         given: "Two active neighboring switches"
-        def isls = topology.getIslsForActiveSwitches()
-        def (srcSwitch, dstSwitch) = [isls.first().srcSwitch, isls.first().dstSwitch]
+        def swPair = switchPairs.all().neighbouring().random()
+        def isls = topology.getRelatedIsls(swPair.src.switchId)
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
         islHelper.setAvailableBandwidth(isls[1..-1], 90)
 
         when: "Create flow with protected path"
-        def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
+        def flow = flowFactory.getBuilder(swPair)
                 .withBandwidth(bandwidth)
                 .withIgnoreBandwidth(true)
                 .withProtectedPath(true).build()
@@ -795,8 +775,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
         def flowPathPortOnSourceSwitch = initialFlowPathInfo.getMainPathInvolvedIsls().first().srcPort
-        def broughtDownIsls = topology.getRelatedIsls(switchPair.getSrc())
-                .findAll{it.srcSwitch == switchPair.getSrc() && it.srcPort != flowPathPortOnSourceSwitch }
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src.switchId)
+                .findAll{ it.srcSwitch == switchPair.src.sw && it.srcPort != flowPathPortOnSourceSwitch }
         islHelper.breakIsls(broughtDownIsls)
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
@@ -974,23 +954,23 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         } ?: assumeTrue(false, "No suiting switches found")
 
         //select paths for further manipulations
-        def availablePathsIsls = allPathCandidates.collect { it.getInvolvedIsls()}
+        List<List<Isl>> availablePathsIsls = allPathCandidates.collect { it.getInvolvedIsls()}
         def mainPath1Isls = availablePathsIsls.first()
         def mainPath2Isls = availablePathsIsls.find { it != mainPath1Isls }
         def protectedPathIsls = availablePathsIsls.find { it != mainPath1Isls && it != mainPath2Isls }
 
-        def involvedSwP1 = islHelper.retrieveInvolvedSwitches(mainPath1Isls).dpId
-        def involvedSwP2 = islHelper.retrieveInvolvedSwitches(mainPath2Isls).dpId
-        def involvedSwProtected = islHelper.retrieveInvolvedSwitches(protectedPathIsls).dpId
+       def involvedSwP1 = switches.all().findSpecific(mainPath1Isls.collectMany{ [it.srcSwitch.dpId, it.dstSwitch.dpId] })
+        def involvedSwP2 =  switches.all().findSpecific(mainPath2Isls.collectMany{ [it.srcSwitch.dpId, it.dstSwitch.dpId] })
+        def involvedSwProtected =  switches.all().findSpecific(protectedPathIsls.collectMany{ [it.srcSwitch.dpId, it.dstSwitch.dpId] })
 
         and: "Src, dst and transit switches belongs to different POPs(src:1, dst:4, tr1/tr2:2, tr3:3)"
         // tr1/tr2 for the main path and tr3 for the protected path
-        switchHelper.partialUpdate(swPair.src.dpId, new SwitchPatchDto().tap { it.pop = "1" })
-        [involvedSwP1[1], involvedSwP2[1]].each { swId ->
-            switchHelper.partialUpdate(swId, new SwitchPatchDto().tap { it.pop = "2" })
+        swPair.src.partialUpdate(new SwitchPatchDto().tap { it.pop = "1" })
+        [involvedSwP1.find { !(it in swPair.toList()) }, involvedSwP2.find { !(it in swPair.toList()) }].each { sw ->
+            sw.partialUpdate(new SwitchPatchDto().tap { it.pop = "2" })
         }
-        switchHelper.partialUpdate(swPair.dst.dpId, new SwitchPatchDto().tap { it.pop = "4" })
-        switchHelper.partialUpdate(involvedSwProtected[1], new SwitchPatchDto().tap { it.pop = "3" })
+        swPair.dst.partialUpdate(new SwitchPatchDto().tap { it.pop = "4" })
+        involvedSwProtected.find { !(it in swPair.toList()) }.partialUpdate(new SwitchPatchDto().tap { it.pop = "3" })
 
         and: "Path which contains tr3 is non preferable"
         /** There is not possibility to use the 'makePathNotPreferable' method,
@@ -1003,7 +983,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
          *  diversityGroupPerPopUseCounter = amount of switches in the same POP
          *  (in this test there are two switches in the same POP) */
         List<Isl> islsToUpdate = []
-        allPathsWithThreeSwitches.findAll { involvedSwProtected[1] in it.getInvolvedSwitches() }.each {
+        allPathsWithThreeSwitches.findAll { involvedSwProtected.find { !(it in swPair.toList())}.switchId in it.getInvolvedSwitches() }.each {
             it.getInvolvedIsls().each {
                 islsToUpdate << it
             }
@@ -1021,7 +1001,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         islHelper.updateIslsCost(islsToUpdate, newIslCost)
 
         and: "All alternative paths unavailable (bring ports down on the source switch)"
-        List<Isl> broughtDownIsls = topology.getRelatedIsls(swPair.src) -
+        List<Isl> broughtDownIsls = topology.getRelatedIsls(swPair.src.switchId) -
                 [mainPath1Isls, mainPath2Isls, protectedPathIsls].collect { it.first()}
         islHelper.breakIsls(broughtDownIsls)
 
@@ -1048,11 +1028,11 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         then: "Main path is built through the preferable path(tr1 or tr2)"
         def flowPaths = flow.retrieveAllEntityPaths()
-        def realFlowPathInvolvedSwitches = flowPaths.flowPath.path.forward.getInvolvedSwitches()
-        realFlowPathInvolvedSwitches == involvedSwP1 || realFlowPathInvolvedSwitches == involvedSwP2
+        def realFlowPathInvolvedSwitches = flowPaths.getMainPathSwitches().sort()
+        realFlowPathInvolvedSwitches == involvedSwP1.switchId.sort() || realFlowPathInvolvedSwitches == involvedSwP2.switchId.sort()
 
         and: "Protected path is built through the non preferable path(tr3)"
-        flowPaths.flowPath.protectedPath.forward.getInvolvedSwitches() == involvedSwProtected
+        flowPaths.getProtectedPathSwitches().sort() == involvedSwProtected.switchId.sort()
     }
 
     @Tags(LOW_PRIORITY)
@@ -1089,15 +1069,15 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Tags(ISL_PROPS_DB_RESET)
     def "Unable to create a flow with protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
-        def isls = topology.getIslsForActiveSwitches()
-        def (srcSwitch, dstSwitch) = [isls.first().srcSwitch, isls.first().dstSwitch]
+        def swPair = switchPairs.all().neighbouring().random()
+        def isls = topology.getRelatedIsls(swPair.src.switchId)
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
         islHelper.setAvailableBandwidth(isls[1..-1], 90)
 
         when: "Create flow with protected path"
-        flowFactory.getBuilder(srcSwitch, dstSwitch)
+        flowFactory.getBuilder(swPair)
                 .withBandwidth(bandwidth)
                 .withProtectedPath(true).build()
                 .sendCreateRequest()
@@ -1113,7 +1093,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         given: "Two active neighboring switches with two not overlapping paths at least"
         def switchPair = switchPairs.all().neighbouring()
                 //https://github.com/telstra/open-kilda/issues/5608
-                .excludeSwitches(topology.activeSwitches.findAll {it.dpId.toString().endsWith("08")})
+                .excludeSwitches(switches.all().getListOfSwitches().findAll {it.switchId.toString().endsWith("08")})
                 .withAtLeastNNonOverlappingPaths(2).random()
 
         and: "A flow with protected path"
@@ -1121,7 +1101,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
         def flowPathIsl = flow.retrieveAllEntityPaths().getMainPathInvolvedIsls()
-        def broughtDownIsls = topology.getRelatedIsls(switchPair.src) - flowPathIsl
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src.switchId) - flowPathIsl
         islHelper.breakIsls(broughtDownIsls)
 
         when: "Break ISL on a protected path (bring port down) for changing the flow state to DEGRADED"
@@ -1194,10 +1174,10 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Unable to create a single switch flow with protected path"() {
         given: "A switch"
-        def sw = topology.activeSwitches.first()
+        def sw = switches.all().first()
 
         when: "Create single switch flow"
-        flowFactory.getBuilder(sw, sw).withProtectedPath(true).build().sendCreateRequest()
+        flowFactory.getSingleSwBuilder(sw).withProtectedPath(true).build().sendCreateRequest()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -1207,10 +1187,10 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Unable to update a single switch flow to enable protected path"() {
         given: "A switch"
-        def sw = topology.activeSwitches.first()
+        def sw = switches.all().first()
 
         and: "A flow without protected path"
-        def flow = flowFactory.getBuilder(sw, sw).build().create()
+        def flow = flowFactory.getSingleSwBuilder(sw).build().create()
 
         when: "Update flow: enable protected path"
         flow.update(flow.tap { it.allocateProtectedPath = true })
@@ -1225,7 +1205,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches without alt paths"
         def switchPair = switchPairs.all().neighbouring().random()
-        def broughtDownIsls = topology.getRelatedIsls(switchPair.src)[1..-1]
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src.switchId)[1..-1]
         islHelper.breakIsls(broughtDownIsls)
 
         when: "Try to create a new flow with protected path"
@@ -1259,7 +1239,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def initialFlowPathInfo = flow.retrieveAllEntityPaths()
         def mainPathIsl = initialFlowPathInfo.getMainPathInvolvedIsls()
         def protectedIslToBreak = initialFlowPathInfo.getProtectedPathInvolvedIsls()
-        def broughtDownIsls = topology.getRelatedIsls(switchPair.src) - mainPathIsl.first() - protectedIslToBreak.first()
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src.switchId) - mainPathIsl.first() - protectedIslToBreak.first()
         islHelper.breakIsls(broughtDownIsls)
 
         and: "ISL on a protected path is broken(bring port down) for changing the flow state to DEGRADED"
@@ -1300,11 +1280,5 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError(~/Flow flags are not valid, unable to process pinned protected flow/).matches(exc)
-    }
-
-    List<Integer> getCreatedMeterIds(SwitchId switchId) {
-        return northbound.getAllMeters(switchId).meterEntries.findAll {
-            it.meterId > MAX_SYSTEM_RULE_METER_ID
-        }*.meterId
     }
 }

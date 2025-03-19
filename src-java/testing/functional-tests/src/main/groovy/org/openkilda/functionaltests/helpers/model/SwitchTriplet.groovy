@@ -5,7 +5,6 @@ import static org.openkilda.functionaltests.helpers.TopologyHelper.convertToPath
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import groovy.transform.EqualsAndHashCode
@@ -15,9 +14,9 @@ import groovy.transform.TupleConstructor
 @TupleConstructor
 @EqualsAndHashCode
 class SwitchTriplet {
-    Switch shared
-    Switch ep1
-    Switch ep2
+    SwitchExtended shared
+    SwitchExtended ep1
+    SwitchExtended ep2
     List<List<PathNode>> pathsEp1
     List<List<PathNode>> pathsEp2
 
@@ -31,7 +30,7 @@ class SwitchTriplet {
 
     @JsonIgnore
     Boolean isTraffExamAvailable() {
-        return !(shared.getTraffGens().isEmpty() || ep1.getTraffGens().isEmpty() || ep2.getTraffGens().isEmpty())
+        return !(shared.traffGenPorts.isEmpty() || ep1.traffGenPorts.isEmpty() || ep2.traffGenPorts.isEmpty())
     }
 
     @JsonIgnore
@@ -44,8 +43,13 @@ class SwitchTriplet {
         return "[$shared.name]-<$ep1.name>-<$ep2.name>"
     }
 
+    @JsonIgnore
+    List<SwitchExtended> toList() {
+        return [shared, ep1, ep2]
+    }
+
     String hwSwString() {
-        return "[$shared.hwSwString]-<$ep1.hwSwString>-<$ep2.hwSwString>"
+        return "[${shared.hwSwString()}]-<${ep1.hwSwString()}>-<${ep2.hwSwString()}>"
     }
 
     static Closure ALL_ENDPOINTS_DIFFERENT = {
@@ -61,7 +65,7 @@ class SwitchTriplet {
     }
 
     static Closure NOT_WB_ENDPOINTS = {
-        SwitchTriplet swT -> !swT.shared.wb5164 && !swT.ep1.wb5164 && !swT.ep2.wb5164
+        SwitchTriplet swT -> !swT.shared.isWb5164() && !swT.ep1.isWb5164() && !swT.ep2.isWb5164()
     }
 
     static Closure ONLY_ONE_EP_IS_NEIGHBOUR_TO_SHARED_EP = {

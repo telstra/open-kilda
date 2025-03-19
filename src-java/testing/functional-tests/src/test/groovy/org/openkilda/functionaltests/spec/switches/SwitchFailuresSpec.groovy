@@ -4,10 +4,11 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.REVIVE_SWITCH
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotValidatedExpectedError
@@ -15,12 +16,11 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -29,12 +29,12 @@ import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
-
 @Narrative("""
 This spec verifies different situations when Kilda switches suddenly disconnect from the controller.
 Note: For now it is only runnable on virtual env due to no ability to disconnect hardware switches
 """)
 
+@Tags(SWITCH_RECOVER_ON_FAIL)
 class SwitchFailuresSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
@@ -48,20 +48,24 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
         assumeTrue(isl.asBoolean(), "No a-switch ISL found for the test")
-        def flow = flowFactory.getRandom(isl.srcSwitch, isl.dstSwitch)
+        def srcSw = switches.all().findSpecific(isl.srcSwitch.dpId)
+        def dstSw = switches.all().findSpecific(isl.dstSwitch.dpId)
+        def flow = flowFactory.getRandom(srcSw, dstSw)
 
         when: "Two neighbouring switches of the flow go down simultaneously"
-        def srcBlockData = switchHelper.knockoutSwitch(isl.srcSwitch, RW)
+        def srcBlockData = srcSw.knockoutWithoutLinksCheckWhenRecover(RW)
         def timeSwitchesBroke = System.currentTimeMillis()
-        def dstBlockData = switchHelper.knockoutSwitch(isl.dstSwitch, RW)
+        def dstBlockData = dstSw.knockoutWithoutLinksCheckWhenRecover(RW)
         def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
         and: "ISL between those switches looses connection"
+        cleanupManager.addAction(OTHER, {northbound.synchronizeSwitch(isl.srcSwitch.dpId, true)})
+        cleanupManager.addAction(OTHER, {northbound.synchronizeSwitch(isl.dstSwitch.dpId, true)})
         aSwitchFlows.removeFlows([isl.aswitch])
 
         and: "Switches go back up"
-        lockKeeper.reviveSwitch(isl.srcSwitch, srcBlockData)
-        lockKeeper.reviveSwitch(isl.dstSwitch, dstBlockData)
+        lockKeeper.reviveSwitch(srcSw.sw, srcBlockData)
+        lockKeeper.reviveSwitch(dstSw.sw, dstBlockData)
 
         then: "ISL still remains up right before discovery timeout should end"
         sleep(untilIslShouldFail() - 2500)
@@ -91,7 +95,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         def flow = flowFactory.getRandom(swPair)
 
         when: "Current path breaks and reroute starts"
-        switchHelper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(3000))
+        swPair.dst.shapeTraffic(new TrafficControlData(3000))
         def islToBreak = flow.retrieveAllEntityPaths().getInvolvedIsls().first()
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
@@ -100,7 +104,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
             def reroute = flow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE).first()
             assert reroute.payload.last().action == "Started validation of installed non ingress rules"
         }
-        lockKeeper.reviveSwitch(swPair.src, lockKeeper.knockoutSwitch(swPair.src, RW))
+        swPair.src.revive(lockKeeper.knockoutSwitch(swPair.src.sw, RW))
 
         then: "Flow reroute is successful"
         Wrappers.wait(PATH_INSTALLATION_TIME * 2) { //double timeout since rerouted is slowed by delay
@@ -109,7 +113,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         }
 
         and: "Blinking switch has no rule anomalies"
-        !switchHelper.validateAndCollectFoundDiscrepancies(swPair.src.dpId).isPresent()
+        !swPair.src.validateAndCollectFoundDiscrepancies().isPresent()
 
         and: "Flow validation is OK"
         flow.validateAndCollectDiscrepancies().isEmpty()
@@ -117,10 +121,10 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
     def "System can handle situation when switch reconnects while flow is being created"() {
         when: "Start creating a flow between switches and lose connection to src before rules are set"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
         def flow = flowFactory.getBuilder(srcSwitch, dstSwitch).build().sendCreateRequest()
         sleep(50)
-        def blockData = switchHelper.knockoutSwitch(srcSwitch, RW)
+        def blockData = srcSwitch.knockout(RW)
 
         then: "Flow eventually goes DOWN"
         Wrappers.wait(WAIT_OFFSET) {
@@ -136,7 +140,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         }
 
         and: "Dst switch validation shows no missing rules"
-        !switchHelper.validateAndCollectFoundDiscrepancies(dstSwitch.dpId).isPresent()
+        !dstSwitch.validateAndCollectFoundDiscrepancies().isPresent()
 
         when: "Try to validate flow"
         flow.validate()
@@ -145,7 +149,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         new FlowNotValidatedExpectedError(~/Could not validate flow: Flow $flow.flowId is in DOWN state/).matches(e)
         when: "Switch returns back UP"
-        switchHelper.reviveSwitch(srcSwitch, blockData)
+        srcSwitch.revive(blockData)
 
         then: "Flow is still down, because ISLs had not enough time to fail, so no ISLs are discovered and no reroute happen"
         flow.retrieveFlowStatus().status == FlowState.DOWN

@@ -7,6 +7,9 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.model.FlowActionType.REROUTE
 import static org.openkilda.functionaltests.helpers.model.FlowActionType.REROUTE_FAILED
+
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
+import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -21,16 +24,14 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
 import org.openkilda.model.SwitchStatus
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.SoftAssertionsWrapper
 
@@ -44,16 +45,10 @@ import spock.lang.Shared
 import jakarta.inject.Provider
 
 class SwapEndpointSpec extends HealthCheckSpecification {
-    //Kilda allows user to pass reserved VLAN IDs 1 and 4095 if they want.
-    static final IntRange KILDA_ALLOWED_VLANS = 1..4095
 
     @Autowired
     @Shared
     FlowFactory flowFactory
-
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
 
     @Autowired
     Provider<TraffExamService> traffExamProvider
@@ -80,11 +75,10 @@ class SwapEndpointSpec extends HealthCheckSpecification {
         }
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        List<SwitchId> involvedSwitches = flows.collectMany { flowExtended ->
-            flowExtended.retrieveAllEntityPaths().getInvolvedSwitches()
-        }.unique()
+        def involvedSwitches = switches.all().findSpecific(flows
+                .collectMany { flowExtended ->  flowExtended.retrieveAllEntityPaths().getInvolvedSwitches() }.unique())
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
         }
 
         where:
@@ -92,7 +86,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                 [description: "no vlan vs vlan on the same port on src switch"].tap {
                     def switchPair = getSwitchPairs().all().nonNeighbouring().random()
                     def flow1 = getFlowFactory().getBuilder(switchPair)
-                            .withSourcePort(getFreePort(switchPair.src, [switchPair.dst]))
+                            .withSourcePort(switchPair.src.getRandomPortNumber(false, switchPair.dst.getServicePorts()))
                             .withSourceVlan(0).build()
                     def flow2 = getFlowFactory().getBuilder(switchPair, false, flow1.occupiedEndpoints())
                             .withSourcePort(flow1.source.portNumber).build()
@@ -103,12 +97,13 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                 [description: "same port, swap vlans on dst switch + third idle novlan flow on that port"].tap {
                     def switchPair = getSwitchPairs().all().nonNeighbouring().random()
                     def flow1 = getFlowFactory().getBuilder(switchPair)
-                            .withDestinationPort(getFreePort(switchPair.dst, [switchPair.src])).build()
+                            .withDestinationPort(switchPair.dst.getRandomPortNumber(false, switchPair.src.getServicePorts()))
+                            .build()
                     List<SwitchPortVlan> busyEndpoints = flow1.occupiedEndpoints()
                     def flow2 = getFlowFactory().getBuilder(switchPair, false, busyEndpoints)
                             .withDestinationPort(flow1.destination.portNumber)
                             .build()
-                    flow2.destination.vlanId = getFreeVlan(flow2.destination.switchId, busyEndpoints)
+                    flow2.destination.vlanId = SwitchExtended.randomVlan(busyEndpoints.findAll{ it.sw == flow2.destination.switchId }.vlan)
                     busyEndpoints.addAll(flow2.occupiedEndpoints())
                     def flow3 = getFlowFactory().getBuilder(switchPair, false, busyEndpoints)
                             .withDestinationPort(flow1.destination.portNumber)
@@ -121,7 +116,8 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                 [description: "vlan on src1 <-> vlan on dst2, same port numbers"].tap {
                     def switchPair = getSwitchPairs().all().nonNeighbouring().random()
                     def flow1 = getFlowFactory().getBuilder(switchPair)
-                            .withSourcePort(getFreePort(switchPair.src, [switchPair.dst])).build()
+                            .withSourcePort(switchPair.src.getRandomPortNumber(false, switchPair.dst.getServicePorts()))
+                     .build()
                     def flow2 = getFlowFactory().getBuilder(switchPair, false, flow1.occupiedEndpoints())
                             .withDestinationPort(flow1.source.portNumber).build()
                     it.flows = [flow1, flow2]
@@ -138,10 +134,10 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                     def flow2 = getFlowFactory().getBuilder(switchPair, false, flow1.occupiedEndpoints())
                             .withSourceVlan(flow1.source.vlanId)
                             .build()
-                    flow1.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src],
-                            [flow1.source.portNumber, flow2.source.portNumber])
-                    flow2.source.portNumber = getFreePort(switchPair.src, [switchPair.dst],
-                            [flow2.destination.portNumber, flow1.source.portNumber])
+                    flow1.destination.portNumber = switchPair.dst.getRandomPortNumber(false,
+                            (switchPair.src.getServicePorts() + [flow1.source.portNumber, flow2.source.portNumber]))
+                    flow2.source.portNumber = switchPair.src.getRandomPortNumber(false,
+                            (switchPair.dst.getServicePorts() + [flow2.destination.portNumber, flow1.source.portNumber]))
                     it.flows = [flow1, flow2]
                     it.firstSwap = new SwapFlowPayload(flow1.flowId,
                             flow1.source,
@@ -153,9 +149,9 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                 [description: "switch on src1 <-> switch on dst2, other params random"].tap {
                     def switchPair = getSwitchPairs().all().nonNeighbouring().random()
                     def flow1 =  getFlowFactory().getBuilder(switchPair)
-                            .withSourcePort(getFreePort(switchPair.src, [switchPair.dst])).build()
+                            .withSourcePort((switchPair.src.getPorts() - switchPair.dst.getServicePorts())[0]).build()
                     def flow2 = getFlowFactory().getBuilder(switchPair, false, flow1.occupiedEndpoints())
-                            .withDestinationPort(getFreePort(switchPair.dst, [switchPair.src])).build()
+                            .withDestinationPort(switchPair.dst.getRandomPortNumber(false, switchPair.src.getServicePorts())).build()
                     it.flows = [flow1, flow2]
                     it.firstSwap = new SwapFlowPayload(flow1.flowId,
                             flow1.source.tap { it.switchId = flow2.destination.switchId },
@@ -167,11 +163,11 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                 [description: "both endpoints swap, same switches"].tap {
                     def switchPair = getSwitchPairs().all().nonNeighbouring().random()
                     def flow1 = getFlowFactory().getBuilder(switchPair)
-                            .withSourcePort(getFreePort(switchPair.src, [switchPair.dst]))
-                            .withDestinationPort(getFreePort(switchPair.dst, [switchPair.src])).build()
+                            .withSourcePort(switchPair.src.getRandomPortNumber(false, switchPair.dst.getServicePorts()))
+                            .withDestinationPort(switchPair.dst.getRandomPortNumber(false, switchPair.src.getServicePorts())).build()
                     def flow2 = getFlowFactory().getBuilder(switchPair, false, flow1.occupiedEndpoints())
-                            .withSourcePort(getFreePort(switchPair.src, [switchPair.dst]))
-                            .withDestinationPort(getFreePort(switchPair.dst, [switchPair.src])).build()
+                            .withSourcePort(switchPair.src.getRandomPortNumber(false, switchPair.dst.getServicePorts()))
+                            .withDestinationPort(switchPair.dst.getRandomPortNumber(false, switchPair.src.getServicePorts())).build()
                     it.flows = [flow1, flow2]
                     it.firstSwap = new SwapFlowPayload(flow1.flowId, flow2.source, flow2.destination)
                     it.secondSwap = new SwapFlowPayload(flow2.flowId, flow1.source, flow1.destination)
@@ -179,13 +175,13 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                 [description: "endpoints src1 <-> dst2, same switches"].tap {
                     def switchPair = getSwitchPairs().all().nonNeighbouring().random()
                     def flow1 = getFlowFactory().getBuilder(switchPair)
-                            .withSourcePort(getFreePort(switchPair.src, [switchPair.dst]))
-                            .withDestinationPort(getFreePort(switchPair.dst, [switchPair.src])).build()
+                            .withSourcePort(switchPair.src.getRandomPortNumber(false, switchPair.dst.getServicePorts()))
+                            .withDestinationPort(switchPair.dst.getRandomPortNumber(false, switchPair.src.getServicePorts())).build()
                     def flow2 = getFlowFactory().getBuilder(switchPair, false, flow1.occupiedEndpoints())
-                            .withSourcePort(getFreePort(switchPair.src, [switchPair.dst], [flow1.source.portNumber]))
-                            .withDestinationPort(getFreePort(switchPair.dst, [switchPair.src], [flow1.destination.portNumber])).build()
-                    flow1.source.vlanId = getFreeVlan(flow2.destination.switchId, flow2.occupiedEndpoints())
-                    flow2.destination.vlanId = getFreeVlan(flow1.destination.switchId, flow1.occupiedEndpoints())
+                            .withSourcePort(switchPair.src.getRandomPortNumber(false, (switchPair.dst.getServicePorts() + flow1.source.portNumber)))
+                            .withDestinationPort(switchPair.dst.getRandomPortNumber(false, (switchPair.src.getServicePorts() + flow1.destination.portNumber))).build()
+                    flow1.source.vlanId = SwitchExtended.randomVlan(flow2.occupiedEndpoints().findAll{ it.sw == flow2.destination.switchId }.vlan)
+                    flow2.destination.vlanId = SwitchExtended.randomVlan(flow1.occupiedEndpoints().findAll { it.sw == flow1.destination.switchId }.vlan)
                     it.flows = [flow1, flow2]
                     it.firstSwap = new SwapFlowPayload(flow1.flowId, flow2.destination, flow1.destination)
                     it.secondSwap = new SwapFlowPayload(flow2.flowId, flow2.source, flow1.source)
@@ -194,14 +190,15 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                     List<SwitchPair> swPairs = getSwitchPairs().all().nonNeighbouring().getSwitchPairs()
                             .inject(null) { result, switchPair ->
                                 if (result) return result
-                                def halfDifferent = getHalfDifferentNotNeighboringSwitchPair(switchPair, "dst")
+                                def halfDifferent = getSwitchPairs().all().nonNeighbouring().excludePairs([switchPair])
+                                        .includeDestinationSwitch(switchPair.dst).random()
                                 if (halfDifferent) result = [switchPair, halfDifferent]
                                 return result
                             }
                     def flow1 = getFlowFactory().getBuilder(swPairs[0])
-                            .withSourcePort(getFreePort(swPairs[0].src, [swPairs[1].src])).build()
+                            .withSourcePort(swPairs[0].src.getRandomPortNumber(false, swPairs[1].src.getServicePorts())).build()
                     def flow2 = getFlowFactory().getBuilder(swPairs[1], false, flow1.occupiedEndpoints())
-                            .withSourcePort(getFreePort(swPairs[1].src, [swPairs[0].src])).build()
+                            .withSourcePort((swPairs[1].src.getPorts() - swPairs[0].src.getServicePorts())[0]).build()
                     it.flows = [flow1, flow2]
                     it.firstSwap = new SwapFlowPayload(flow1.flowId, flow2.source, flow1.destination)
                     it.secondSwap = new SwapFlowPayload(flow2.flowId, flow1.source, flow2.destination)
@@ -234,9 +231,11 @@ switches"() {
         additionalFlow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        List<SwitchId> switches = [flow, additionalFlow].collectMany{it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique()
+        def switches = switches.all().findSpecific([flow, additionalFlow]
+                .collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches() }.unique())
+
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(switches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(switches).isEmpty()
         }
 
         where:
@@ -262,15 +261,16 @@ switches"() {
                      it.flow2Dst = it.flow2.destination.jacksonCopy().tap { endpoint -> endpoint.switchId = it.flow1.source.switchId }
                  }
     ].collect { iterationData ->
-            def switchPairs = getSwitchPairs().all().nonNeighbouring().getSwitchPairs().inject(null) { result, switchPair ->
+            def pairs = switchPairs.all().nonNeighbouring().getSwitchPairs().inject(null) { result, switchPair ->
                 if (result) return result
-                def halfDifferent = getHalfDifferentNotNeighboringSwitchPair(switchPair, "src")
+                def halfDifferent = switchPairs.all().nonNeighbouring().excludePairs([switchPair])
+                        .includeSourceSwitch(switchPair.src).random()
                 if (halfDifferent) result = [switchPair, halfDifferent]
                 return result
             }
-            FlowExtended flow1 = getFirstFlow(switchPairs?.get(0), switchPairs?.get(1))
-            FlowExtended flow2 = getSecondFlow(switchPairs?.get(0), switchPairs?.get(1), flow1)
-            [switchPairs: switchPairs, flow1: flow1, flow2: flow2].tap(iterationData)
+            FlowExtended flow1 = getFirstFlow(pairs?.get(0), pairs?.get(1))
+            FlowExtended flow2 = getSecondFlow(pairs?.get(0), pairs?.get(1), flow1)
+            [switchPairs: pairs, flow1: flow1, flow2: flow2].tap(iterationData)
         }
     }
 
@@ -296,9 +296,10 @@ switches"() {
         additionalFlow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        List<SwitchId> switches = [flow, additionalFlow].collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique()
+        def switches = switches.all().findSpecific([flow, additionalFlow]
+                .collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches() }.unique())
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(switches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(switches).isEmpty()
         }
 
 
@@ -331,15 +332,16 @@ switches"() {
                      it.flow2Src = it.flow1.destination
                      it.flow2Dst = it.flow2.destination
                  }].collect { iterationData ->
-            def switchPairs = getSwitchPairs().all().nonNeighbouring().getSwitchPairs().inject(null) { result, switchPair ->
+            def pairs = switchPairs.all().nonNeighbouring().getSwitchPairs().inject(null) { result, switchPair ->
                 if (result) return result
-                def halfDifferent = getHalfDifferentNotNeighboringSwitchPair(switchPair, "src")
+                def halfDifferent = switchPairs.all().nonNeighbouring().excludePairs([switchPair])
+                        .includeSourceSwitch(switchPair.src).random()
                 if (halfDifferent) result = [switchPair, halfDifferent]
                 return result
             }
-            def flow1 = getFirstFlow(switchPairs?.get(0), switchPairs?.get(1))
-            def flow2 = getSecondFlow(switchPairs?.get(0), switchPairs?.get(1), flow1)
-            [switchPairs: switchPairs, flow1: flow1, flow2: flow2].tap(iterationData)
+            def flow1 = getFirstFlow(pairs?.get(0), pairs?.get(1))
+            def flow2 = getSecondFlow(pairs?.get(0), pairs?.get(1), flow1)
+            [switchPairs: pairs, flow1: flow1, flow2: flow2].tap(iterationData)
         }
     }
 
@@ -364,9 +366,10 @@ switches"() {
         additionalFlow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        List<SwitchId> switches = [flow, additionalFlow].collectMany{it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique()
+        def switches = switches.all().findSpecific([flow, additionalFlow]
+                .collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches() }.unique())
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(switches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(switches).isEmpty()
         }
 
         where:
@@ -375,7 +378,8 @@ switches"() {
         description = "src1 <-> dst2, dst1 <-> src2"
         swPairs = switchPairs.all().nonNeighbouring().getSwitchPairs().inject(null) { result, switchPair ->
             if (result) return result
-            def halfDifferent = getHalfDifferentNotNeighboringSwitchPair(switchPair, "dst")
+            def halfDifferent = switchPairs.all().nonNeighbouring().excludePairs([switchPair])
+                    .includeDestinationSwitch(switchPair.dst).random()
             if (halfDifferent) result = [switchPair, halfDifferent]
             return result
         }
@@ -408,9 +412,10 @@ switches"() {
         additionalFlow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        List<SwitchId> switches = [flow, additionalFlow].collectMany{it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique()
+        def switches = switches.all().findSpecific([flow, additionalFlow]
+                .collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches() }.unique())
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(switches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(switches).isEmpty()
         }
 
         where:
@@ -418,7 +423,7 @@ switches"() {
         proprtyName << ["vlanId", "portNumber", "switchId"]
         description = "src1 <-> dst2, dst1 <-> src2"
         flow1SwitchPair = switchPairs.all().nonNeighbouring().random()
-        flow2SwitchPair = getDifferentNotNeighboringSwitchPair(flow1SwitchPair)
+        flow2SwitchPair = switchPairs.all().nonNeighbouring().excludeSwitches(flow1SwitchPair.toList()).random()
         flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair)
         flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1)
 
@@ -448,9 +453,10 @@ switches"() {
         additionalFlow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        List<SwitchId> switches = [flow, additionalFlow].collectMany{it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique()
+        def switches = switches.all().findSpecific([flow, additionalFlow]
+                .collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches() }.unique())
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(switches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(switches).isEmpty()
         }
 
         where:
@@ -498,7 +504,7 @@ switches"() {
                      it.flow2Dst = it.flow2.destination
                  }].collect { iterationData ->
             def flow1SwitchPair = switchPairs.all().nonNeighbouring().random()
-            def flow2SwitchPair = getDifferentNotNeighboringSwitchPair(flow1SwitchPair)
+            def flow2SwitchPair = switchPairs.all().nonNeighbouring().excludeSwitches(flow1SwitchPair.toList()).random()
             def flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair)
             [flow1SwitchPair: flow1SwitchPair, flow2SwitchPair: flow2SwitchPair, flow1: flow1].tap(iterationData)
         }
@@ -656,7 +662,7 @@ switches"() {
                      flow2Dst = flow2.destination
                  }].collect { iterationData ->
             def flow1SwitchPair = switchPairs.all().nonNeighbouring().random()
-            def flow2SwitchPair = getDifferentNotNeighboringSwitchPair(flow1SwitchPair)
+            def flow2SwitchPair = switchPairs.all().nonNeighbouring().excludeSwitches(flow1SwitchPair.toList()).random()
             def flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair)
             [flow1SwitchPair: flow1SwitchPair, flow2SwitchPair: flow2SwitchPair, flow1: flow1].tap(iterationData)
         }
@@ -696,7 +702,7 @@ switches"() {
                      flow2Dst = flow1.destination
                  }].collect { iterationData ->
             def flow1SwitchPair = switchPairs.all().nonNeighbouring().random()
-            def flow2SwitchPair = getDifferentNotNeighboringSwitchPair(flow1SwitchPair)
+            def flow2SwitchPair = switchPairs.all().nonNeighbouring().excludeSwitches(flow1SwitchPair.toList()).random()
             def flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair)
             def flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1)
             [flow1SwitchPair: flow1SwitchPair, flow2SwitchPair: flow2SwitchPair, flow1: flow1, flow2: flow2].tap(iterationData)
@@ -707,15 +713,13 @@ switches"() {
 
     def "Unable to swap ports for two flows (port is occupied by ISL on src switch)"() {
         given: "Two active flows"
-        def islPort
         def swPair = switchPairs.all().getSwitchPairs().find {
-            def busyPorts = topology.getBusyPortsForSwitch(it.src)
-            islPort = topology.getAllowedPortsForSwitch(it.dst).find { it in busyPorts }
+            it.dst.getPorts().intersect( it.src.getIslPorts())
         }
-        assert islPort
+        Integer dstIslPort =  swPair.dst.getPorts().find { it in swPair.src.islPorts }
         def flow1 = flowFactory.getRandom(swPair)
         def flow2 = flowFactory.getBuilder(swPair, false, flow1.occupiedEndpoints())
-                .withDestinationPort(islPort).build()
+                .withDestinationPort(dstIslPort).build()
                 .create()
 
         when: "Try to swap ports for two flows"
@@ -732,20 +736,21 @@ switches"() {
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
         new FlowEndpointsNotSwappedExpectedError(HttpStatus.BAD_REQUEST,
-                ~/The port $islPort on the switch \'${swPair.src.dpId}\' is occupied by an ISL \(source endpoint collision\)./).matches(exc)
+                ~/The port $dstIslPort on the switch \'${swPair.src.switchId}\' is occupied by an ISL \(source endpoint collision\)./).matches(exc)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Able to swap endpoints for two flows when all bandwidth on ISL is consumed"() {
         setup: "Create two flows with different source and the same destination switches"
-        List<SwitchPair> switchPairs = getSwitchPairs().all().neighbouring().getSwitchPairs().inject(null) { result, switchPair ->
+        List<SwitchPair> pairs = switchPairs.all().neighbouring().getSwitchPairs().inject(null) { result, switchPair ->
             if (result) return result
-            def halfDifferent = getHalfDifferentNeighboringSwitchPair(switchPair, "dst")
+            def halfDifferent = switchPairs.all().neighbouring().excludePairs([switchPair])
+                    .includeDestinationSwitch(switchPair.dst).random()
             if (halfDifferent) result = [switchPair, halfDifferent]
             return result
         }
-        SwitchPair flow1SwitchPair = switchPairs[0]
-        SwitchPair flow2SwitchPair = switchPairs[1]
+        SwitchPair flow1SwitchPair = pairs[0]
+        SwitchPair flow2SwitchPair = pairs[1]
         def flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair).create()
         def flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1).create()
 
@@ -756,7 +761,7 @@ switches"() {
         flow1.update(flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
 
         and: "Break all alternative paths for the first flow"
-        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src) - flow1Isl
+        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src.switchId) - flow1Isl
         islHelper.breakIsls(broughtDownIsls)
 
         and: "Update max bandwidth for the second flow's link so that it is equal to max bandwidth of the first flow"
@@ -764,7 +769,7 @@ switches"() {
         islHelper.updateLinkMaxBandwidthUsingApi(flow2Isl, flow1IslMaxBw)
 
         and: "Break all alternative paths for the second flow"
-        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src) - flow2Isl - broughtDownIsls
+        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src.switchId) - flow2Isl - broughtDownIsls
         islHelper.breakIsls(flow2BroughtDownIsls)
 
         when: "Try to swap endpoints for two flows"
@@ -785,23 +790,25 @@ switches"() {
         flow2.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        List<SwitchId> switches = [flow1, flow2].collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique()
+        def switches = switches.all().findSpecific([flow1, flow2]
+                .collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches() }.unique())
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(switches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(switches).isEmpty()
         }
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to swap endpoints for two flows when not enough bandwidth on ISL"() {
         setup: "Create two flows with different source and the same destination switches"
-        List<SwitchPair> switchPairs = getSwitchPairs().all().neighbouring().getSwitchPairs().inject(null) { result, switchPair ->
+        List<SwitchPair> pairs = switchPairs.all().neighbouring().getSwitchPairs().inject(null) { result, switchPair ->
             if (result) return result
-            def halfDifferent = getHalfDifferentNeighboringSwitchPair(switchPair, "dst")
+            def halfDifferent = switchPairs.all().neighbouring().excludePairs([switchPair])
+                    .includeDestinationSwitch(switchPair.dst).random()
             if (halfDifferent) result = [switchPair, halfDifferent]
             return result
         }
-        SwitchPair flow1SwitchPair = switchPairs[0]
-        SwitchPair flow2SwitchPair = switchPairs[1]
+        SwitchPair flow1SwitchPair = pairs[0]
+        SwitchPair flow2SwitchPair = pairs[1]
         def flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair).create()
         def flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1).create()
 
@@ -812,7 +819,7 @@ switches"() {
         flow1.update(flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
 
         and: "Break all alternative paths for the first flow"
-        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src) - flow1Isl
+        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src.switchId) - flow1Isl
         islHelper.breakIsls(broughtDownIsls)
 
         and: "Update max bandwidth for the second flow's link so that it is not enough bandwidth for the first flow"
@@ -820,7 +827,7 @@ switches"() {
         islHelper.updateLinkMaxBandwidthUsingApi(flow2Isl, flow1IslMaxBw - 1)
 
         and: "Break all alternative paths for the second flow"
-        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src) - flow2Isl - broughtDownIsls
+        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src.switchId) - flow2Isl - broughtDownIsls
         islHelper.breakIsls(flow2BroughtDownIsls)
 
         when: "Try to swap endpoints for two flows"
@@ -840,14 +847,15 @@ switches"() {
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "Able to swap endpoints for two flows when not enough bandwidth on ISL and ignore_bandwidth=true"() {
         setup: "Create two flows with different source and the same destination switches"
-        List<SwitchPair> switchPairs = getSwitchPairs().all().neighbouring().getSwitchPairs().inject(null) { result, switchPair ->
+        List<SwitchPair> pairs = switchPairs.all().neighbouring().getSwitchPairs().inject(null) { result, switchPair ->
             if (result) return result
-            def halfDifferent = getHalfDifferentNeighboringSwitchPair(switchPair, "dst")
+            def halfDifferent = switchPairs.all().neighbouring().excludePairs([switchPair])
+                    .includeDestinationSwitch(switchPair.dst).random()
             if (halfDifferent) result = [switchPair, halfDifferent]
             return result
         }
-        SwitchPair flow1SwitchPair = switchPairs[0]
-        SwitchPair flow2SwitchPair = switchPairs[1]
+        SwitchPair flow1SwitchPair = pairs[0]
+        SwitchPair flow2SwitchPair = pairs[1]
         def flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair).tap {
             it.ignoreBandwidth = true
         }.create()
@@ -861,7 +869,7 @@ switches"() {
         flow1.update(flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
 
         and: "Break all alternative paths for the first flow"
-        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src) - flow1Isl
+        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src.switchId) - flow1Isl
         islHelper.breakIsls(broughtDownIsls)
 
         and: "Update max bandwidth for the second flow's link so that it is not enough bandwidth for the first flow"
@@ -869,7 +877,7 @@ switches"() {
         islHelper.updateLinkMaxBandwidthUsingApi(flow2Isl, flow1IslMaxBw - 1)
 
         and: "Break all alternative paths for the second flow"
-        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src) - flow2Isl - broughtDownIsls
+        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src.switchId) - flow2Isl - broughtDownIsls
         islHelper.breakIsls(flow2BroughtDownIsls)
 
         when: "Try to swap endpoints for two flows"
@@ -890,9 +898,10 @@ switches"() {
         flow2.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        List<SwitchId> switches = [flow1, flow2].collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique()
+        def switches = switches.all().findSpecific([flow1, flow2]
+                .collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches() }.unique())
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(switches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(switches).isEmpty()
         }
     }
 
@@ -900,21 +909,23 @@ switches"() {
     @Ignore("https://github.com/telstra/open-kilda/issues/5635")
     def "Unable to swap endpoints for two flows when one of them is inactive"() {
         setup: "Create two flows with different source and the same destination switches"
-        def switchPairs = getSwitchPairs().all().neighbouring().getSwitchPairs().inject(null) { result, switchPair ->
+        def pairs = switchPairs.all().neighbouring().getSwitchPairs().inject(null) { result, switchPair ->
             if (result) return result
-            def halfDifferent = getHalfDifferentNeighboringSwitchPair(switchPair, "dst")
+            def halfDifferent = switchPairs.all().neighbouring().excludePairs([switchPair])
+                    .includeSourceSwitch(switchPair.src).random()
             if (halfDifferent) result = [switchPair, halfDifferent]
             return result
         }
-        SwitchPair flow1SwitchPair = switchPairs[0]
-        SwitchPair flow2SwitchPair = switchPairs[1]
+        SwitchPair flow1SwitchPair = pairs[0]
+        SwitchPair flow2SwitchPair = pairs[1]
         def flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair).create()
         def flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1).create()
 
-        List<SwitchId> involvedSwIds = [flow1, flow2].collectMany { it.retrieveAllEntityPaths().getInvolvedSwitches() }.unique()
+        def involvedSws = switches.all().findSpecific([flow1, flow2]
+                .collectMany { it.retrieveAllEntityPaths().getInvolvedSwitches() }.unique())
 
         and: "Break all paths for the first flow"
-        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src)
+        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src.switchId)
         islHelper.breakIsls(broughtDownIsls)
 
         when: "Try to swap endpoints for two flows"
@@ -934,7 +945,7 @@ switches"() {
         assert actualFlow1Details.source != actualFlow2Details.source
 
         and: "All involved switches are valid"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwIds).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(involvedSws).isEmpty()
     }
 
     @Tags(LOW_PRIORITY)
@@ -957,9 +968,10 @@ switches"() {
         flow2.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        List<SwitchId> switches = [flow1, flow2].collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique()
+        def switches = switches.all().findSpecific([flow1, flow2]
+                .collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches() }.unique())
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(switches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(switches).isEmpty()
         }
 
         where:
@@ -992,13 +1004,13 @@ switches"() {
                      flow2Dst = flow2.destination
                  }].collect { iterationData ->
             def flow1SwitchPair = switchPairs.all().nonNeighbouring().random()
-            def flow2SwitchPair = getDifferentNotNeighboringSwitchPair(flow1SwitchPair)
+            def flow2SwitchPair = switchPairs.all().nonNeighbouring().excludeSwitches(flow1SwitchPair.toList()).random()
             def flow1 = flowFactory.getBuilder(flow1SwitchPair)
                     .withProtectedPath(true).build()
             def flow2 = flowFactory.getBuilder(flow2SwitchPair, false, flow1.occupiedEndpoints())
                     .withProtectedPath(true)
-                    .withSourcePort(getFreePort(flow2SwitchPair.src, [flow1SwitchPair.src, flow1SwitchPair.dst]))
-                    .withDestinationPort(getFreePort(flow2SwitchPair.dst, [flow1SwitchPair.src, flow1SwitchPair.dst])).build()
+                    .withSourcePort(flow2SwitchPair.src.getRandomPortNumber(false, flow1SwitchPair.getServicePorts()))
+                    .withDestinationPort(flow2SwitchPair.dst.getRandomPortNumber(false, flow1SwitchPair.getServicePorts())).build()
             [flow1SwitchPair: flow1SwitchPair, flow2SwitchPair: flow2SwitchPair, flow1: flow1, flow2: flow2].tap(iterationData)
         }
         flow1 = data.flow1 as FlowExtended
@@ -1013,7 +1025,7 @@ switches"() {
                 .random()
         def flow2SwitchPair = switchPairs.all(false)
                 .neighbouring()
-                .excludeSwitches([flow1SwitchPair.getSrc(), flow1SwitchPair.getDst()])
+                .excludeSwitches(flow1SwitchPair.toList())
                 .withAtLeastNTraffgensOnSource(1)
                 .random()
         def flow1 = flowFactory.getBuilder(flow1SwitchPair)
@@ -1038,9 +1050,10 @@ switches"() {
         flow2.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        List<SwitchId> switches = [flow1, flow2].collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique()
+        def switches = switches.all().findSpecific([flow1, flow2]
+                .collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches() }.unique())
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(switches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(switches).isEmpty()
         }
 
         and: "The first flow allows traffic on the main path"
@@ -1086,9 +1099,10 @@ switches"() {
         flow2.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        List<SwitchId> switches = [flow1, flow2].collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique()
+        def switches = switches.all().findSpecific([flow1, flow2]
+                .collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique())
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(switches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(switches).isEmpty()
         }
 
         where:
@@ -1138,9 +1152,10 @@ switches"() {
         flow2.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        List<SwitchId> switches = [flow1, flow2].collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique()
+        def switches = switches.all().findSpecific([flow1, flow2]
+                .collectMany { it.retrieveAllEntityPaths().getInvolvedSwitches() }.unique())
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(switches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(switches).isEmpty()
         }
         where:
         data << [{
@@ -1178,21 +1193,23 @@ switches"() {
         given: "Two flows with different src switches and same dst"
         def swPair1 = switchPairs.all().random()
         def swPair2 = switchPairs.all()
-                .excludeSwitches([swPair1.getSrc()])
-                .includeSourceSwitch(swPair1.getDst())
+                .excludeSwitches([swPair1.src])
+                .includeSourceSwitch(swPair1.dst)
                 .random()
                 .getReversed()
         def flow1 = flowFactory.getBuilder(swPair1)
-                .withSourcePort(getFreePort(swPair1.src, [swPair2.src])).build()
+                .withSourcePort(swPair1.src.getRandomPortNumber(false, swPair2.src.getServicePorts()))
+                .build()
                 .create()
 
         def flow2 = flowFactory.getBuilder(swPair2)
-                .withSourcePort(getFreePort(swPair2.src, [swPair1.src])).build()
+                .withSourcePort(swPair2.src.getRandomPortNumber(false, swPair1.src.getServicePorts()))
+                .build()
                 .create()
 
         when: "Try to swap flow src endoints, but flow1 src switch does not respond"
-        switchHelper.knockoutSwitch(swPair1.src, RW)
-        database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.ACTIVE)
+        swPair1.src.knockout(RW)
+        swPair1.src.setStatusInDb(SwitchStatus.ACTIVE)
         northbound.swapFlowEndpoint(new SwapFlowPayload(flow1.flowId, flow2.source, flow1.destination),
                 new SwapFlowPayload(flow2.flowId, flow1.source, flow2.destination))
 
@@ -1231,12 +1248,13 @@ switches"() {
         }
 
         when: "Delete both flows"
-        List<SwitchId> switches = [flow1, flow2].collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique()
-                .findAll { it != swPair1.src.dpId }
+        def switches = switches.all().findSpecific([flow1, flow2]
+                .collectMany{ it.retrieveAllEntityPaths().getInvolvedSwitches()}.unique()
+                .findAll { it != swPair1.src.switchId })
         [flow1, flow2].collect {flow -> flow.delete() }
 
         then: "Related switches have no rule anomalies"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(switches).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(switches).isEmpty()
     }
 
     def "Able to swap endpoints for a flow with flowLoop"() {
@@ -1252,9 +1270,9 @@ switches"() {
                 .create()
 
         and: "FlowLoop is created for the second flow on the dst switch"
-        flow2.createFlowLoop(flow2SwitchPair.dst.dpId)
+        flow2.createFlowLoop(flow2SwitchPair.dst.switchId)
         flow2.waitForBeingInState(FlowState.UP)
-        assert flow2.retrieveDetails().loopSwitchId == flow2SwitchPair.dst.dpId
+        assert flow2.retrieveDetails().loopSwitchId == flow2SwitchPair.dst.switchId
 
         when: "Try to swap dst endpoints for two flows"
         def flow1Dst = flow2.destination
@@ -1274,11 +1292,11 @@ switches"() {
         flow2.validateAndCollectDiscrepancies().isEmpty()
 
         and: "FlowLoop is still created for the second flow but on the new dst switch"
-        assert flow2.retrieveDetails().loopSwitchId == flow1SwitchPair.dst.dpId
+        assert flow2.retrieveDetails().loopSwitchId == flow1SwitchPair.dst.switchId
 
         and: "FlowLoop rules are created on the new dst switch"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            Map<Long, Long> flowLoopsCounter = getFlowLoopRules(flow1SwitchPair.dst.dpId)
+            Map<Long, Long> flowLoopsCounter = flow1SwitchPair.dst.rulesManager.getFlowLoopRules()
                     .collectEntries { [(it.cookie): it.packetCount] }
             assert flowLoopsCounter.size() == 2
             assert flowLoopsCounter.values().every { it == 0 }
@@ -1286,14 +1304,13 @@ switches"() {
 
         and: "FlowLoop rules are deleted on the old dst switch"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert getFlowLoopRules(flow2SwitchPair.dst.dpId).empty
+            assert flow2SwitchPair.dst.rulesManager.getFlowLoopRules().empty
         }
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        List<SwitchId> switches = [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId,
-                                   flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId].unique()
+        def switches = (flow1SwitchPair.toList() + flow2SwitchPair.toList()).unique()
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(switches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(switches).isEmpty()
         }
 
 
@@ -1312,7 +1329,7 @@ switches"() {
         }
 
         and: "Counter on the flowLoop rules are increased"
-        getFlowLoopRules(flow1SwitchPair.dst.dpId)*.packetCount.every { it > 0 }
+        flow1SwitchPair.dst.rulesManager.getFlowLoopRules()*.packetCount.every { it > 0 }
     }
 
     void verifyEndpoints(SwapFlowEndpointPayload response, FlowEndpointV2 flow1SrcExpected, FlowEndpointV2 flow1DstExpected,
@@ -1338,30 +1355,6 @@ switches"() {
     }
 
     /**
-     * Get port number which is not busy on _any_ of the specified switches
-     *
-     * @param target switch on which to look for a port
-     * @param switches list of switches where resulting port should not be an ISL-busy port
-     * @return portnumber which is not an ISL-port on any of the switches
-     */
-    Integer getFreePort(Switch target, List<Switch> switches, List<Integer> excludePorts = []) {
-        pickRandom(topology.getAllowedPortsForSwitch(target) -
-                switches.collectMany {
-                    def islPorts = topology.getBusyPortsForSwitch(it)
-                    def s42Port = it.prop?.server42Port
-                    s42Port ? islPorts + s42Port : islPorts
-                } - excludePorts)
-    }
-
-    /**
-     * Get a free vlan which is not used in any of the given flows.
-     */
-    def getFreeVlan(SwitchId swId, List<SwitchPortVlan> busyEndpoints = []) {
-        def vlans = KILDA_ALLOWED_VLANS - busyEndpoints.findAll{ it.sw == swId }.vlan
-        return vlans.shuffled().first()
-    }
-
-    /**
      * Get a FlowExtended instance for the flow. The instance is built considering ISL ports on source and
      * destination switches of the first and second switch pairs. So no ISL port conflicts should appear while creating
      * the flow and swapping flow endpoints.
@@ -1378,25 +1371,12 @@ switches"() {
                 it.withDestinationVlan(0)
             }
         }.build()
-        firstFlow.source.portNumber = (topology.getAllowedPortsForSwitch(firstFlowSwitchPair.src) -
-                topology.getBusyPortsForSwitch(secondFlowSwitchPair.src) -
-                topology.getBusyPortsForSwitch(secondFlowSwitchPair.dst) -
-                firstFlowSwitchPair.dst.prop?.server42Port -
-                secondFlowSwitchPair.src.prop?.server42Port -
-                secondFlowSwitchPair.dst.prop?.server42Port)[0]
-        firstFlow.destination.portNumber = (topology.getAllowedPortsForSwitch(firstFlowSwitchPair.dst) -
-                topology.getBusyPortsForSwitch(secondFlowSwitchPair.src) -
-                topology.getBusyPortsForSwitch(secondFlowSwitchPair.dst) - [firstFlow.source.portNumber] -
-                firstFlowSwitchPair.src.prop?.server42Port -
-                secondFlowSwitchPair.src.prop?.server42Port -
-                secondFlowSwitchPair.dst.prop?.server42Port)[0]
+        firstFlow.source.portNumber = (firstFlowSwitchPair.src.getPorts() - secondFlowSwitchPair.getServicePorts() -
+                [firstFlowSwitchPair.dst.sw.prop?.server42Port])[0]
+        firstFlow.destination.portNumber = (firstFlowSwitchPair.dst.getPorts() - secondFlowSwitchPair.getServicePorts()
+                - [firstFlow.source.portNumber] - [firstFlowSwitchPair.src.sw.prop?.server42Port])[0]
 
         return firstFlow
-    }
-
-    private static <T> T pickRandom(List<T> c) {
-        def r = new Random()
-        c[r.nextInt(c.size())]
     }
 
     /**
@@ -1418,51 +1398,12 @@ switches"() {
                 it.withDestinationVlan(0)
             }
         }.build()
-        secondFlow.source.portNumber = (topology.getAllowedPortsForSwitch(secondFlowSwitchPair.src) -
-                topology.getBusyPortsForSwitch(firstFlowSwitchPair.src) -
-                topology.getBusyPortsForSwitch(firstFlowSwitchPair.dst) -
-                [firstFlow.source.portNumber, firstFlow.destination.portNumber] -
-                secondFlowSwitchPair.dst.prop?.server42Port -
-                firstFlowSwitchPair.src.prop?.server42Port -
-                firstFlowSwitchPair.dst.prop?.server42Port)[0]
-        secondFlow.destination.portNumber = (topology.getAllowedPortsForSwitch(secondFlowSwitchPair.dst) -
-                topology.getBusyPortsForSwitch(firstFlowSwitchPair.src) -
-                topology.getBusyPortsForSwitch(firstFlowSwitchPair.dst) -
+        secondFlow.source.portNumber = (secondFlowSwitchPair.src.getPorts() - firstFlowSwitchPair.getServicePorts() -
+                [firstFlow.source.portNumber, firstFlow.destination.portNumber] - [secondFlowSwitchPair.dst.sw.prop?.server42Port])[0]
+        secondFlow.destination.portNumber = (secondFlowSwitchPair.dst.getPorts() - firstFlowSwitchPair.getServicePorts() -
                 [secondFlow.source.portNumber, firstFlow.source.portNumber, firstFlow.destination.portNumber] -
-                secondFlowSwitchPair.src.prop?.server42Port -
-                firstFlowSwitchPair.src.prop?.server42Port -
-                firstFlowSwitchPair.dst.prop?.server42Port)[0]
+                [secondFlowSwitchPair.src.sw.prop?.server42Port])[0]
 
         return secondFlow
-    }
-
-    def getHalfDifferentNotNeighboringSwitchPair(switchPairToAvoid, equalEndpoint) {
-        def differentEndpoint = (equalEndpoint == "src" ? "dst" : "src")
-        switchPairs.all().nonNeighbouring().getSwitchPairs().find {
-            it."$equalEndpoint" == switchPairToAvoid."$equalEndpoint" &&
-                    it."$differentEndpoint" != switchPairToAvoid."$differentEndpoint"
-        }
-    }
-
-    def getDifferentNotNeighboringSwitchPair(switchPairToAvoid) {
-        switchPairs.all().nonNeighbouring().getSwitchPairs().find {
-            !(it.src in [switchPairToAvoid.src, switchPairToAvoid.dst]) &&
-                    !(it.dst in [switchPairToAvoid.src, switchPairToAvoid.dst])
-        }
-    }
-
-    def getHalfDifferentNeighboringSwitchPair(switchPairToAvoid, equalEndpoint) {
-        def differentEndpoint = (equalEndpoint == "src" ? "dst" : "src")
-        switchPairs.all().neighbouring().getSwitchPairs().find {
-            it."$equalEndpoint" == switchPairToAvoid."$equalEndpoint" &&
-                    it."$differentEndpoint" != switchPairToAvoid."$differentEndpoint"
-        }
-    }
-
-    def getFlowLoopRules(SwitchId switchId) {
-        switchRulesFactory.get(switchId).getRules().findAll {
-            def hexCookie = Long.toHexString(it.cookie)
-            hexCookie.startsWith("20080000") || hexCookie.startsWith("40080000")
-        }
     }
 }

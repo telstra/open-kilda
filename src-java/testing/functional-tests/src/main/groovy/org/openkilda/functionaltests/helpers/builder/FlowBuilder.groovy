@@ -2,12 +2,12 @@ package org.openkilda.functionaltests.helpers.builder
 
 import static org.openkilda.functionaltests.helpers.FlowNameGenerator.FLOW
 import static org.openkilda.functionaltests.helpers.StringGenerator.generateDescription
-import static org.openkilda.functionaltests.helpers.SwitchHelper.getRandomAvailablePort
-import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.randomVlan
 
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.model.SwitchId
@@ -15,7 +15,6 @@ import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -27,8 +26,8 @@ class FlowBuilder {
 
     FlowExtended flowExtended
 
-    FlowBuilder(Switch srcSwitch,
-                Switch dstSwitch,
+    FlowBuilder(SwitchExtended srcSwitch,
+                SwitchExtended dstSwitch,
                 NorthboundService northbound,
                 NorthboundServiceV2 northboundV2,
                 TopologyDefinition topologyDefinition,
@@ -40,19 +39,19 @@ class FlowBuilder {
         this.flowExtended = new FlowExtended(FLOW.generateId(), northbound, northboundV2, topologyDefinition, cleanupManager, database)
 
         this.flowExtended.source = FlowEndpointV2.builder()
-                .switchId(srcSwitch.dpId)
-                .portNumber(getRandomAvailablePort(srcSwitch, topologyDefinition, useTraffgenPorts, busyEndpoints.findAll { it.sw == srcSwitch.dpId }.port))
+                .switchId(srcSwitch.switchId)
+                .portNumber(srcSwitch.getRandomPortNumber(useTraffgenPorts, busyEndpoints.findAll { it.sw == srcSwitch.switchId }.port))
                 .vlanId(randomVlan(busyEndpoints*.vlan))
                 .detectConnectedDevices(new DetectConnectedDevicesV2(false, false)).build()
 
-        if (srcSwitch.dpId == dstSwitch.dpId) {
+        if (srcSwitch == dstSwitch) {
             // For a SingleSwitch flow, selected switch should have >=2 traffGens
             busyEndpoints << new SwitchPortVlan(flowExtended.source.switchId, flowExtended.source.portNumber, flowExtended.source.vlanId)
         }
 
         this.flowExtended.destination = FlowEndpointV2.builder()
-                .switchId(dstSwitch.dpId)
-                .portNumber(getRandomAvailablePort(dstSwitch, topologyDefinition, useTraffgenPorts, busyEndpoints.findAll { it.sw == dstSwitch.dpId }.port))
+                .switchId(dstSwitch.switchId)
+                .portNumber(dstSwitch.getRandomPortNumber(useTraffgenPorts, busyEndpoints.findAll { it.sw == dstSwitch.switchId }.port))
                 .vlanId(randomVlan(busyEndpoints*.vlan))
                 .detectConnectedDevices(new DetectConnectedDevicesV2(false, false)).build()
 

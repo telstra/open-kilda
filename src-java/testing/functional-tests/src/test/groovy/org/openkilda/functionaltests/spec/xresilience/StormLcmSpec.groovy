@@ -15,6 +15,7 @@ import org.openkilda.functionaltests.helpers.WfmManipulator
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchDbData
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
@@ -96,7 +97,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         flows.each { flow -> flow.validateAndCollectDiscrepancies().isEmpty() }
 
         and: "Database dump"
-        def initialSwitchesDump = switchHelper.dumpAllSwitches()
+        def initialSwitchesDump =  database.dumpAllSwitches().collect { new SwitchDbData((it.data))}
         def initialGraphRelations
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
             initialGraphRelations = database.dumpAllRelations()
@@ -109,7 +110,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         wfmManipulator.restartWfm()
 
         then: "Database nodes and relations are unchanged"
-        def newSwitchesDump = switchHelper.dumpAllSwitches()
+        def newSwitchesDump = database.dumpAllSwitches().collect { new SwitchDbData((it.data))}
         assertThat(newSwitchesDump).containsExactlyInAnyOrder(*initialSwitchesDump)
 
         def graphRelationsAfterWfmRestarting = database.dumpAllRelations()

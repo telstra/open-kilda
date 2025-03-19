@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.yflow.YFlowPathNotSwappedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -88,8 +90,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches passes switch validation"
-        def involvedSwitches = updatedPath.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(updatedPath)
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
         def traffExam = traffExamProvider.get()
@@ -182,8 +184,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches passes switch validation"
-        def involvedSwitches = updatedPathAfterPortDown.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(updatedPathAfterPortDown)
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         when: "Restore port status"
         islHelper.restoreIsl(islToBreak)
@@ -210,7 +212,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches passes switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(updatedPathAfterPortUp.getInvolvedSwitches()).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
     }
 
     @Tags(LOW_PRIORITY)

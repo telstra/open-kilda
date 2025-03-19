@@ -13,6 +13,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchFeature
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -37,14 +38,15 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
     def "System properly handles ISL statuses during connection problems between Floodlights and Kafka"() {
         setup: "All switches that have multiple management floodlights now remain with only 1"
         def updatedRegions = topology.switches.collectEntries{ [(it.dpId): it.regions] }
+        def activeSwitches = switches.all().getListOfSwitches()
         def knockoutData = []
-        topology.switches.eachWithIndex { sw, i ->
-            def rwRegions = flHelper.filterRegionsByMode(sw.regions, RW)
-            def otherRegions = sw.regions - rwRegions
+        activeSwitches.eachWithIndex { switchExtended, i ->
+            def rwRegions = flHelper.filterRegionsByMode(switchExtended.regions, RW)
+            def otherRegions = switchExtended.regions - rwRegions
             def regionToStay = rwRegions[i % rwRegions.size()]
             def regionsToDc = rwRegions - regionToStay
-            knockoutData << [(sw): switchHelper.knockoutSwitch(sw, regionsToDc)]
-            updatedRegions[sw.dpId] = [regionToStay] + otherRegions
+            knockoutData << [(switchExtended.sw): switchExtended.knockout(regionsToDc)]
+            updatedRegions[switchExtended.switchId] = [regionToStay] + otherRegions
         }
         assumeTrue(updatedRegions.values().flatten().unique().size() > 1,
 "Can be run only if there are switches in 2+ regions")
@@ -62,7 +64,9 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
         then: "Non-rtl links between failed region and alive regions fail due to discovery timeout"
         def nonRtlTransitIsls = islsBetweenRegions.findAll { isl ->
-            [isl.srcSwitch, isl.dstSwitch].any { !it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
+            [isl.srcSwitch, isl.dstSwitch].any { sw ->
+                !activeSwitches.find{ sw.dpId == it.switchId}.getDbFeatures().contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
+            }
         }
         def nonRtlShouldFail = task {
             wait(WAIT_OFFSET + discoveryTimeout) {
@@ -76,7 +80,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         double interval = floodlightAliveTimeout * 0.4
         def linksToRemainAlive = topology.islsForActiveSwitches.findAll { !nonRtlTransitIsls.contains(it) }
         timedLoop(floodlightAliveTimeout - interval) {
-            assert northbound.activeSwitches.size() == topology.activeSwitches.size()
+            assert northbound.activeSwitches.size() == activeSwitches.size()
             def isls = northbound.getAllLinks()
             linksToRemainAlive.each { assert islUtils.getIslInfo(isls, it).get().state == IslChangeType.DISCOVERED }
             sleep(500)
@@ -84,8 +88,8 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
         and: "After controller alive timeout switches in broken region become inactive but links are still discovered"
         wait(interval + WAIT_OFFSET) {
-            assert northbound.activeSwitches.size() == topology.activeSwitches.findAll {
-                !updatedRegions[it.dpId].contains(regionToBreak) }.size()
+            assert northbound.activeSwitches.size() == activeSwitches.findAll {
+                !updatedRegions[it.switchId].contains(regionToBreak) }.size()
         }
         linksToRemainAlive.each { assert northbound.getLink(it).state == IslChangeType.DISCOVERED }
 
@@ -103,13 +107,13 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         then: "All links are discovered and switches become active"
         wait(PERIODIC_SYNC_TIME) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-            assert northbound.activeSwitches.size() == topology.activeSwitches.size()
+            assert northbound.activeSwitches.size() == activeSwitches.size()
         }
 
         and: "System is able to successfully create a valid flow between regions"
         def swPair = switchPairs.all().getSwitchPairs().find { pair ->
-            [pair.src, pair.dst].any { updatedRegions[it.dpId].contains(regionToBreak) }  &&
-                    updatedRegions[pair.src.dpId] != updatedRegions[pair.dst.dpId]
+            [pair.src, pair.dst].any { updatedRegions[it.switchId].contains(regionToBreak) }  &&
+                    updatedRegions[pair.src.switchId] != updatedRegions[pair.dst.switchId]
         }
         def flow = flowFactory.getBuilder(swPair).build().sendCreateRequest()
         wait(WAIT_OFFSET * 2) {
@@ -172,32 +176,32 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         wait(floodlightAliveTimeout + WAIT_OFFSET) { assert northbound.activeSwitches.size() == 0 }
 
         and: "Switch loses connection to mgmt controllers"
-        def sw = topology.activeSwitches.first()
-        def knockoutData = lockKeeper.knockoutSwitch(sw, RW)
+        def swToManipulate = switches.all().first()
+        def knockoutData = lockKeeper.knockoutSwitch(swToManipulate.sw, RW)
 
         and: "Controllers restore connection to kafka"
         regions.each { lockKeeper.reviveFloodlight(it) }
         regionsOut = false
 
         then: "System detects that disconnected switch is no longer active"
-        def otherSwitches = topology.activeSwitches.findAll { it.dpId != sw.dpId }
+        def otherSwitches = switches.all().getListOfSwitches().findAll { it.switchId != swToManipulate.switchId }
         wait(WAIT_OFFSET) {
-            assert northbound.activeSwitches*.switchId.sort { it.toLong() } == otherSwitches*.dpId.sort { it.toLong() }
+            assert northbound.activeSwitches*.switchId.sort { it.toLong() } == otherSwitches*.switchId.sort { it.toLong() }
         }
-        northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
+        swToManipulate.getDetails().state == SwitchChangeType.DEACTIVATED
 
         when: "Reconnect the switch back"
-        lockKeeper.reviveSwitch(sw, knockoutData)
+        lockKeeper.reviveSwitch(swToManipulate.sw, knockoutData)
         knockoutData = null
 
         then: "Switch is Active again"
         wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
+            assert swToManipulate.getDetails().state == SwitchChangeType.ACTIVATED
         }
 
         cleanup:
         regionsOut && regions.each { lockKeeper.reviveFloodlight(it) }
-        knockoutData && lockKeeper.reviveSwitch(sw, knockoutData)
+        knockoutData && lockKeeper.reviveSwitch(swToManipulate.sw, knockoutData)
         wait(WAIT_OFFSET) { assert northbound.activeSwitches.size() == topology.activeSwitches.size() }
         wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
             northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED }

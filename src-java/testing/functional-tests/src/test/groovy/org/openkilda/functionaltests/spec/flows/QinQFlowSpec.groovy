@@ -20,7 +20,6 @@ import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.cookie.Cookie
@@ -32,11 +31,10 @@ import org.openkilda.testing.service.traffexam.model.FlowBidirectionalExam
 
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
+import jakarta.inject.Provider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
-
-import jakarta.inject.Provider
 
 @Slf4j
 
@@ -48,13 +46,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     FlowFactory flowFactory
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
 
     @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
-    def "System allows to manipulate with QinQ flow\
-[srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.hwSwString()]#trafficDisclaimer"() {
+    def "System allows to manipulate with QinQ flow #description"() {
         when: "Create a QinQ flow"
         def qinqFlow = flowFactory.getBuilder(swPair)
                 .withSourceVlan(srcVlanId)
@@ -93,8 +87,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Involved switches pass switch validation"
-        def involvedSwitchesFlow1 = qinqFlow.retrieveAllEntityPaths().getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesFlow1).isEmpty()
+        def involvedSwitchesFlow1 = switches.all().findSwitchesInPath(qinqFlow.retrieveAllEntityPaths())
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitchesFlow1).isEmpty()
 
         when: "Create a vlan flow on the same port as QinQ flow"
         def vlanFlow = flowFactory.getBuilder(swPair)
@@ -110,9 +104,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Involved switches pass switch validation"
-        def involvedSwitchesFlow2 = vlanFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        def involvedSwitchesFlow2 = switches.all().findSwitchesInPath(vlanFlow.retrieveAllEntityPaths())
         def involvedSwitchesforBothFlows = (involvedSwitchesFlow1 + involvedSwitchesFlow2).unique()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows).isEmpty()
 
         and: "Both flows are pingable"
         [qinqFlow, vlanFlow].each {
@@ -179,21 +173,17 @@ class QinQFlowSpec extends HealthCheckSpecification {
         [qinqFlow, vlanFlow].each { it && it.delete() }
 
         then: "Flows rules are deleted"
-        def allSwitches = topology.activeSwitches
-        involvedSwitchesforBothFlows.each { swId ->
-            def sw = allSwitches.find { item -> item.dpId == swId }
-            def defaultCookies = sw.defaultCookies
+        involvedSwitchesforBothFlows.each { sw ->
+            def defaultCookies = sw.collectDefaultCookies()
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-                assertThat(switchRulesFactory.get(swId).getRules()*.cookie.toArray()).as(swId.toString())
+                assertThat(sw.rulesManager.getRules()*.cookie.toArray()).as(sw.switchId.toString())
                         .containsExactlyInAnyOrder(*defaultCookies)
             }
         }
 
         and: "Shared rule of flow is deleted"
-        [swPair.src.dpId, swPair.dst.dpId].each { swId ->
-            assert switchRulesFactory.get(swId).getRules().findAll {
-                new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
-            }.empty
+        [swPair.src, swPair.dst].each { sw ->
+            assert sw.rulesManager.getRules().findAll { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW }.empty
         }
 
         where:
@@ -202,13 +192,14 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 [10, 20, 0, 0]],
                 getUniqueSwitchPairs()
         ].combinations().collect { it.flatten() }
-        trafficDisclaimer = swPair.src.traffGens && swPair.dst.traffGens ? "" : " !WARN: No traffic check!"
+        trafficDisclaimer = !swPair.src.traffGenPorts.isEmpty() && !swPair.dst.traffGenPorts.isEmpty() ? "" : " !WARN: No traffic check!"
+        description = "[srcVlan:$srcVlanId, srcInnerVlan:$srcInnerVlanId, dstVlan:$dstVlanId, " +
+                "dstInnerVlan:$dstInnerVlanId, sw: ${swPair.hwSwString()}]$trafficDisclaimer"
     }
 
-    def "System allows to create a single switch QinQ flow\
-[srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.src.hwSwString]#trafficDisclaimer"() {
+    def "System allows to create a single switch QinQ flow #description"() {
         given: "Switch default cookies before flow creation have been collected"
-        def defaultCookies = swPair.src.defaultCookies
+        def defaultCookies = swPair.src.collectDefaultCookies()
 
         when: "Create a single switch QinQ flow"
         def qinqFlow = flowFactory.getBuilder(swPair)
@@ -245,7 +236,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Involved switches pass switch validation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
+        !swPair.src.synchronizeAndCollectFixedDiscrepancies().isPresent()
 
         and: "Traffic examination is successful (if possible)"
         if(!trafficDisclaimer) {
@@ -259,12 +250,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-            assertThat(switchRulesFactory.get(swPair.src.dpId).getRules()*.cookie.toArray())
-                    .containsExactlyInAnyOrder(*defaultCookies)
+            assertThat(swPair.src.rulesManager.getRules().cookie.toArray()).containsExactlyInAnyOrder(*defaultCookies)
         }
-        switchRulesFactory.get(swPair.src.dpId).getRules().findAll {
-            new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
-        }.empty
+        swPair.src.rulesManager.getRules().findAll { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW }.empty
 
         where:
         [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
@@ -272,11 +260,12 @@ class QinQFlowSpec extends HealthCheckSpecification {
                  [10, 20, 0, 0]],
                 getUniqueSwitchPairs(switchPairs.singleSwitch().getSwitchPairs())
         ].combinations().collect { it.flatten() }
-        trafficDisclaimer = swPair.src.traffGens.size() > 1 ? "" : " !WARN: No traffic check!"
+        trafficDisclaimer = swPair.src.traffGenPorts.size() > 1 ? "" : " !WARN: No traffic check!"
+        description = "[srcVlan:$srcVlanId, srcInnerVlan:$srcInnerVlanId, dstVlan:$dstVlanId, dstInnerVlan:$dstInnerVlanId," +
+                " sw:${swPair.src.hwSwString()}]#trafficDisclaimer"
     }
 
-    def "System doesn't allow to create a QinQ flow with incorrect innerVlanIds\
-(src:#srcInnerVlanId, dst:#dstInnerVlanId)"() {
+    def "System doesn't allow to create a QinQ flow with incorrect innerVlanIds (src:#srcInnerVlanId, dst:#dstInnerVlanId)"() {
         given: "A switch pair with enabled multi table mode"
         def swP = switchPairs.all().neighbouring().random()
 
@@ -323,8 +312,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
     def "System allow to create/update/delete a protected QinQ flow via APIv1"() {
         given: "Two switches with enabled multi table mode"
         def swP = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
-        def srcDefaultCookies = swP.src.defaultCookies
-        def dstDefaultCookies = swP.dst.defaultCookies
+        def srcDefaultCookies = swP.src.collectDefaultCookies()
+        def dstDefaultCookies = swP.dst.collectDefaultCookies()
 
         when: "Create a QinQ flow"
         def flowEntity = flowFactory.getBuilder(swP)
@@ -370,18 +359,14 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "Flows rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-            assertThat(switchRulesFactory.get(swP.src.dpId).getRules()*.cookie.toArray())
-                    .containsExactlyInAnyOrder(*srcDefaultCookies)
-            assertThat(switchRulesFactory.get(swP.dst.dpId).getRules()*.cookie.toArray())
-                    .containsExactlyInAnyOrder(*dstDefaultCookies)
+            assertThat(swP.src.rulesManager.getRules()*.cookie.toArray()).containsExactlyInAnyOrder(*srcDefaultCookies)
+            assertThat(swP.dst.rulesManager.getRules()*.cookie.toArray()).containsExactlyInAnyOrder(*dstDefaultCookies)
 
         }
 
         and: "Shared rule of flow is deleted"
-        [swP.src.dpId, swP.dst.dpId].each { swId ->
-            assert switchRulesFactory.get(swId).getRules().findAll {
-                new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
-            }.empty
+        [swP.src, swP.dst].each { sw ->
+            assert sw.rulesManager.getRules().findAll { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW }.empty
         }
     }
 
@@ -484,11 +469,11 @@ class QinQFlowSpec extends HealthCheckSpecification {
     def "System allows to create a single-switch-port QinQ flow\
 (srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
         given: "A switch with enabled multiTable mode"
-        def sw = topology.activeSwitches[0]
-        def defaultCookies = sw.defaultCookies
+        def sw = switches.all().first()
+        def defaultCookies = sw.collectDefaultCookies()
 
         when: "Create a single switch QinQ flow"
-        def qinqFlow = flowFactory.getBuilder(sw, sw, false)
+        def qinqFlow = flowFactory.getSingleSwBuilder(sw,false)
                 .withSourceVlan(srcVlanId)
                 .withSourceInnerVlan(srcInnerVlanId)
                 .withDestinationVlan(dstVlanId)
@@ -515,15 +500,15 @@ class QinQFlowSpec extends HealthCheckSpecification {
         qinqFlow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Involved switches pass switch validation"
-        def involvedSwitches = qinqFlow.retrieveAllEntityPaths().getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(qinqFlow.retrieveAllEntityPaths())
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         when: "Delete the flow"
         qinqFlow.delete()
 
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-            assertThat(switchRulesFactory.get(sw.dpId).getRules()*.cookie.toArray()).as(sw.dpId.toString())
+            assertThat(sw.rulesManager.getRules()*.cookie.toArray()).as(sw.switchId.toString())
                     .containsExactlyInAnyOrder(*defaultCookies)
         }
 
@@ -538,8 +523,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
             @IterationTag(tags=[SMOKE_SWITCHES],
                     iterationNameRegex = /srcVlan:10, srcInnerVlan:20, dstVlan:30, dstInnerVlan:40/)
     ])
-    def "System allows to manipulate with QinQ vxlan flow\
-[srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.hwSwString()]#trafficDisclaimer"() {
+    def "System allows to manipulate with QinQ vxlan flow #description"() {
         when: "Create QinQ vxlan flow"
         def qinqFlow = flowFactory.getBuilder(swPair)
                 .withEncapsulationType(FlowEncapsulationType.VXLAN)
@@ -584,8 +568,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Involved switches pass switch validation"
-        def involvedSwitchesFlow1 = qinqFlow.retrieveAllEntityPaths().getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesFlow1).isEmpty()
+        def involvedSwitchesFlow1 = switches.all().findSwitchesInPath(qinqFlow.retrieveAllEntityPaths())
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitchesFlow1).isEmpty()
 
         when: "Create a vlan flow on the same port as QinQ flow"
         def vlanFlow = flowFactory.getBuilder(swPair)
@@ -602,9 +586,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Involved switches pass switch validation"
-        def involvedSwitchesFlow2 = vlanFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        def involvedSwitchesFlow2 = switches.all().findSwitchesInPath(vlanFlow.retrieveAllEntityPaths())
         def involvedSwitchesforBothFlows = (involvedSwitchesFlow1 + involvedSwitchesFlow2).unique()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows).isEmpty()
 
         and: "Both flows are pingable"
         qinqFlow.pingAndCollectDiscrepancies().isEmpty()
@@ -655,18 +639,17 @@ class QinQFlowSpec extends HealthCheckSpecification {
         [qinqFlow, vlanFlow].each { it.delete() }
 
         then: "Flows rules are deleted"
-        involvedSwitchesforBothFlows.each { swId ->
-            def sw = topology.getActiveSwitches().find { it.dpId == swId }
-            def defaultCookies = sw.defaultCookies
+        involvedSwitchesforBothFlows.each { sw ->
+            def defaultCookies = sw.collectDefaultCookies()
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-                assertThat(switchRulesFactory.get(swId).getRules()*.cookie.toArray()).as(swId.toString())
+                assertThat(sw.rulesManager.getRules()*.cookie.toArray()).as(sw.switchId.toString())
                         .containsExactlyInAnyOrder(*defaultCookies)
             }
         }
 
         and: "Shared rule of flow is deleted"
-        [swPair.src.dpId, swPair.dst.dpId].each { swId ->
-            assert switchRulesFactory.get(swId).getRules().findAll {
+        [swPair.src, swPair.dst].each { sw ->
+            assert sw.rulesManager.getRules().findAll {
                 new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
             }.empty
         }
@@ -680,7 +663,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
                         .withBothSwitchesVxLanEnabled()
                         .getSwitchPairs())
         ].combinations().collect { it.flatten() }
-        trafficDisclaimer = swPair.src.traffGens && swPair.dst.traffGens ? "" : " !WARN: No traffic check!"
+        trafficDisclaimer = !swPair.src.traffGenPorts.isEmpty() && !swPair.dst.traffGenPorts.isEmpty() ? "" : " !WARN: No traffic check!"
+        description = "[srcVlan:$srcVlanId, srcInnerVlan:$srcInnerVlanId, dstVlan:$dstVlanId, dstInnerVlan:$dstInnerVlanId," +
+                " sw:${swPair.hwSwString()}]$trafficDisclaimer"
     }
 
     def "System is able to synchronize switch(flow rules)"() {
@@ -695,13 +680,13 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 .build().create()
 
         when: "Delete all flow rules(ingress/egress/shared) on the src switch"
-        switchHelper.deleteSwitchRules(swP.src.dpId, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
+        swP.src.rulesManager.delete(DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
 
         then: "System detects missing rules on the src switch"
-        def amountOfServer42Rules = switchHelper.getCachedSwProps(swP.src.dpId).server42FlowRtt ? 2 : 0
-        with(switchHelper.synchronizeAndCollectFixedDiscrepancies(swP.src.dpId).get().rules) {
+        def amountOfRules = swP.src.collectFlowRelatedRulesAmount(flow)
+        with(swP.src.synchronize().rules) {
             it.excess.empty
-            it.missing.size() == 3 + amountOfServer42Rules //ingress, egress, shared, server42
+            it.missing.size() == amountOfRules
         }
 
         and: "Flow is valid"
@@ -759,15 +744,15 @@ class QinQFlowSpec extends HealthCheckSpecification {
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "All involved switches pass switch validation"
-        def involvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
     }
 
     @Memoized
     List<SwitchPair> getUniqueSwitchPairs(List<SwitchPair> suitablePairs = switchPairs.all().getSwitchPairs()) {
-        def unpickedUniqueSwitches = topology.activeSwitches.collect { it.hwSwString }.unique(false)
+        def unpickedUniqueSwitches = switches.all().uniqueByHw()*.hwSwString()
         def unpickedSuitableSwitches = unpickedUniqueSwitches.intersect(
-                suitablePairs.collectMany { [it.src.hwSwString, it.dst.hwSwString] }.unique(false))
+                suitablePairs.collectMany { [it.src.hwSwString(), it.dst.hwSwString()] }.unique(false))
         def untestedSwitches = unpickedUniqueSwitches - unpickedSuitableSwitches
         if (untestedSwitches) {
             log.warn("Switches left untested: ${untestedSwitches.inspect()}")
@@ -777,19 +762,19 @@ class QinQFlowSpec extends HealthCheckSpecification {
         while (!unpickedSuitableSwitches.empty) {
             def pairs = suitablePairs.sort(false) { swPair ->
                 def score = 0
-                swPair.src.hwSwString in unpickedSuitableSwitches && score++
-                swPair.dst.hwSwString in unpickedSuitableSwitches && score++
-                if (swPair.src.dpId == swPair.dst.dpId) {
-                    if (swPair.src.traffGens.size() > 1) score++
+                swPair.src.hwSwString() in unpickedSuitableSwitches && score++
+                swPair.dst.hwSwString() in unpickedSuitableSwitches && score++
+                if (swPair.src.switchId == swPair.dst.switchId) {
+                    if (swPair.src.traffGenPorts.size() > 1) score++
                 } else {
-                    if (swPair.src.traffGens && swPair.dst.traffGens) score++
+                    if (!swPair.src.traffGenPorts.isEmpty() && !swPair.dst.traffGenPorts.isEmpty()) score++
                 }
                 return score
             }
             //pick a highest score pair, update list of unpicked switches, re-run
             def pair = pairs.last()
             result << pair
-            unpickedSuitableSwitches = unpickedSuitableSwitches - pair.src.hwSwString - pair.dst.hwSwString
+            unpickedSuitableSwitches = unpickedSuitableSwitches - pair.src.hwSwString() - pair.dst.hwSwString()
         }
         return result
     }

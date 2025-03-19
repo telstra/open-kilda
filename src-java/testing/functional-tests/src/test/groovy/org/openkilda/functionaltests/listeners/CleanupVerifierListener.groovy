@@ -1,11 +1,14 @@
 package org.openkilda.functionaltests.listeners
 
+import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
+
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
+import org.openkilda.functionaltests.helpers.model.Switches
+
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.model.IslStatus
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -45,7 +48,7 @@ class CleanupVerifierListener extends AbstractSpringListener {
     @Autowired
     Database database
     @Autowired
-    SwitchHelper switchHelper
+    Switches switches
 
     @Override
     void afterIteration(IterationInfo iteration) {
@@ -66,15 +69,16 @@ class CleanupVerifierListener extends AbstractSpringListener {
         assert northboundV2.getAllFlows().empty,
                 northboundV2.getAllFlows().each {new ObjectMapper().writeValueAsString(northbound.getFlowHistory(it.getFlowId()))}
         assert northboundV2.getAllHaFlows().isEmpty()
+        def activeSwitches = switches.all().getListOfSwitches()
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert switchHelper.validate(topology.activeSwitches*.dpId).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(activeSwitches).isEmpty()
         }
         withPool {
-            topology.activeSwitches.eachParallel { Switch sw ->
-                def swProps = northbound.getSwitchProperties(sw.dpId)
+            activeSwitches.eachParallel { SwitchExtended swExtended ->
+                def swProps = swExtended.getProps()
                 assert swProps.supportedTransitEncapsulation.sort()
-                        .equals(switchHelper.getCachedSwProps(sw.dpId).supportedTransitEncapsulation.sort())
-                def s42Config = sw.prop
+                        .equals(swExtended.getCachedProps().supportedTransitEncapsulation.sort())
+                def s42Config = swExtended.sw.prop
                 if (s42Config) {
                     assert swProps.server42FlowRtt == s42Config.server42FlowRtt
                     assert swProps.server42Port == s42Config.server42Port

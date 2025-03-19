@@ -1,14 +1,13 @@
 package org.openkilda.functionaltests.helpers.builder
 
-import static org.openkilda.functionaltests.helpers.SwitchHelper.availableVlanList
-import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.availableVlanList
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.randomVlan
 
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.northbound.dto.v2.yflows.SubFlow
 
 import static org.openkilda.functionaltests.helpers.FlowNameGenerator.Y_FLOW
 import static org.openkilda.functionaltests.helpers.StringGenerator.generateDescription
-import static org.openkilda.functionaltests.helpers.SwitchHelper.getRandomAvailablePort
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.TRANSIT_VLAN
 import static org.openkilda.model.PathComputationStrategy.COST
 
@@ -44,23 +43,22 @@ class YFlowBuilder {
         cleanupManager)
 
         yFlow.sharedEndpoint = YFlowSharedEndpoint.builder()
-                .switchId(swT.shared.dpId)
-                .portNumber(getRandomAvailablePort(swT.shared, topologyDefinition, useTraffgenPorts,
-                        busyEndpoints.findAll { it.sw == swT.shared.dpId }*.port))
+                .switchId(swT.shared.switchId)
+                .portNumber(swT.shared.getRandomPortNumber(useTraffgenPorts, busyEndpoints.findAll { it.sw == swT.shared.switchId }*.port))
                 .build()
 
         def subFlows
         //single switch Y-Flow
         if (swT.isSingleSwitch()) {
             busyEndpoints << new SwitchPortVlan(yFlow.sharedEndpoint.switchId, yFlow.sharedEndpoint.portNumber)
-            def epPort = getRandomAvailablePort(swT.shared, topologyDefinition, useTraffgenPorts, busyEndpoints*.port)
-            def availableVlanList = availableVlanList(busyEndpoints*.vlan).shuffled()
+            def epPort = swT.shared.getRandomPortNumber(useTraffgenPorts, busyEndpoints.findAll { it.sw == swT.shared.switchId }*.port)
+            def availableVlanList = availableVlanList(busyEndpoints*.vlan)
             subFlows = [swT.ep1, swT.ep2].collect { sw ->
                 def seVlan = availableVlanList.get(new Random().nextInt(availableVlanList.size()))
                 def ep = SubFlow.builder()
                         .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder().vlanId(seVlan).build())
                         .endpoint(FlowEndpointV2.builder()
-                                .switchId(sw.dpId)
+                                .switchId(sw.switchId)
                                 .portNumber(epPort)
                                 .vlanId(availableVlanList.get(new Random().nextInt(availableVlanList.size())))
                                 .build())
@@ -74,9 +72,8 @@ class YFlowBuilder {
                 def ep = SubFlow.builder()
                         .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder().vlanId(seVlan).build())
                         .endpoint(FlowEndpointV2.builder()
-                                .switchId(sw.dpId)
-                                .portNumber(getRandomAvailablePort(sw, topologyDefinition, useTraffgenPorts,
-                                        busyEndpoints.findAll { it.sw == sw.dpId }*.port))
+                                .switchId(sw.switchId)
+                                .portNumber(sw.getRandomPortNumber(useTraffgenPorts, busyEndpoints.findAll { it.sw == sw.switchId }*.port))
                                 .vlanId(randomVlan(busyEndpoints*.vlan))
                                 .build())
                         .build()

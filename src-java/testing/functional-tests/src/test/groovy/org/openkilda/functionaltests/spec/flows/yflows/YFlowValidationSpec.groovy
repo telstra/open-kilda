@@ -33,12 +33,12 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         def yFlow = yFlowFactory.getRandom(data.swT)
 
         when: "Delete shared Y-Flow rule"
-        def swIdToManipulate = data.swT.shared.dpId
+        def swToManipulate = data.swT.shared
         def sharedMeter = database.getYFlow(yFlow.yFlowId).sharedEndpointMeterId
-        def sharedRules = northbound.getSwitchRules(swIdToManipulate).flowEntries.findAll {
+        def sharedRules = swToManipulate.rulesManager.getRules().findAll {
             it.instructions.goToMeter == sharedMeter.value
         }
-        sharedRules.each { switchHelper.deleteSwitchRules(swIdToManipulate, it.cookie) }
+        sharedRules.each { swToManipulate.rulesManager.delete(it.cookie) }
 
         then: "Y-Flow validate detects discrepancies"
         Wrappers.wait(RULES_DELETION_TIME) { assert !yFlow.validate().asExpected }
@@ -49,7 +49,7 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         }
 
         and: "Switch validation detects missing Y-Flow rule"
-        with(switchHelper.validate(swIdToManipulate).rules) {
+        with(swToManipulate.validate().rules) {
             it.misconfigured.empty
             it.excess.empty
             it.missing.size() == sharedRules.size()
@@ -57,7 +57,7 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         }
 
         when: "Synchronize the shared switch"
-        switchHelper.synchronize(swIdToManipulate, false)
+        swToManipulate.synchronize(false)
 
         then: "Y-Flow/subFlow passes flow validation"
         yFlow.validate().asExpected
@@ -66,7 +66,7 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         }
 
         and: "Switch passes validation"
-        switchHelper.validate(swIdToManipulate).isAsExpected()
+        swToManipulate.validate().isAsExpected()
 
         where:
         data << [
@@ -90,9 +90,9 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         when: "Delete reverse rule of subFlow_1"
         def subFl_1 = yFlow.subFlows[0]
         def subFl_2 = yFlow.subFlows[1]
-        def swIdToManipulate = data.swT.ep1.dpId
+        def swToManipulate = data.swT.ep1
         def cookieToDelete = database.getFlow(subFl_1.flowId).reversePath.cookie.value
-        switchHelper.deleteSwitchRules(swIdToManipulate, cookieToDelete)
+        swToManipulate.rulesManager.delete(cookieToDelete)
 
         then: "Y-Flow is not valid"
         def discrepancies = yFlow.validateAndCollectDiscrepancy()
@@ -119,7 +119,7 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         northbound.validateFlow(subFl_2.flowId).each { direction -> assert direction.asExpected }
 
         and: "Switch validation detects missing reverse rule only for the subFlow_1"
-        with(switchHelper.validate(swIdToManipulate).rules) {
+        with(swToManipulate.validate().rules) {
             it.misconfigured.empty
             it.excess.empty
             it.missing.size() == 1
@@ -138,7 +138,7 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         }
 
         and: "Switches pass validation"
-        switchHelper.validate(swIdToManipulate).isAsExpected()
+        swToManipulate.validate().isAsExpected()
 
         where:
         data << [

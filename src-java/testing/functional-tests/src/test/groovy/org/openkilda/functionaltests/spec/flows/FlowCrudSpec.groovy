@@ -1,6 +1,27 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
+import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
+import static org.openkilda.messaging.payload.flow.FlowState.UP
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
@@ -17,10 +38,9 @@ import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.model.stats.Direction
-import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
@@ -28,7 +48,6 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.ExamReport
 
@@ -39,28 +58,6 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
-
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.MOVED
-import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
-import static org.openkilda.messaging.payload.flow.FlowState.UP
-import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
-import static org.openkilda.model.FlowEncapsulationType.VXLAN
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/crud")
@@ -80,10 +77,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     FlowFactory flowFactory
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
-
 
     @Shared
     def getPortViolationErrorDescriptionPattern = { String endpoint, int port, SwitchId swId ->
@@ -97,17 +90,17 @@ class FlowCrudSpec extends HealthCheckSpecification {
                     iterationNameRegex = /random vlans|no vlans|single-switch flow with vlans/),
             @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /and vlan only on/)
     ])
-    def "Valid #data.description has been created (#verifyTraffic) and no rule discrepancies [#srcDstStr]"() {
+    def "Valid #data.description has been created (#verifyTraffic) and no rule discrepancies [#data.swPairDesc]"() {
         given: "A flow"
         assumeTrue(topology.activeTraffGens.size() >= 2,
                 "There should be at least two active traffgens for test execution")
         def allLinksInfoBefore = northbound.getAllLinks().collectEntries { [it.id, it.availableBandwidth] }.sort()
 
         def flow = expectedFlowEntity.create()
-        def switches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
+        def involvedSwitches = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
 
         expect: "No rule discrepancies on every switch of the flow"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(switches).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         and: "No discrepancies when doing flow validation"
         flow.validateAndCollectDiscrepancies().isEmpty()
@@ -138,7 +131,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         and: "No rule discrepancies on every switch of the flow"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(switches).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         where:
         /*Some permutations may be missed, since at current implementation we only take 'direct' possible flows
@@ -151,7 +144,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         expectedFlowEntity = data.expectedFlowEntity as FlowExtended
         isTrafficCheckAvailable = data.isTrafficCheckAvailable as Boolean
         verifyTraffic = isTrafficCheckAvailable ? "with traffic verification" : " [!NO TRAFFIC CHECK!]"
-        srcDstStr = "src:${topology.find(expectedFlowEntity.source.switchId).hwSwString}->dst:${topology.find(expectedFlowEntity.destination.switchId).hwSwString}"
     }
 
     def "Able to create multiple flows with #data.description"() {
@@ -172,7 +164,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         description           : "same switch-port but vlans on src and dst are swapped",
                         getNotConflictingFlows: {
-                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
                             def expectedFlow1Entity = flowFactory.getBuilder(srcSwitch, dstSwitch).build().tap {
                                 it.source.vlanId == it.destination.vlanId && it.destination.vlanId--
                             }
@@ -188,7 +180,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         description           : "same switch-port but vlans on src and dst are different",
                         getNotConflictingFlows: {
-                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
                             def expectedFlow1Entity = flowFactory.getBuilder(srcSwitch, dstSwitch).build()
                             def expectedFlow2Entity = flowFactory.getBuilder(srcSwitch, dstSwitch)
                                     .withSourcePort(expectedFlow1Entity.source.portNumber)
@@ -202,13 +194,13 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         description           : "vlan-port of new src = vlan-port of existing dst (+ different src)",
                         getNotConflictingFlows: {
-                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
                             def expectedFlow1Entity = flowFactory.getBuilder(srcSwitch, dstSwitch).build()
                             //src for new flow will be on different switch not related to existing flow
                             //thus two flows will have same dst but different src
-                            def newSrc = getTopology().activeSwitches.find {
-                                ![expectedFlow1Entity.source.switchId, expectedFlow1Entity.destination.switchId].contains(it.dpId) &&
-                                        getTopology().getAllowedPortsForSwitch(it).contains(expectedFlow1Entity.destination.portNumber)
+                            def newSrc = switches.all().getListOfSwitches().find {
+                                ![expectedFlow1Entity.source.switchId, expectedFlow1Entity.destination.switchId].contains(it.switchId) &&
+                                        it.getPorts().contains(expectedFlow1Entity.destination.portNumber)
                             }
                             def expectedFlow2Entity = flowFactory.getBuilder(newSrc, dstSwitch)
                                     .withSourceVlan(expectedFlow1Entity.destination.vlanId)
@@ -221,9 +213,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         description           : "vlan-port of new dst = vlan-port of existing src (but different switches)",
                         getNotConflictingFlows: {
-                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
-                            def srcPort = getTopology().getAllowedPortsForSwitch(srcSwitch)
-                                    .intersect(getTopology().getAllowedPortsForSwitch(dstSwitch))[0]
+                            def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
+                            def srcPort = srcSwitch.getPorts().intersect(dstSwitch.getPorts())[0]
 
                             def expectedFlow1Entity = flowFactory.getBuilder(srcSwitch, dstSwitch)
                                     .withSourcePort(srcPort)
@@ -241,7 +232,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         description           : "vlan of new dst = vlan of existing src and port of new dst = port of " +
                                 "existing dst",
                         getNotConflictingFlows: {
-                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
                             def expectedFlow1Entity = flowFactory.getBuilder(srcSwitch, dstSwitch).build()
                             def expectedFlow2Entity = flowFactory.getBuilder(srcSwitch, dstSwitch)
                                     .withDestinationVlan(expectedFlow1Entity.source.vlanId)
@@ -253,7 +244,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         description           : "default and tagged flows on the same port on dst switch",
                         getNotConflictingFlows: {
-                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
                             def expectedFlow1Entity = flowFactory.getBuilder(srcSwitch, dstSwitch).build()
                             def expectedFlow2Entity = flowFactory.getBuilder(srcSwitch, dstSwitch)
                                     .withDestinationVlan(0)
@@ -265,7 +256,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         description           : "default and tagged flows on the same port on src switch",
                         getNotConflictingFlows: {
-                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
                             def expectedFlow1Entity = flowFactory.getBuilder(srcSwitch, dstSwitch).build()
                             def expectedFlow2Entity = flowFactory.getBuilder(srcSwitch, dstSwitch)
                                     .withSourceVlan(0).withSourcePort(expectedFlow1Entity.source.portNumber)
@@ -276,7 +267,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         description           : "tagged and default flows on the same port on dst switch",
                         getNotConflictingFlows: {
-                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
                             def expectedFlow1Entity = flowFactory.getBuilder(srcSwitch, dstSwitch)
                                     .withDestinationVlan(0)
                                     .build()
@@ -289,7 +280,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         description           : "tagged and default flows on the same port on src switch",
                         getNotConflictingFlows: {
-                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
                             def expectedFlow1Entity = flowFactory.getBuilder(srcSwitch, dstSwitch)
                                     .withSourceVlan(0)
                                     .build()
@@ -302,7 +293,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         description           : "default and tagged flows on the same ports on src and dst switches",
                         getNotConflictingFlows: {
-                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
                             def expectedFlow1Entity = flowFactory.getBuilder(srcSwitch, dstSwitch).build()
                             def expectedFlow2Entity = flowFactory.getBuilder(srcSwitch, dstSwitch)
                                     .withSourceVlan(0)
@@ -316,7 +307,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         description           : "tagged and default flows on the same ports on src and dst switches",
                         getNotConflictingFlows: {
-                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
                             def expectedFlow1Entity = flowFactory.getBuilder(srcSwitch, dstSwitch)
                                     .withSourceVlan(0)
                                     .withDestinationVlan(0)
@@ -332,12 +323,13 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "Able to create single switch single port flow with different vlan (#expectedFlowEntity.source.switchId.description)"(FlowExtended expectedFlowEntity) {
+    def "Able to create single switch single port flow with different vlan [#data.description]"() {
         given: "A flow"
         def flow = expectedFlowEntity.create()
+        def swToCheck = switches.all().findSpecific(flow.source.switchId)
 
         expect: "No rule discrepancies on the switch"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.switchId).isPresent()
+        !swToCheck.synchronizeAndCollectFixedDiscrepancies().isPresent()
 
         and: "No discrepancies when doing flow validation"
         flow.validateAndCollectDiscrepancies().isEmpty()
@@ -349,15 +341,16 @@ class FlowCrudSpec extends HealthCheckSpecification {
         !northboundV2.getAllFlows().find { it.flowId == flow.flowId }
 
         and: "No rule discrepancies on the switch after delete"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.switchId).isPresent()
+        !swToCheck.synchronizeAndCollectFixedDiscrepancies().isPresent()
 
         where:
-        expectedFlowEntity << getSingleSwitchSinglePortFlows()
+        data << getSingleSwitchSinglePortFlows()
+        expectedFlowEntity = data.expectedFlowEntity as FlowExtended
     }
 
     def "Able to validate flow with zero bandwidth"() {
         given: "A flow with zero bandwidth"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
         def expectedFlowEntity = flowFactory.getBuilder(srcSwitch, dstSwitch).withBandwidth(0).build()
 
         when: "Create a flow with zero bandwidth"
@@ -370,8 +363,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
         given: "Potential single-switch flow with the same ports and vlans on both sides"
-        def singleSwitch = topology.activeSwitches.first()
-        def invalidFlowEntity = flowFactory.getBuilder(singleSwitch, singleSwitch)
+        def singleSwitch = switches.all().random()
+        def invalidFlowEntity = flowFactory.getSingleSwBuilder(singleSwitch)
                 .withSamePortOnSourceAndDestination()
                 .withSameVlanOnSourceAndDestination().build()
 
@@ -386,7 +379,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     def "Unable to create flow with conflict data (#data.conflict)"() {
         given: "A potential flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
         def expectedFlowEntity = flowFactory.getBuilder(srcSwitch, dstSwitch).build()
 
         and: "Another potential flow with #data.conflict"
@@ -448,7 +441,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "A switch that has no connection to other switches"
         def isolatedSwitch = switchPairs.all().nonNeighbouring().random().src
         SwitchPair switchPair = data.switchPair(isolatedSwitch)
-        def connectedIsls = topology.getRelatedIsls(isolatedSwitch)
+        def connectedIsls = topology.getRelatedIsls(isolatedSwitch.switchId)
         islHelper.breakIsls(connectedIsls)
 
         when: "Try building a flow using the isolated switch"
@@ -458,7 +451,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         then: "Error is returned, stating that there is no path found for such flow"
         def error = thrown(HttpClientErrorException)
         new FlowNotCreatedWithMissingPathExpectedError(
-                ~/Switch ${isolatedSwitch.getDpId()} doesn\'t have links with enough bandwidth/).matches(error)
+                ~/Switch ${isolatedSwitch.switchId} doesn\'t have links with enough bandwidth/).matches(error)
 
         and: "Flow does not exist in the system"
         !northboundV2.getAllFlows().find { it.flowId == invalidFlow.flowId }
@@ -467,7 +460,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         data << [
                 [
                         isolatedSwitchType: "source",
-                        switchPair        : { Switch theSwitch ->
+                        switchPair: { SwitchExtended theSwitch ->
                             return switchPairs.all()
                                     .nonNeighbouring()
                                     .includeSourceSwitch(theSwitch)
@@ -476,7 +469,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 ],
                 [
                         isolatedSwitchType: "destination",
-                        switchPair        : { Switch theSwitch ->
+                        switchPair: { SwitchExtended theSwitch ->
                             return switchPairs.all()
                                     .nonNeighbouring()
                                     .includeSourceSwitch(theSwitch)
@@ -490,8 +483,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
     def "Removing flow while it is still in progress of being set up should not cause rule discrepancies"() {
         given: "A potential flow"
         def switchPair = switchPairs.all().neighbouring().random()
-        def flowExpectedPath = switchPair.retrieveAvailablePaths().min { islHelper.getCost(it.getInvolvedIsls()) }
-        def switchesId = flowExpectedPath.getInvolvedSwitches()
 
         when: "Init creation of a new flow"
         def flow = flowFactory.getBuilder(switchPair).build().sendCreateRequest()
@@ -507,24 +498,15 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "Flow eventually gets into UP state"
         flow.waitForBeingInState(UP)
-        flow.retrieveAllEntityPaths().getInvolvedSwitches().sort() == switchesId.sort()
+        flow.retrieveAllEntityPaths().getInvolvedSwitches().sort() == switchPair.toList().switchId.sort()
 
         and: "All related switches have no discrepancies in rules"
-        switchesId.each {
-            def syncResult = switchHelper.synchronize(it)
+        switchPair.toList().each {
+            def syncResult = it.synchronize()
             assert syncResult.rules.installed.isEmpty() && syncResult.rules.removed.isEmpty()
             assert syncResult.meters.installed.isEmpty() && syncResult.meters.removed.isEmpty()
 
-            def swProps = switchHelper.getCachedSwProps(it)
-            def amountOfServer42Rules = 0
-
-            if (swProps.server42FlowRtt && it in [switchPair.src.dpId, switchPair.dst.dpId]) {
-                amountOfServer42Rules += 1
-                it == switchPair.src.dpId && flow.source.vlanId && ++amountOfServer42Rules
-                it == switchPair.dst.dpId && flow.destination.vlanId && ++amountOfServer42Rules
-            }
-
-            def amountOfFlowRules = 3 + amountOfServer42Rules
+            def amountOfFlowRules = it.collectFlowRelatedRulesAmount(flow)
             assert syncResult.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
         }
     }
@@ -568,7 +550,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Unable to update to a flow with #problem"() {
         given: "A flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
         def flow = flowFactory.getBuilder(srcSwitch, dstSwitch).build().create()
 
         when: "Try to update the flow"
@@ -598,7 +580,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
     @Tags([LOW_PRIORITY])
     def "Unable to partially update to a flow with statistics vlan set to 0 or above 4095"() {
         given: "A flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
         def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
                 .withDestinationVlan(0).build().create()
 
@@ -613,11 +595,12 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
     def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
         given: "An isl"
-        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
+        def swPair = switchPairs.all().neighbouring().withExactlyNIslsBetweenSwitches(1).random()
+        Isl isl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
         assumeTrue(isl as boolean, "Unable to find required isl")
 
         when: "Try to create a flow using isl port"
-        def invalidFlowEntity = flowFactory.getBuilder(isl.srcSwitch, isl.dstSwitch).build()
+        def invalidFlowEntity = flowFactory.getBuilder(swPair).build()
         invalidFlowEntity."$data.switchType".portNumber = isl."$data.port"
         invalidFlowEntity.create()
 
@@ -647,12 +630,13 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to create a flow on an isl port when ISL status is FAILED"() {
         given: "An inactive isl with failed state"
-        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
+        def swPair = switchPairs.all().neighbouring().withExactlyNIslsBetweenSwitches(1).random()
+        Isl isl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
         assumeTrue(isl as boolean, "Unable to find required isl")
         islHelper.breakIsl(isl)
 
         when: "Try to create a flow using ISL src port"
-        def invalidFlowEntity = flowFactory.getBuilder(isl.srcSwitch, isl.dstSwitch).withSourcePort(isl.srcPort).build()
+        def invalidFlowEntity = flowFactory.getBuilder(swPair).withSourcePort(isl.srcPort).build()
         invalidFlowEntity.create()
 
         then: "Flow is not created"
@@ -663,8 +647,15 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {
         given: "An inactive isl with moved state"
-        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
-        assumeTrue(isl as boolean, "Unable to find required isl")
+        Isl isl
+        def swPair = switchPairs.all().neighbouring().getSwitchPairs().find{ pair ->
+            isl = topology.getRelatedIsls(pair.src.switchId).find {
+                it.dstSwitch.dpId == pair.dst.switchId && it.aswitch
+            }
+            isl
+        }
+        assumeTrue(swPair as boolean, "Unable to find swPair with a-switch isl")
+
         def notConnectedIsls = topology.notConnectedIsls
         assumeTrue(notConnectedIsls.size() > 0, "Unable to find non-connected isl")
         def notConnectedIsl = notConnectedIsls.first()
@@ -676,7 +667,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         }
 
         when: "Try to create a flow using ISL src port"
-        def invalidFlowEntity = flowFactory.getBuilder(isl.srcSwitch, isl.dstSwitch).withSourcePort(isl.srcPort).build()
+        def invalidFlowEntity = flowFactory.getBuilder(swPair).withSourcePort(isl.srcPort).build()
         invalidFlowEntity.create()
 
         then: "Flow is not created"
@@ -688,16 +679,16 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
     @Tags(SWITCH_RECOVER_ON_FAIL)
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
         given: "Disconnected switch"
-        def sw = topology.getActiveSwitches()[0]
-        switchHelper.knockoutSwitch(sw, RW)
+        def sw = switches.all().first()
+        sw.knockout(RW)
 
         when: "Try to create a one-switch flow on a deactivated switch"
-        flowFactory.getBuilder(sw, sw).build().create()
+        flowFactory.getSingleSwBuilder(sw, false).build().create()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(
-                ~/Source switch $sw.dpId and Destination switch $sw.dpId are not connected to the controller/).matches(exc)
+                ~/Source switch $sw.switchId and Destination switch $sw.switchId are not connected to the controller/).matches(exc)
     }
 
     def "System allows to CRUD protected flow"() {
@@ -716,16 +707,16 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         flowInfo.statusDetails
 
         and: "Rules for main and protected paths are created"
+        def involvedSwitches = switches.all().findSwitchesInPath(flowPathInfo)
+        def flowDBInfo = flow.retrieveDetailsFromDB()
         wait(WAIT_OFFSET) {
-            HashMap<SwitchId, List<FlowRuleEntity>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
-                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowRuleEntity>>
-            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+            flow.verifyRulesForProtectedFlowOnSwitches(involvedSwitches, flowDBInfo)
         }
 
         and: "Validation of flow must be successful"
         flow.validateAndCollectDiscrepancies().isEmpty()
 
-        def flowInfoFromDb = database.getFlow(flow.flowId)
+        def flowInfoFromDb = flow.retrieveDetailsFromDB()
         def protectedForwardCookie = flowInfoFromDb.protectedForwardPath.cookie.value
         def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
         def protectedFlowPath = flowPathInfo.flowPath.protectedPath.forward
@@ -741,11 +732,10 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         !flowInfoAfterUpdating.statusDetails
 
         and: "Rules for protected path are deleted"
+        def involvedSwitchesInProtectedPath = switches.all().findSpecific(protectedFlowPath.getInvolvedSwitches())
         wait(WAIT_OFFSET) {
-            def cookies = protectedFlowPath.getInvolvedSwitches().unique().collectMany { sw ->
-                switchRulesFactory.get(sw).getRules().findAll {
-                    !new Cookie(it.cookie).serviceFlag
-                }.cookie
+            def cookies = involvedSwitchesInProtectedPath.unique().collectMany { sw ->
+                sw.rulesManager.getNotDefaultRules().cookie
             }
             assert !cookies.contains(protectedForwardCookie) && !cookies.contains(protectedReverseCookie)
         }
@@ -796,8 +786,8 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         given: "Two active switches"
         def swPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().random()
 
-        def initialSrcProps = switchHelper.getCachedSwProps(swPair.src.dpId)
-        switchHelper.updateSwitchProperties(swPair.getSrc(), initialSrcProps.jacksonCopy().tap {
+        def initialSrcProps = swPair.src.getCachedProps()
+        swPair.src.updateProperties(initialSrcProps.jacksonCopy().tap {
             it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
         })
 
@@ -810,7 +800,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        new FlowNotCreatedExpectedError(~/Flow\'s source endpoint ${swPair.getSrc().getDpId()} doesn\'t support \
+        new FlowNotCreatedExpectedError(~/Flow\'s source endpoint ${swPair.src.switchId} doesn\'t support \
 requested encapsulation type ${FlowEncapsulationType.VXLAN.name()}. Choose one of the supported encapsulation \
 types .* or update switch properties and add needed encapsulation type./).matches(exc)
     }
@@ -828,12 +818,12 @@ types .* or update switch properties and add needed encapsulation type./).matche
         wait(PATH_INSTALLATION_TIME) {
             assert flow.retrieveFlowStatus().status == UP
         }
-        def flowInfo = database.getFlow(flow.flowId)
+        def flowInfo = flow.retrieveDetailsFromDB()
         def flowCookies = [flowInfo.forwardPath.cookie.value, flowInfo.reversePath.cookie.value]
-        def switches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
-        withPool(switches.size()) {
-            switches.eachParallel { SwitchId swId ->
-                assert switchRulesFactory.get(swId).getRules().cookie.containsAll(flowCookies)
+        def involvedSws = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
+        withPool(involvedSws.size()) {
+            involvedSws.eachParallel { SwitchExtended sw ->
+                assert sw.rulesManager.getRules().cookie.containsAll(flowCookies)
             }
         }
 
@@ -844,9 +834,9 @@ types .* or update switch properties and add needed encapsulation type./).matche
         wait(RULES_DELETION_TIME) {
             assert !flow.retrieveFlowStatus()
         }
-        withPool(switches.size()) {
-            switches.eachParallel { SwitchId swId ->
-                assert switchRulesFactory.get(swId).getRules().cookie.findAll {
+        withPool(involvedSws.size()) {
+            involvedSws.eachParallel { SwitchExtended sw ->
+                assert sw.rulesManager.getRules().cookie.findAll {
                     def cookie = new Cookie(it)
                     cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES || !cookie.serviceFlag
                 }.empty
@@ -858,7 +848,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags(LOW_PRIORITY)
     def "Able to update a flow endpoint"() {
         given: "Three active switches"
-        def allSwitches = topology.activeSwitches
+        def allSwitches = switches.all().getListOfSwitches()
         assumeTrue(allSwitches.size() >= 3, "Unable to find three active switches")
         def srcSwitch = allSwitches[0]
         def dstSwitch = allSwitches[1]
@@ -868,7 +858,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         when: "Update the flow: port number and vlan id on the src endpoint"
         def flowExpectedEntity = flow.deepCopy().tap {
-            it.source.portNumber = topology.getAllowedPortsForSwitch(srcSwitch).find { it != flow.source.portNumber }
+            it.source.portNumber = srcSwitch.getPorts().find { it != flow.source.portNumber }
             it.source.vlanId = flow.source.vlanId + 1
         }
         def updatedFlow = flow.update(flowExpectedEntity)
@@ -888,10 +878,9 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         and: "Flow rules are recreated"
-        def flowInfoFromDb2 = database.getFlow(flow.flowId)
+        def flowInfoFromDb2 = flow.retrieveDetailsFromDB()
         wait(RULES_INSTALLATION_TIME) {
-            def rules = switchRulesFactory.get(srcSwitch.dpId).getRules()
-                    .findAll { !new Cookie(it.cookie).serviceFlag }
+            def rules = srcSwitch.rulesManager.getRules().findAll {!new Cookie(it.cookie).serviceFlag }
             rules.cookie.findAll { it == flowInfoFromDb2.forwardPath.cookie.value || it == flowInfoFromDb2.reversePath.cookie.value }.size() == 2
 
             def ingressRule = rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }
@@ -905,39 +894,39 @@ types .* or update switch properties and add needed encapsulation type./).matche
         updatedFlow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The src switch passes switch validation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(srcSwitch.getDpId()).isPresent()
+        !srcSwitch.synchronizeAndCollectFixedDiscrepancies().isPresent()
 
         when: "Update the flow: switch id on the dst endpoint"
         def newDstSwitch = allSwitches[2]
-        flowExpectedEntity.destination.switchId = newDstSwitch.dpId
+        flowExpectedEntity.destination.switchId = newDstSwitch.switchId
 
         updatedFlow = updatedFlow.update(flowExpectedEntity)
 
         then: "Flow is really updated"
-        updatedFlow.destination.switchId == newDstSwitch.dpId
+        updatedFlow.destination.switchId == newDstSwitch.switchId
 
         and: "Flow history shows actual info into stateBefore and stateAfter sections"
         def flowHistory2 = updatedFlow.waitForHistoryEvent(FlowActionType.UPDATE)
         with(flowHistory2.dumps.find { it.type == "stateBefore" }) {
-            it.destinationSwitch == dstSwitch.dpId.toString()
+            it.destinationSwitch == dstSwitch.switchId.toString()
         }
         with(flowHistory2.dumps.find { it.type == "stateAfter" }) {
-            it.destinationSwitch == newDstSwitch.dpId.toString()
+            it.destinationSwitch == newDstSwitch.switchId.toString()
         }
 
         and: "Flow rules are removed from the old dst switch"
-        def flowInfoFromDb3 = database.getFlow(flow.flowId)
+        def flowInfoFromDb3 = flow.retrieveDetailsFromDB()
         wait(RULES_DELETION_TIME) {
-            def cookies = switchRulesFactory.get(dstSwitch.dpId).getRules()
-                    .findAll { !new Cookie(it.cookie).serviceFlag }.cookie
-            !cookies.findAll { it == flowInfoFromDb2.forwardPath.cookie.value || it == flowInfoFromDb2.reversePath.cookie.value }
+            def cookies = dstSwitch.rulesManager.getRules()
+                    .findAll {!new Cookie(it.cookie).serviceFlag }.cookie
+            !cookies.findAll { it == flowInfoFromDb2.forwardPath.cookie.value || it == flowInfoFromDb2.reversePath.cookie.value}
         }
 
         and: "Flow rules are installed on the new dst switch"
         wait(RULES_INSTALLATION_TIME) {
-            def cookies = switchRulesFactory.get(newDstSwitch.dpId).getRules()
-                    .findAll { !new Cookie(it.cookie).serviceFlag }.cookie
-            cookies.findAll { it == flowInfoFromDb3.forwardPath.cookie.value || it == flowInfoFromDb3.reversePath.cookie.value }.size() == 2
+            def cookies = newDstSwitch.rulesManager.getRules()
+                    .findAll {!new Cookie(it.cookie).serviceFlag }.cookie
+            cookies.findAll { it == flowInfoFromDb3.forwardPath.cookie.value || it == flowInfoFromDb3.reversePath.cookie.value}.size() == 2
         }
 
         and: "Flow is valid and pingable"
@@ -946,7 +935,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "The new and old dst switches pass switch validation"
         wait(RULES_DELETION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies([dstSwitch.getDpId(), newDstSwitch.getDpId()]).isEmpty()
+            assert validateAndCollectFoundDiscrepancies([dstSwitch, newDstSwitch]).isEmpty()
         }
     }
 
@@ -979,16 +968,17 @@ types .* or update switch properties and add needed encapsulation type./).matche
         flow.retrieveDetails().description == newFlowDesc
 
         and: "All involved switches pass switch validation"
-        def involvedSwitchIds = newFlowPath.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(newFlowPath)
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
     }
 
     def "System doesn't rebuild path for a flow to more preferable path while updating portNumber/vlanId"() {
         given: "Two active switches connected to traffgens with two possible paths at least"
-        def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
+        def switchPair = switchPairs.all().neighbouring().withTraffgensOnBothEnds()
+                .withAtLeastNPaths(2).random()
 
         and: "A flow"
-        def flow = flowFactory.getRandom(switchPair)
+        def flow = flowFactory.getRandom(switchPair, false)
 
         when: "Make the current path less preferable than alternatives"
         def initialFlowPath = flow.retrieveAllEntityPaths()
@@ -1024,9 +1014,9 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         when: "Update the flow: port number and vlanId on the src/dst endpoints"
         flowExpectedEntity.tap {
-            it.source.portNumber = switchPair.getSrc().getTraffGens().first().getSwitchPort()
+            it.source.portNumber = switchPair.src.traffGenPorts.first()
             it.source.vlanId = updatedFlow.source.vlanId - 1
-            it.destination.portNumber = switchPair.getDst().getTraffGens().first().getSwitchPort()
+            it.destination.portNumber = switchPair.dst.traffGenPorts.first()
             it.destination.vlanId = updatedFlow.destination.vlanId - 1
         }
 
@@ -1063,21 +1053,21 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         and: "All involved switches pass switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(initialFlowPath.getInvolvedSwitches()).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(initialFlowPath)
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
     }
 
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
     def "System allows to update single switch flow to multi switch flow"() {
         given: "A single switch flow with enabled lldp/arp on the dst side"
         def swPair = switchPairs.all().neighbouring().random()
-        def flow = flowFactory.getBuilder(swPair.src, swPair.src)
+        def flow = flowFactory.getSingleSwBuilder(swPair.src)
                 .withDetectedDevicesOnDst(true, true).build().create()
 
         when: "Update the dst endpoint to make this flow as multi switch flow"
-        def newPortNumber = topology.getAllowedPortsForSwitch(topology.activeSwitches
-                .find { it.dpId == swPair.dst.dpId }).first()
+        def newPortNumber = swPair.dst.getPorts().first()
         def flowExpectedEntity = flow.deepCopy().tap {
-            it.destination.switchId = swPair.dst.dpId
+            it.destination.switchId = swPair.dst.switchId
             it.destination.portNumber = newPortNumber
         }
         def updatedFlow = flow.update(flowExpectedEntity)
@@ -1090,8 +1080,8 @@ types .* or update switch properties and add needed encapsulation type./).matche
         updatedFlow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "Involved switches pass switch validation"
-        def involvedSwitches = updatedFlow.retrieveAllEntityPaths().getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(updatedFlow.retrieveAllEntityPaths())
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
     }
 
     def "Unable to create a flow with both strict_bandwidth and ignore_bandwidth flags"() {
@@ -1143,8 +1133,8 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags(LOW_PRIORITY)
     def "Able to #method update with empty VLAN stats and non-zero VLANs (#5063)"() {
         given: "A flow with non empty vlans stats and with src and dst vlans set to '0'"
-        def switches = switchPairs.all().random()
-        def flow = flowFactory.getBuilder(switches, false)
+        def swPair = switchPairs.all().random()
+        def flow = flowFactory.getBuilder(swPair, false)
                 .withSourceVlan(0)
                 .withDestinationVlan(0)
                 .withStatistics(new FlowStatistics([1, 2, 3] as Set)).build()
@@ -1163,14 +1153,14 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def actualFlow = flow.retrieveDetails()
         actualFlow.hasTheSamePropertiesAs(expectedFlowEntity)
 
-        def involvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
-        switchHelper.validate(involvedSwitches).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
+        validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
 
         when: "Delete the flow"
         flow.delete()
 
         then: "No excess rules left on the switches (#5141)"
-        switchHelper.validate(involvedSwitches).isEmpty()
+        validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
 
         where:
         method    | updateCall
@@ -1236,8 +1226,8 @@ types .* or update switch properties and add needed encapsulation type./).matche
      */
     @Shared
     def traffgensPrioritized = { SwitchPair switchPair ->
-        [switchPair.src, switchPair.dst].count { Switch sw ->
-            !topology.activeTraffGens.find { it.switchConnected == sw }
+        [switchPair.src, switchPair.dst].count { SwitchExtended sw ->
+            !topology.activeTraffGens.find { it.switchConnected.dpId == sw.switchId }
         }
     }
 
@@ -1250,21 +1240,24 @@ types .* or update switch properties and add needed encapsulation type./).matche
                 .unique { [it.src, it.dst]*.description.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->
-            boolean isTrafficAvailable = switchPair.src in topology.getActiveTraffGens().switchConnected && switchPair.dst in topology.getActiveTraffGens().switchConnected
+            boolean isTrafficAvailable = !switchPair.src.traffGenPorts.isEmpty() && !switchPair.dst.traffGenPorts.isEmpty()
             r << [
-                    description            : "flow without transit switch and with random vlans",
-                    expectedFlowEntity     : flowFactory.getBuilder(switchPair).build(),
-                    isTrafficCheckAvailable: isTrafficAvailable
+                    description: "flow without transit switch and with random vlans",
+                    expectedFlowEntity       : flowFactory.getBuilder(switchPair).build(),
+                    isTrafficCheckAvailable : isTrafficAvailable,
+                    swPairDesc: "src:${switchPair.src.hwSwString()}->dst:${switchPair.dst.hwSwString()}"
             ]
             r << [
-                    description            : "flow without transit switch and without vlans(full port)",
-                    expectedFlowEntity     : flowFactory.getBuilder(switchPair).withSourceVlan(0).withDestinationVlan(0).build(),
-                    isTrafficCheckAvailable: isTrafficAvailable
+                    description: "flow without transit switch and without vlans(full port)",
+                    expectedFlowEntity       : flowFactory.getBuilder(switchPair).withSourceVlan(0).withDestinationVlan(0).build(),
+                    isTrafficCheckAvailable : isTrafficAvailable,
+                    swPairDesc: "src:${switchPair.src.hwSwString()}->dst:${switchPair.dst.hwSwString()}"
             ]
             r << [
-                    description            : "flow without transit switch and vlan only on src",
-                    expectedFlowEntity     : flowFactory.getBuilder(switchPair).withDestinationVlan(0).build(),
-                    isTrafficCheckAvailable: isTrafficAvailable
+                    description: "flow without transit switch and vlan only on src",
+                    expectedFlowEntity       : flowFactory.getBuilder(switchPair).withDestinationVlan(0).build(),
+                    isTrafficCheckAvailable : isTrafficAvailable,
+                    swPairDesc: "src:${switchPair.src.hwSwString()}->dst:${switchPair.dst.hwSwString()}"
             ]
             r
         }
@@ -1279,21 +1272,24 @@ types .* or update switch properties and add needed encapsulation type./).matche
                 .unique { [it.src, it.dst]*.description.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->
-            boolean isTrafficAvailable = switchPair.src in topology.getActiveTraffGens().switchConnected && switchPair.dst in topology.getActiveTraffGens().switchConnected
+            boolean isTrafficAvailable = !switchPair.src.traffGenPorts.isEmpty() && !switchPair.dst.traffGenPorts.isEmpty()
             r << [
-                    description            : "flow with transit switch and random vlans",
-                    expectedFlowEntity     : flowFactory.getBuilder(switchPair).build(),
-                    isTrafficCheckAvailable: isTrafficAvailable
+                    description: "flow with transit switch and random vlans",
+                    expectedFlowEntity       : flowFactory.getBuilder(switchPair).build(),
+                    isTrafficCheckAvailable : isTrafficAvailable,
+                    swPairDesc: "src:${switchPair.src.hwSwString()}->dst:${switchPair.dst.hwSwString()}"
             ]
             r << [
-                    description            : "flow with transit switch and no vlans(full port)",
-                    expectedFlowEntity     : flowFactory.getBuilder(switchPair).withSourceVlan(0).withDestinationVlan(0).build(),
-                    isTrafficCheckAvailable: isTrafficAvailable
+                    description: "flow with transit switch and no vlans(full port)",
+                    expectedFlowEntity       : flowFactory.getBuilder(switchPair).withSourceVlan(0).withDestinationVlan(0).build(),
+                    isTrafficCheckAvailable : isTrafficAvailable,
+                    swPairDesc: "src:${switchPair.src.hwSwString()}->dst:${switchPair.dst.hwSwString()}"
             ]
             r << [
-                    description            : "flow with transit switch and vlan only on dst",
-                    expectedFlowEntity     : flowFactory.getBuilder(switchPair).withSourceVlan(0).build(),
-                    isTrafficCheckAvailable: isTrafficAvailable
+                    description: "flow with transit switch and vlan only on dst",
+                    expectedFlowEntity       : flowFactory.getBuilder(switchPair).withSourceVlan(0).build(),
+                    isTrafficCheckAvailable : isTrafficAvailable,
+                    swPairDesc: "src:${switchPair.src.hwSwString()}->dst:${switchPair.dst.hwSwString()}"
             ]
             r
         }
@@ -1304,30 +1300,33 @@ types .* or update switch properties and add needed encapsulation type./).matche
      * using all unique switch descriptions and OF versions.
      */
     def getSingleSwitchFlows() {
-        topology.getActiveSwitches()
-                .sort { sw -> topology.activeTraffGens.findAll { it.switchConnected == sw }.size() }.reverse()
+        switches.all().getListOfSwitches()
+                .sort { sw -> sw.traffGenPorts.size() }.reverse()
                 .unique { it.description }
                 .inject([]) { r, sw ->
-                    boolean isTrafficAvailable = topology.getActiveTraffGens().findAll { it.switchConnected == sw }.size() == 2
+                    boolean isTrafficAvailable = sw.traffGenPorts.size() == 2
 
                     r << [
-                            description            : "single-switch flow with vlans",
-                            expectedFlowEntity     : flowFactory.getBuilder(sw, sw).build(),
-                            isTrafficCheckAvailable: isTrafficAvailable
+                            description: "single-switch flow with vlans",
+                            expectedFlowEntity       : flowFactory.getSingleSwBuilder(sw).build(),
+                            isTrafficCheckAvailable : isTrafficAvailable,
+                            swPairDesc: "${sw.hwSwString()}"
                     ]
                     r << [
                             description            : "single-switch flow without vlans",
                             // if sw has only one tg than full port flow cannot be created on the same tg_port(conflict)
-                            expectedFlowEntity     : isTrafficAvailable ?
-                                    flowFactory.getBuilder(sw, sw).withSourceVlan(0).withDestinationVlan(0).build() :
-                                    flowFactory.getBuilder(sw, sw, false).withSourceVlan(0).withDestinationVlan(0).build(),
-                            isTrafficCheckAvailable: isTrafficAvailable
+                            expectedFlowEntity       : isTrafficAvailable ?
+                                    flowFactory.getSingleSwBuilder(sw).withSourceVlan(0).withDestinationVlan(0).build() :
+                                    flowFactory.getSingleSwBuilder(sw, false).withSourceVlan(0).withDestinationVlan(0).build(),
+                            isTrafficCheckAvailable : isTrafficAvailable,
+                            swPairDesc: "${sw.hwSwString()}"
 
                     ]
                     r << [
-                            description            : "single-switch flow with vlan only on dst",
-                            expectedFlowEntity     : flowFactory.getBuilder(sw, sw).withSourceVlan(0).build(),
-                            isTrafficCheckAvailable: isTrafficAvailable
+                            description: "single-switch flow with vlan only on dst",
+                            expectedFlowEntity       : flowFactory.getSingleSwBuilder(sw).withSourceVlan(0).build(),
+                            isTrafficCheckAvailable : isTrafficAvailable,
+                            swPairDesc: "${sw.hwSwString()}"
                     ]
                     r
                 }
@@ -1338,10 +1337,11 @@ types .* or update switch properties and add needed encapsulation type./).matche
      * using all unique switch descriptions and OF versions.
      */
     def getSingleSwitchSinglePortFlows() {
-        topology.getActiveSwitches()
-                .unique { it.description }
-                .collect { singleSwitch ->
-                    flowFactory.getBuilder(singleSwitch, singleSwitch).withSamePortOnSourceAndDestination().build()
+        switches.all().unique()
+                .inject([]) { r, singleSwitch ->
+                    r << [
+                            description       : singleSwitch.description,
+                            expectedFlowEntity: flowFactory.getSingleSwBuilder(singleSwitch).withSamePortOnSourceAndDestination().build()]
                 }
     }
 

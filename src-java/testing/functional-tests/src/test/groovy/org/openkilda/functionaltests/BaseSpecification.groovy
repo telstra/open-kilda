@@ -7,6 +7,7 @@ import org.openkilda.functionaltests.helpers.model.KildaConfiguration
 import org.openkilda.functionaltests.helpers.model.FeatureToggles
 import org.openkilda.functionaltests.helpers.model.SwitchPairs
 import org.openkilda.functionaltests.helpers.model.SwitchTriplets
+import org.openkilda.functionaltests.helpers.model.Switches
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 
 import static groovyx.gpars.GParsPool.withPool
@@ -69,6 +70,8 @@ class BaseSpecification extends Specification {
     NorthboundServiceV2 northboundV2
     @Autowired @Shared
     StatsHelper statsHelper
+    @Autowired @Shared
+    Switches switches
     @Autowired @Shared
     SwitchPairs switchPairs
     @Autowired @Shared

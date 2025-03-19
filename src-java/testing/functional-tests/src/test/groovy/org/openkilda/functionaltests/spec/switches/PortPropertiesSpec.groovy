@@ -107,9 +107,9 @@ class PortPropertiesSpec extends HealthCheckSpecification {
     @Tags(ISL_RECOVER_ON_FAIL)
     def "System doesn't discover link when port discovery property is disabled"() {
         given: "A deleted link"
-        def sw = topology.activeSwitches.first()
-        def relatedIsls = topology.getRelatedIsls(sw)
-        def islToManipulate = relatedIsls.first()
+        def srcSw = switches.all().first()
+        def relatedIsls = topology.getRelatedIsls(srcSw.switchId)
+        def islToManipulate = relatedIsls.find{ it.srcSwitch.dpId == srcSw.switchId }
         def isRtl = [islToManipulate.srcSwitch, islToManipulate.dstSwitch]
                 .any { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
 
@@ -134,8 +134,8 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         }
 
         when: "Deactivate/activate src switch"
-        def blockData = switchHelper.knockoutSwitch(sw, RW)
-        switchHelper.reviveSwitch(sw, blockData)
+        def blockData = srcSw.knockout(RW)
+        srcSw.revive(blockData)
 
         then: "Link is still not detected"
         Wrappers.timedLoop(discoveryInterval) {

@@ -19,6 +19,7 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.constants.Status;
 import org.openkilda.saml.service.SamlService;
 
+import jakarta.annotation.security.PermitAll;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +28,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-
 import org.springframework.security.saml2.core.Saml2X509Credential;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
@@ -88,6 +88,7 @@ public abstract class BaseController {
      * @param model the model
      * @throws AccessDeniedException the access denied exception
      */
+    @PermitAll
     @RequestMapping("/401")
     public ModelAndView error(final Model model, HttpServletRequest request) throws AccessDeniedException {
         String referrer = request.getHeader("referer");

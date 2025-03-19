@@ -153,8 +153,8 @@ class PortHistorySpec extends HealthCheckSpecification {
         northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 4
 
         and: "Deactivate the src switch"
-        def switchToDisconnect = isl.srcSwitch
-        switchHelper.knockoutSwitch(switchToDisconnect, RW)
+        def switchToDisconnect = switches.all().findSpecific(isl.srcSwitch.dpId)
+        switchToDisconnect.knockout(RW)
 
         then: "Port history on the src switch is still available"
         northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 4

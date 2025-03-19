@@ -77,12 +77,12 @@ class RoundTripIslSpec extends HealthCheckSpecification {
         given: "A switch with/without round trip latency ISLs"
         def roundTripIsls
         def nonRoundTripIsls
-        def swToDeactivate = topology.activeSwitches.find { sw ->
-            if (sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
-                roundTripIsls = topology.getRelatedIsls(sw).findAll {
+        def swToDeactivate = switches.all().getListOfSwitches().find { sw ->
+            if (sw.getDbFeatures().contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
+                roundTripIsls = topology.getRelatedIsls(sw.switchId).findAll {
                     it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
                 }
-                nonRoundTripIsls = topology.getRelatedIsls(sw).findAll {
+                nonRoundTripIsls = topology.getRelatedIsls(sw.switchId).findAll {
                     !it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
                 }
                 roundTripIsls && nonRoundTripIsls
@@ -90,7 +90,7 @@ class RoundTripIslSpec extends HealthCheckSpecification {
         } ?: assumeTrue(false, "Wasn't able to find a switch with suitable links")
 
         when: "Simulate connection lose between the switch and FL, the switch becomes DEACTIVATED and remains operable"
-        def mgmtBlockData = switchHelper.knockoutSwitch(swToDeactivate, RW)
+        swToDeactivate.knockout(RW)
 
         and: "Wait discoveryTimeout"
         sleep(discoveryTimeout * 1000)
@@ -112,23 +112,15 @@ for ISL alive confirmation)"
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "A round trip latency ISL goes down when both switches lose connection to FL"() {
         given: "A round trip latency ISL"
-        Isl roundTripIsl
-        def srcSwToDeactivate = topology.activeSwitches.find { sw ->
-            if (sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
-                roundTripIsl = topology.getRelatedIsls(sw).find {
-                    it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
-                }
-                roundTripIsl
-            }
-        } ?: assumeTrue(false, "Wasn't able to find a suitable link")
-        def dstSwToDeactivate = roundTripIsl.dstSwitch
+        def swPair = switchPairs.all().neighbouring().withIslRttSupport().first()
+        Isl roundTripIsl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
+        assert roundTripIsl
 
         when: "Switches lose connection to FL, switches become DEACTIVATED but keep processing packets"
-        def mgmtBlockDataSrcSw = switchHelper.knockoutSwitch(srcSwToDeactivate, RW)
-        def mgmtBlockDataDstSw = switchHelper.knockoutSwitch(dstSwToDeactivate, RW)
+        swPair.src.knockout(RW)
+        swPair.dst.knockout(RW)
 
-        then: "The round trip latency ISL is FAILED (because round_trip_status is not available in DB for current ISL \
-on both switches)"
+        then: "The round trip latency ISL is FAILED (because round_trip_status is not available in DB for current ISL on both switches)"
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET / 2) {
             assert northbound.getLink(roundTripIsl).state == FAILED
         }
@@ -138,16 +130,9 @@ on both switches)"
     def "A round trip latency ISL goes down when the src switch lose connection to FL and \
 round trip latency rule is removed on the dst switch"() {
         given: "A round trip latency ISL"
-        Isl roundTripIsl
-        def srcSwToDeactivate = topology.activeSwitches.find { sw ->
-            if (sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
-                roundTripIsl = topology.getRelatedIsls(sw).find {
-                    it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
-                }
-                roundTripIsl
-            }
-        } ?: assumeTrue(false, "Wasn't able to find a suitable link")
-        def dstSw = roundTripIsl.dstSwitch
+        def swPair = switchPairs.all().neighbouring().withIslRttSupport().first()
+        Isl roundTripIsl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
+        assert roundTripIsl
 
         and: "Round trip status is ACTIVE for the given ISL in both directions"
         [roundTripIsl, roundTripIsl.reversed].each {
@@ -155,7 +140,7 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Simulate connection lose between the src switch and FL, switches become DEACTIVATED and remain operable"
-        def mgmtBlockData = switchHelper.knockoutSwitch(srcSwToDeactivate, RW)
+        def mgmtBlockData = swPair.src.knockout(RW)
 
         then: "Round trip status for forward direction is not available and ACTIVE in reverse direction"
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET / 2) {
@@ -164,9 +149,9 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Delete ROUND_TRIP_LATENCY_RULE_COOKIE on the dst switch"
-        switchHelper.deleteSwitchRules(dstSw.dpId, DeleteRulesAction.REMOVE_ROUND_TRIP_LATENCY)
+        swPair.dst.rulesManager.delete(DeleteRulesAction.REMOVE_ROUND_TRIP_LATENCY)
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(dstSw.dpId).get().rules.missing.size() == 1
+            assert swPair.dst.validate().rules.missing.size() == 1
         }
 
         then: "The round trip latency ISL is FAILED"
@@ -182,9 +167,8 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Restore connection between the src switch and FL"
-        switchHelper.reviveSwitch(srcSwToDeactivate, mgmtBlockData)
+        swPair.src.revive(mgmtBlockData)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getSwitch(srcSwToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
             assert northbound.getAllLinks().findAll {
                 it.state == DISCOVERED
             }.size() == topology.islsForActiveSwitches.size() * 2
@@ -200,9 +184,9 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Install ROUND_TRIP_LATENCY_RULE_COOKIE on the dst switch"
-        northbound.installSwitchRules(dstSw.dpId, InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY)
+        swPair.dst.rulesManager.install(InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert !switchHelper.validateAndCollectFoundDiscrepancies(dstSw.dpId).isPresent()
+            assert !swPair.dst.validateAndCollectFoundDiscrepancies().isPresent()
         }
 
         then: "Round trip status is available for the given ISL in both directions"
@@ -215,13 +199,13 @@ round trip latency rule is removed on the dst switch"() {
     @Tags([SMOKE_SWITCHES])
     def "A round trip latency ISL goes down when portDiscovery property is disabled on the src/dst ports"() {
         given: "A round trip latency ISL"
-        Isl roundTripIsl = topology.islsForActiveSwitches.find {
-            it.srcSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) &&
-                    it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
-        } ?: assumeTrue(false, "Wasn't able to find a suitable link")
+        def swPair = switchPairs.all().neighbouring().withIslRttSupport().first()
+        Isl roundTripIsl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
+        assert roundTripIsl
 
         when: "Disable portDiscovery on the srcPort"
-        switchHelper.setPortDiscovery(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort, false)
+        def islSrcPort = swPair.src.getPort(roundTripIsl.srcPort)
+        islSrcPort.setDiscovery(false)
 
         then: "Isl is still DISCOVERED"
         Wrappers.wait(WAIT_OFFSET) {
@@ -235,7 +219,8 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Disable portDiscovery property on the dstPort"
-        switchHelper.setPortDiscovery(roundTripIsl.dstSwitch.dpId, roundTripIsl.dstPort,false)
+        def islDstPort = swPair.dst.getPort(roundTripIsl.dstPort)
+        islDstPort.setDiscovery(false)
 
         then: "Status of the link is changed to FAILED"
         //don't need to wait discoveryTimeout, disablePortDiscovery(on src/dst sides) == portDown
@@ -250,8 +235,8 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Enable portDiscovery on the src/dst ports"
-        switchHelper.setPortDiscovery(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort, true)
-        switchHelper.setPortDiscovery(roundTripIsl.dstSwitch.dpId, roundTripIsl.dstPort, true)
+        islSrcPort.setDiscovery(true)
+        islDstPort.setDiscovery(true)
 
         then: "ISL is rediscovered"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -268,10 +253,9 @@ round trip latency rule is removed on the dst switch"() {
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Able to delete failed ISL without force if it was discovered with disabled portDiscovery on a switch"() {
         given: "A deleted round trip latency ISL"
-        Isl roundTripIsl = topology.islsForActiveSwitches.find {
-            it.srcSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) &&
-                    it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
-        } ?: assumeTrue(false, "Wasn't able to find a suitable link")
+        def swPair = switchPairs.all().neighbouring().withIslRttSupport().first()
+        Isl roundTripIsl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
+        assert roundTripIsl
 
         islHelper.breakIsl(roundTripIsl)
         Wrappers.wait(WAIT_OFFSET) {
@@ -282,7 +266,8 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Disable portDiscovery on the srcPort"
-        switchHelper.setPortDiscovery(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort, false)
+        def islSrcPort = swPair.src.getPort(roundTripIsl.srcPort)
+        islSrcPort.setDiscovery(false)
 
         and: "Revive the ISL back (bring switch port up)"
         islHelper.restoreIsl(roundTripIsl)
@@ -292,7 +277,8 @@ round trip latency rule is removed on the dst switch"() {
 //        switchHelper.synchronizeAndGetFixedEntries([roundTripIsl.srcSwitch, roundTripIsl.dstSwitch]).isEmpty()
 
         when: "Disable portDiscovery on the dstPort"
-        switchHelper.setPortDiscovery(roundTripIsl.dstSwitch.dpId, roundTripIsl.dstPort, false)
+        def islDstPort = swPair.dst.getPort(roundTripIsl.dstPort)
+        islDstPort.setDiscovery(false)
 
         then: "The ISL is failed"
         Wrappers.wait(WAIT_OFFSET) {
