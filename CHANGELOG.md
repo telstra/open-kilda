@@ -1,4 +1,24 @@
 # Changelog
+## v1.163.0 (20/03/2025)
+
+### Bug Fixes:
+-  [#5768](https://github.com/telstra/open-kilda/pull/5768) update actions/cache v2 -> actions/cache v4
+-  [#5774](https://github.com/telstra/open-kilda/pull/5774) Fix/login default user [**gui**]
+
+### Improvements:
+-  [#5762](https://github.com/telstra/open-kilda/pull/5762) [TEST]: Improvement: Switches: New interaction approach: Phase2 [**tests**]
+-  [#5763](https://github.com/telstra/open-kilda/pull/5763) [TEST]: Improvement: Switches: New interaction approach: Phase3 [**tests**]
+-  [#5767](https://github.com/telstra/open-kilda/pull/5767) [TEST]: Improvement: Switches: New interaction approach: Complex Flow [**tests**]
+-  [#5770](https://github.com/telstra/open-kilda/pull/5770) [TEST]: Improvement: Switches: New interaction approach: Regular Flow [**tests**]
+-  [#5771](https://github.com/telstra/open-kilda/pull/5771) fix memory leak for swmanager topology.
+-  [#5775](https://github.com/telstra/open-kilda/pull/5775) [TEST]: Improvement: DB call optimization [**tests**]
+-  [#5759](https://github.com/telstra/open-kilda/pull/5759) [TEST]: Improvement: Switch: New interaction approach [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.162.0...v1.163.0).
+
+---
+
 ## v1.162.0 (22/01/2025)
 
 ### Features:
