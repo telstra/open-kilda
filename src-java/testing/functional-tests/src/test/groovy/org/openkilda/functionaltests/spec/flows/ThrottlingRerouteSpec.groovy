@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -183,8 +184,8 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Flow can be safely deleted while it is in the reroute window waiting for reroute"() {
         given: "A flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowFactory.getRandom(srcSwitch, dstSwitch)
+        def swPair = switchPairs.all().random()
+        def flow = flowFactory.getRandom(swPair)
         def path = flow.retrieveAllEntityPaths()
 
         when: "Init a flow reroute by breaking current path"
@@ -197,8 +198,9 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         !northboundV2.getAllFlows().find { it.flowId == flow.flowId}
 
         and: "Related switches have no excess rules, though need to wait until server42 rules are deleted"
+        def involvedSwitches = switches.all().findSwitchesInPath(path)
         Wrappers.wait(RULES_DELETION_TIME) {
-            switchHelper.validateAndCollectFoundDiscrepancies(path.getInvolvedSwitches()).isEmpty()
+            validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
         }
     }
 

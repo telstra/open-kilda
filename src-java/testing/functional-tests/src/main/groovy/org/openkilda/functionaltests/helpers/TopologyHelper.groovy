@@ -3,11 +3,9 @@ package org.openkilda.functionaltests.helpers
 
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.PathNodePayload
-import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Status
@@ -17,7 +15,6 @@ import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
 
-import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
@@ -64,17 +61,6 @@ class TopologyHelper {
         return new TopologyDefinition(topoSwitches, topoLinks, [], TraffGenConfig.defaultConfig())
     }
 
-
-    Switch getSwitch(SwitchId id) {
-        return topology.getSwitches().find{it.getDpId() == id}
-    }
-
-    int getTraffgenPortBySwitchId(SwitchId id) {
-        return topology.getSwitches().find{it.getDpId() == id}.getTraffGens().first().getSwitchPort()
-    }
-
-
-
     private static Status switchStateToStatus(SwitchChangeType state) {
         switch (state) {
             case SwitchChangeType.ACTIVATED:
@@ -82,10 +68,6 @@ class TopologyHelper {
             default:
                 return Status.Inactive
         }
-    }
-
-    List<List<PathNode>> getDbPathsNodes(SwitchId src, SwitchId dst) {
-        database.getPaths(src, dst)*.path
     }
 
     static List<List<PathNodePayload>> convertToPathNodePayload(List<List<PathNode>> paths) {

@@ -59,7 +59,7 @@ class HaFlowStatSpec extends HealthCheckSpecification {
     def setupSpec() {
         switchTriplet = switchTriplets.all(true, false).withAllDifferentEndpoints()
                 .withTraffgensOnEachEnd().getSwitchTriplets().find {
-            it.ep2.getTraffGens().size() > 1 // needed for update flow test
+            it.ep2.traffGenPorts.size() > 1 // needed for update flow test
         }
         assumeTrue(switchTriplet != null, "No suiting switches found")
         // Flow with low maxBandwidth to make meters to drop packets when traffgens can't generate high load
@@ -152,11 +152,9 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
                 [
                         descr        : "shared port and subflow ports",
                         updateClosure: { HaFlowExtended payload ->
-                            payload.sharedEndpoint.portNumber = topologyHelper.getTraffgenPortBySwitchId(
-                                    payload.sharedEndpoint.switchId)
+                            payload.sharedEndpoint.portNumber = topology.getTraffGen(payload.sharedEndpoint.switchId).switchPort
                             payload.subFlows.each {
-                                it.endpointPort = topologyHelper.getTraffgenPortBySwitchId(
-                                        it.endpointSwitchId)
+                                it.endpointPort = topology.getTraffGen(it.endpointSwitchId).switchPort
                             }
                         }
                 ],
@@ -167,11 +165,11 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
                             def newEp1SwitchId = payload.subFlows.last().endpointSwitchId
                             def newEp2SwitchId = payload.sharedEndpoint.switchId
                             payload.subFlows.first().endpointSwitchId = newEp1SwitchId
-                            payload.subFlows.first().endpointPort = topologyHelper.getTraffgenPortBySwitchId(newEp1SwitchId)
+                            payload.subFlows.first().endpointPort = topology.getTraffGen(newEp1SwitchId).switchPort
                             payload.subFlows.last().endpointSwitchId = newEp2SwitchId
-                            payload.subFlows.last().endpointPort = topologyHelper.getTraffgenPortBySwitchId(newEp2SwitchId)
+                            payload.subFlows.last().endpointPort = topology.getTraffGen(newEp2SwitchId).switchPort
                             payload.sharedEndpoint.switchId = newSharedSwitchId
-                            payload.sharedEndpoint.portNumber = topologyHelper.getTraffgenPortBySwitchId(newSharedSwitchId)
+                            payload.sharedEndpoint.portNumber = topology.getTraffGen(newSharedSwitchId).switchPort
                         }
                 ]
         ]

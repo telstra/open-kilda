@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
+
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -21,7 +23,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
@@ -92,8 +93,9 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         haFlow.validate().asExpected
 
         and: "All involved switches pass switch validation"
-        def allInvolvedSwitchIds = initialPaths.getInvolvedSwitches() + newPaths.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
+        def allInvolvedSwitchIds = switches.all().findSpecific(
+                [initialPaths, newPaths].collectMany { it.getInvolvedSwitches() })
+        synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         and: "Traffic passes through HA-Flow"
         if (swT.isTraffExamAvailable()) {
@@ -159,8 +161,9 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         haFlow.validate().asExpected
 
         and: "All involved switches pass switch validation"
-        def allInvolvedSwitchIds = (initialPaths.getInvolvedSwitches() + newPaths.getInvolvedSwitches()).unique()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
+        def allInvolvedSwitchIds = switches.all().findSpecific(
+                [initialPaths, newPaths].collectMany { it.getInvolvedSwitches() })
+        synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -168,7 +171,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         given: "An HA-flow without alternative paths"
         def swT = switchTriplets.all().withAllDifferentEndpoints().switchTriplets.find {
             def yPoints = it.findPotentialYPoints()
-            yPoints.size() == 1 && yPoints[0] != it.shared.dpId
+            yPoints.size() == 1 && yPoints[0] != it.shared.switchId
         }
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def haFlow = haFlowFactory.getRandom(swT)
@@ -196,6 +199,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches pass switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(initialPaths.getInvolvedSwitches()).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(initialPaths)
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
     }
 }

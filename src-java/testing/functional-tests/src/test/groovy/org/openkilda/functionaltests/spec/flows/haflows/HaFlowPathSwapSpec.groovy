@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows.haflows
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_RAW_BITS
@@ -77,9 +78,9 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         haFlow.validate().asExpected
 
         and: "All involved switches pass switch validation"
-        def involvedSwitches = haFlowPathInfoAfter.getInvolvedSwitches()
+        def involvedSwitches = switches.all().findSwitchesInPath(haFlowPathInfoAfter)
         Wrappers.wait(WAIT_OFFSET) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
         }
 
         and: "Traffic passes through HA-Flow"

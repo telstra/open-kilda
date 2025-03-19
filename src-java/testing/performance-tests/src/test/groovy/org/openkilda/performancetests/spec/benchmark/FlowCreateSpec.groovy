@@ -13,18 +13,19 @@ class FlowCreateSpec extends BaseSpecification {
         def topo = new TopologyBuilder(flHelper.fls,
                 preset.islandCount, preset.regionsPerIsland, preset.switchesPerRegion).buildMeshes()
         topoHelper.createTopology(topo)
-        flowFactory.setTopology(topoHelper.topology)
+        setTopologyInContext(topoHelper.topology)
 
         when: "A source switch"
-        def srcSw = topo.switches.first()
-        def busyPorts = topo.getBusyPortsForSwitch(srcSw)
+        def srcSw = switches.all().first()
+        def busyPorts = srcSw.getServicePorts()
         def allowedPorts = (1..(preset.flowCount + busyPorts.size())) - busyPorts
 
         and: "Create flows"
         List<FlowExtended> flows = []
         List<SwitchPortVlan> busyEndpoints = []
         allowedPorts.each { port ->
-            def flow = flowFactory.getBuilder(srcSw, pickRandom(topo.switches - srcSw), false, busyEndpoints)
+            def dstSw = pickRandom(switches.all().getListOfSwitches() - srcSw)
+            def flow = flowFactory.getBuilder(srcSw, dstSw, false, busyEndpoints)
                     .withProtectedPath(false)
                     .withSourcePort(port).build()
                     .create()

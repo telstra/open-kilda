@@ -149,7 +149,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         def isl = yFlowPath.getInvolvedIsls().first()
 
         and: "Switch pair has been selected based on Y-Flow used Isl"
-        def switchPair = switchPairs.all().specificPair(isl.srcSwitch, isl.dstSwitch)
+        def switchPair = switchPairs.all().specificPair(isl.srcSwitch.dpId, isl.dstSwitch.dpId)
 
         and: "Create Flow going through selected switch pair"
         def flow = flowFactory.getRandom(switchPair)
@@ -197,7 +197,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
 
         and: "Make only one alternative path available for both flows"
         def flow1ActualIsl = flow1Path.getInvolvedIsls().first()
-        def altIsls = topology.getRelatedIsls(switchPair.src) - flow1ActualIsl
+        def altIsls = topology.getRelatedIsls(switchPair.src.switchId) - flow1ActualIsl
         /* altIsls can have only 1 element (the only one alt ISL).
         In this case it will be set under maintenance mode, and breaking the other
         alternative ISLs will be skipped: "altIsls - altIsls.first()" will be empty. */

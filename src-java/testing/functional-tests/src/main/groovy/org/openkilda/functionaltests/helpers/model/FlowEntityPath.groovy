@@ -49,6 +49,30 @@ class FlowEntityPath {
         switches.findAll().unique()
     }
 
+    List<SwitchId> getMainPathSwitches(Direction direction = Direction.FORWARD){
+        getPathInvolvedSwitches(flowPath.path, direction)
+    }
+
+    List<SwitchId> getProtectedPathSwitches(Direction direction = Direction.FORWARD){
+        getPathInvolvedSwitches(flowPath.protectedPath, direction)
+    }
+
+    List<SwitchId> getMainPathTransitSwitches(Direction direction = Direction.FORWARD){
+        getTransitSwitches(flowPath.path, direction)
+    }
+
+    List<SwitchId> getProtectedPathTransitSwitches(Direction direction = Direction.FORWARD){
+        getTransitSwitches(flowPath.protectedPath, direction)
+    }
+
+    private List<SwitchId> getPathInvolvedSwitches(PathModel path, Direction direction) {
+        direction == Direction.FORWARD ? path.forward.getInvolvedSwitches() : path.reverse.getInvolvedSwitches()
+    }
+
+    private List<SwitchId> getTransitSwitches(PathModel path, Direction direction = Direction.FORWARD) {
+        direction == Direction.FORWARD ? path.forward.getTransitInvolvedSwitches() : path.reverse.getTransitInvolvedSwitches()
+    }
+
     List<PathNode> getPathNodes(Direction direction = Direction.FORWARD, boolean isProtected = false) {
         PathModel path = isProtected ? flowPath.protectedPath : flowPath.path
         getPathInvolvedNodes(path, direction)

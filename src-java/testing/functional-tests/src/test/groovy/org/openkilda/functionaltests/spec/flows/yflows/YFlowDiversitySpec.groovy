@@ -157,11 +157,11 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "Simple multiSwitch flow"
-        def flow = flowFactory.getRandom(switchPair.src, switchPair.dst, false)
+        def flow = flowFactory.getRandom(switchPair, false)
 
         when: "Create a Y-Flow with one switch sub flow and diversity with simple flow"
         def swT = switchTriplets.all(true, true)
-                .findSpecificSwitchTriplet(switchPair.src.dpId, switchPair.src.dpId, switchPair.dst.dpId)
+                .findSpecificSwitchTriplet(switchPair.src, switchPair.src, switchPair.dst)
         def yFlow = yFlowFactory.getBuilder(swT, false).withDiverseFlow(flow.flowId).build().create()
 
         then: "Create response contains information about diverse flow"
@@ -251,13 +251,11 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def yFlow1 = yFlowFactory.getRandom(swT, false)
 
         and: "Create one-switch y-flows on shared and ep1 switches in the same diversity group"
-        def swTAllAsSharedSw = switchTriplets.all(true, true)
-                .findSpecificSwitchTriplet(swT.shared.dpId, swT.shared.dpId, swT.shared.dpId)
+        def swTAllAsSharedSw = switchTriplets.all(true, true).withSpecificSingleSwitch(swT.shared.sw)
         def yFlow2 = yFlowFactory.getBuilder(swTAllAsSharedSw, false, yFlow1.occupiedEndpoints())
                 .withDiverseFlow(yFlow1.yFlowId).build().create()
 
-        def swTAllAsEp1 = switchTriplets.all(true, true)
-                .findSpecificSwitchTriplet(swT.ep1.dpId, swT.ep1.dpId, swT.ep1.dpId)
+        def swTAllAsEp1 = switchTriplets.all(true, true).withSpecificSingleSwitch(swT.ep1.sw)
         def yFlow3 = yFlowFactory.getBuilder(swTAllAsEp1, false, yFlow1.occupiedEndpoints() + yFlow2.occupiedEndpoints())
                 .withDiverseFlow(yFlow1.yFlowId).build().create()
 

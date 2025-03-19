@@ -67,9 +67,10 @@ class StormHeavyLoadSpec extends HealthCheckSpecification {
         }
 
         then: "Still able to create and delete flows while Storm is swallowing the messages"
+        def src = switches.all().findSpecific(topology.islsForActiveSwitches[1].srcSwitch.dpId)
+        def dst = switches.all().findSpecific( topology.islsForActiveSwitches[1].dstSwitch.dpId)
         def checkFlowCreation = {
-            def flow = flowFactory.getBuilder(topology.islsForActiveSwitches[1].srcSwitch,
-                    topology.islsForActiveSwitches[1].dstSwitch).build()
+            def flow = flowFactory.getBuilder(src, dst).build()
             flow.create()
             flow.delete()
             sleep(500)

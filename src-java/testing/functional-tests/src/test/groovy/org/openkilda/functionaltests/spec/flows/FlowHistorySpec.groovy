@@ -5,28 +5,24 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.model.FlowStatusHistoryEvent.DELETED
 import static org.openkilda.functionaltests.helpers.model.FlowStatusHistoryEvent.UP
+import static org.openkilda.model.SwitchFeature.*
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.HistoryMaxCountExpectedError
 import org.openkilda.functionaltests.error.InvalidRequestParametersExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.FlowHistory
 import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
-import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.history.FlowHistoryEntry
-import org.openkilda.model.SwitchFeature
 import org.openkilda.model.history.FlowEvent
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.tools.SoftAssertions
 
 import com.github.javafaker.Faker
@@ -79,8 +75,8 @@ class FlowHistorySpec extends HealthCheckSpecification {
 
     def "History records are created for the create/update actions using custom timeline"() {
         when: "Create a flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
+        def switchPair = switchPairs.all().random()
+        def flow = flowFactory.getBuilder(switchPair)
         //set non default values
                 .withIgnoreBandwidth(true)
                 .withPeriodicPing(true)
@@ -196,8 +192,8 @@ class FlowHistorySpec extends HealthCheckSpecification {
 
     def "History records are created for the create/update actions using default timeline"() {
         when: "Create a flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowFactory.getRandom(srcSwitch, dstSwitch)
+        def switchPair = switchPairs.all().random()
+        def flow = flowFactory.getRandom(switchPair)
 
         then: "History record is created"
         flow.waitForHistoryEvent(FlowActionType.CREATE)
@@ -228,8 +224,8 @@ class FlowHistorySpec extends HealthCheckSpecification {
 
     def "History records are created for the partial update actions #partialUpdateType"() {
         given: "Flow has been created"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
+        def switchPair = switchPairs.all().random()
+        def flow = flowFactory.getBuilder(switchPair)
                 .withPathComputationStrategy(PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH).build()
                 .create()
 
@@ -348,24 +344,14 @@ class FlowHistorySpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY, SWITCH_RECOVER_ON_FAIL])
     def "Root cause is registered in flow history while rerouting"() {
         given: "An active flow"
-        Switch srcSwitch
-        Switch dstSwitch
-        topology.islsForActiveSwitches.find { isl ->
-            srcSwitch = isl.srcSwitch
-            dstSwitch = isl.dstSwitch
-            [isl.srcSwitch, isl.dstSwitch].any { !it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
+        def switchPair = switchPairs.all().getSwitchPairs().find {
+            it.src.getDbFeatures().contains(NOVIFLOW_COPY_FIELD)
+                    || it.dst.getDbFeatures().contains(NOVIFLOW_COPY_FIELD)
         } ?: assumeTrue(false, "Wasn't able to find a suitable link")
-        def flow = flowFactory.getRandom(srcSwitch, dstSwitch)
+        def flow = flowFactory.getRandom(switchPair)
 
-        when: "Deactivate the src switch"
-        switchHelper.knockoutSwitch(srcSwitch, RW)
-
-        and: "Related ISLs are FAILED"
-        def isls = topology.getRelatedIsls(srcSwitch)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET / 2) {
-            def allIsls = northbound.getAllLinks()
-            isls.each { assert islUtils.getIslInfo(allIsls, it).get().actualState == IslChangeType.FAILED }
-        }
+        when: "Deactivate the src switch and wait for links to change their state to FAILED"
+        switchPair.src.knockout(RW, true)
 
         then: "Flow goes DOWN"
         flow.waitForBeingInState(FlowState.DOWN)
@@ -383,8 +369,8 @@ class FlowHistorySpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "History records are created for the create/update actions using custom timeline [v1 api]"() {
         when: "Create a flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowFactory.getRandomV1(srcSwitch, dstSwitch)
+        def switchPair = switchPairs.all().random()
+        def flow = flowFactory.getRandomV1(switchPair)
         flow.waitForHistoryEvent(FlowActionType.CREATE)
 
         then: "History record is created"

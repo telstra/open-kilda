@@ -3,18 +3,18 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.randomVlan
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.CLASS
 import static org.openkilda.messaging.payload.flow.FlowState.UP
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
 import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.model.FlowPathDirection
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 
@@ -46,9 +46,9 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     @Autowired
     FlowFactory flowFactory
     @Shared
-    Switch switchFlowGoesThrough
+    SwitchExtended switchFlowGoesThrough
     @Shared
-    Switch switchProtectedPathGoesThrough
+    SwitchExtended switchProtectedPathGoesThrough
 
     def setupSpec() {
         /* Topology used to test features in this spec looks like this:
@@ -61,7 +61,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
          */
         switchTriplet = switchTriplets.all(true, false).nonNeighbouring().getSwitchTriplets().find {
             def yPoints = it.findPotentialYPoints()
-            yPoints[0] != it.shared.dpId
+            yPoints[0] != it.shared.switchId
         }
         assumeTrue(switchTriplet != null, "Couldn't find appropriate switch triplet")
 
@@ -75,9 +75,8 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
 
         //sub-flow2 ends on the switch that is not used by the sub-flow1 and regular flow
         yFlowSubFlow2Id = yFlow.subFlows.find { it.flowId != yFlowSubFlow1Id }.flowId
-        def flowDstSwitch = topology.activeSwitches.find {
-            it.dpId == yFlow.subFlows.find { it.flowId == yFlowSubFlow1Id }.endpoint.switchId
-        }
+        def flowDstSwitch = switches.all().findSpecific(yFlow.subFlows
+                .find { it.flowId == yFlowSubFlow1Id }.endpoint.switchId)
 
         switchPair = switchPairs.all().specificPair(switchTriplet.shared, flowDstSwitch)
         flow = flowFactory.getBuilder(switchPair, false)
@@ -85,8 +84,8 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
                 .build().create(UP, CLASS)
         flowId = flow.flowId
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        switchFlowGoesThrough =  topology.activeSwitches.find { it.dpId == flowPathInfo.flowPath.path.forward.transitInvolvedSwitches.first() }
-        switchProtectedPathGoesThrough =  topology.activeSwitches.find { it.dpId == flowPathInfo.flowPath.protectedPath.forward.transitInvolvedSwitches.first() }
+        switchFlowGoesThrough =  switches.all().findSpecific(flowPathInfo.getMainPathTransitSwitches().first())
+        switchProtectedPathGoesThrough =  switches.all().findSpecific(flowPathInfo.getProtectedPathTransitSwitches().first())
     }
 
     @Tags([SMOKE])
@@ -96,13 +95,13 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         def usedPortsList = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == yFlowSubFlow2Id }
                 .collect {
                     (it.path.forward.getNodes().nodes + it?.protectedPath?.forward?.getNodes()?.nodes)
-                            .findAll { it?.switchId == switchTriplet.shared.dpId }.portNo
+                            .findAll { it?.switchId == switchTriplet.shared.switchId }.portNo
                 }.flatten()
 
         def sharedEpPort = yFlow.sharedEndpoint.portNumber
 
         when: "Get all flows on the switch ports used by subflow under test"
-        def response = switchHelper.getFlowsV2(switchTriplet.shared, usedPortsList)
+        def response = switchTriplet.shared.getFlowsV2(usedPortsList as List<Integer>)
 
         then: "Each port in response has information about subflow"
         response.flowsByPort.every {
@@ -120,10 +119,10 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         def switchWithOnlyOneSubFlow = switchPair.dst == switchTriplet.ep1 ? switchTriplet.ep2 : switchTriplet.ep1
 
         def usedPortsList = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == yFlowSubFlow2Id }
-                .collect { it.path.forward.retrieveNodes().findAll { it.switchId == switchWithOnlyOneSubFlow.dpId }.portNo }.flatten()
+                .collect { it.path.forward.retrieveNodes().findAll { it.switchId == switchWithOnlyOneSubFlow.switchId }.portNo }.flatten()
 
         when: "Get all flows on the switch ports used by subflow under test"
-        def response = switchHelper.getFlowsV2(switchWithOnlyOneSubFlow, usedPortsList)
+        def response = switchWithOnlyOneSubFlow.getFlowsV2(usedPortsList as List<Integer>)
 
         then: "Each port in response has information about the subflow"
         response.flowsByPort.every {
@@ -134,13 +133,13 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     def "System allows to get a flow that #switchRole switch"() {
         given: "Flow that #switchRole switch"
         when: "Get all flows going through the switch"
-        def flows = switchHelper.getFlowsV2(switchUnderTest, [])
+        def flows = sw.getFlowsV2()
 
         then: "The created flows (including both y-flow subflows) are in the response list from the switch"
         flows.flowsByPort.collectMany { it.value.flowId }.unique().sort() == [flowId, yFlowSubFlow1Id, yFlowSubFlow2Id].sort()
 
         where:
-        switchRole      | switchUnderTest
+        switchRole      | sw
         "flows through" | switchFlowGoesThrough
         "starts from"   | switchPair.src
         "ends on"       | switchPair.dst
@@ -149,7 +148,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     def "System allows to get a flow which protected path that goes through switch"() {
         given: "Flow which protected path goes through switch"
         when: "Get all flows going through the switch"
-        def flows = switchHelper.getFlowsV2(switchProtectedPathGoesThrough, [])
+        def flows = switchProtectedPathGoesThrough.getFlowsV2()
 
         then: "The flow's protected path is in the response list from the switch"
         flows.flowsByPort.collectMany { it.value.flowId }.unique() == [flowId]
@@ -158,44 +157,40 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Mirror sink endpoint port is not listed in list of the ports used"() {
         given: "Switch with flow on it and a free port"
-        def switchUnderTest = switchPair.getDst()
-        def usedPortsList = switchHelper.getUsedPorts(switchUnderTest.dpId)
-        def freePort = (new ArrayList<>(1..1000).asList()
-                - usedPortsList
-                - topology.getBusyPortsForSwitch(switchUnderTest)).first()
+        def usedPortsList = switchPair.dst.getUsedPorts()
+        def freePort = (new ArrayList<>(1..1000).asList() - usedPortsList - switchPair.dst.islPorts).first()
 
         when: "Create mirror point on switch with sink pointing to free port"
         flow.createMirrorPoint(
-                switchUnderTest.dpId, freePort, randomVlan(),
+                switchPair.dst.switchId, freePort, randomVlan(),
                 FlowPathDirection.REVERSE
         )
 
         then: "Mirror sink endpoint port is not listed in the ports list"
-        switchHelper.getFlowsV2(switchUnderTest, [freePort]).getFlowsByPort().isEmpty()
+        switchPair.dst.getFlowsV2([freePort]).getFlowsByPort().isEmpty()
     }
 
     @Tags([LOW_PRIORITY])
     def "Empty list is returned if none of requested ports is busy with any flow"() {
         given: "Switch with flow on it and ports this flow uses"
-        def switchUnderTest = switchPair.dst
-        def usedPortsList = switchHelper.getUsedPorts(switchUnderTest.dpId)
+        def usedPortsList = switchPair.dst.getUsedPorts()
 
         when: "Request flows on several unused ports"
         def unusedPortsList = new ArrayList<>(1..1000).asList() - usedPortsList
 
         then: "Response is empty, but without errors"
-        switchHelper.getFlowsV2(switchUnderTest, unusedPortsList.subList(0, 3)).getFlowsByPort().isEmpty()
+        switchPair.dst.getFlowsV2(unusedPortsList.subList(0, 3)).getFlowsByPort().isEmpty()
     }
 
     @Tags([LOW_PRIORITY])
     def "One-switch Y-Flow subflows are listed in flows list"() {
         given: "One switch Y-Flow"
         def swT = switchTriplets.all(false, true)
-                .withSpecificSingleSwitch(switchProtectedPathGoesThrough)
+                .withSpecificSingleSwitch(switchProtectedPathGoesThrough.sw)
         def yFlow = yFlowFactory.getRandom(swT, false)
 
         when: "Request flows on switch"
-        def flows = switchHelper.getFlowsV2(switchProtectedPathGoesThrough, [])
+        def flows = switchProtectedPathGoesThrough.getFlowsV2()
 
         then: "Ports used by subflows on the switch are in response"
         flows.flowsByPort.collectMany { it.value }*.flowId

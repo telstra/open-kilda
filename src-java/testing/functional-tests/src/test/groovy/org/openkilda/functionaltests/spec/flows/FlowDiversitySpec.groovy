@@ -4,7 +4,7 @@ import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.SwitchHelper.getRandomAvailablePort
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.messaging.payload.flow.FlowState.UP
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -221,7 +221,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def flow1Path = flow1.retrieveAllEntityPaths().getPathNodes()
 
         and: "Make all alternative paths unavailable (bring ports down on the source switch)"
-        def broughtDownIsls = topology.getRelatedIsls(switchPair.getSrc())
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src.switchId)
                 .findAll {it.srcPort != flow1Path.first().portNo}
         islHelper.breakIsls(broughtDownIsls)
 
@@ -331,7 +331,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         cleanup:
         //https://github.com/telstra/open-kilda/issues/5221
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
+        synchronizeAndCollectFixedDiscrepancies(switchPair.toList())
     }
 
     @Tags([LOW_PRIORITY])
@@ -347,8 +347,8 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         when: "Update the second flow to become diverse and single-switch"
        def updatedFlow2 = flow2.update(flow2.deepCopy().tap {
             it.diverseWith = [flow1.flowId]
-            it.destination.switchId = switchPair1.src.dpId
-            it.destination.portNumber = getRandomAvailablePort(switchPair1.src, topologyDefinition, false,
+            it.destination.switchId = switchPair1.src.switchId
+            it.destination.portNumber = switchPair1.src.getRandomPortNumber(false,
                     [flow1.source.portNumber, flow2.source.portNumber])
         })
         updatedFlow2.waitForHistoryEvent(FlowActionType.UPDATE)

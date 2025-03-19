@@ -88,25 +88,25 @@ class PathsSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Unable to get paths for non-existing switch"() {
         when: "Try to get paths between #problemDescription"
-        def switchPair = SwitchPair.withNonExistingDstSwitch(topology.getSwitches().first(), northbound)
+        def switchPair = SwitchPair.withNonExistingDstSwitch(switches.all().first(), northbound)
         switchPair.getPathsFromApi()
 
         then:
         "Get error because request is invalid"
         def exc = thrown(HttpClientErrorException)
-        new SwitchNotFoundExpectedError(switchPair.dst.dpId, ~/Switch not found./).matches(exc)
+        new SwitchNotFoundExpectedError(switchPair.dst.switchId, ~/Switch not found./).matches(exc)
     }
 
     @Tags(LOW_PRIORITY)
     def "Unable to get paths for one switch"() {
         when: "Try to get paths between #problemDescription"
-        def switchPair = SwitchPair.singleSwitchInstance(topology.getSwitches().first(), northbound)
+        def switchPair = SwitchPair.singleSwitchInstance(switches.all().first(), northbound)
         switchPair.getPathsFromApi()
 
         then:
         "Get error because request is invalid"
         def exc = thrown(HttpClientErrorException)
-        new PathsNotReturnedExpectedError("Source and destination switch IDs are equal: '${switchPair.src.dpId}'", ~/Bad request./).matches(exc)
+        new PathsNotReturnedExpectedError("Source and destination switch IDs are equal: '${switchPair.src.switchId}'", ~/Bad request./).matches(exc)
 
     }
 
@@ -129,15 +129,13 @@ parameter. If max_latency will be equal to 0 LATENCY strategy will be used inste
     def "Unable to get a path for a 'vxlan' flowEncapsulationType when switches do not support it"() {
         given: "Two active not supported 'vxlan' flowEncapsulationType switches"
         def switchPair = switchPairs.all().random()
-        Map<Switch, SwitchPropertiesDto> initProps = [switchPair.src, switchPair.dst].collectEntries {
-            [(it): switchHelper.getCachedSwProps(it.dpId)]
-        }
-        initProps.each { sw, swProp ->
-            switchHelper.updateSwitchProperties(sw, swProp.jacksonCopy().tap {
+        [switchPair.src, switchPair.dst].each { sw ->
+            def swProp = sw.getCachedProps()
+            sw.updateProperties(swProp.jacksonCopy().tap {
                 it.supportedTransitEncapsulation = [TRANSIT_VLAN.toString()]
             })
         }
-        def encapsTypesWithoutVxlan = northbound.getSwitchProperties(switchPair.src.dpId)
+        def encapsTypesWithoutVxlan = switchPair.src.getProps()
                 .supportedTransitEncapsulation.collect { it.toString().toUpperCase() }
 
         when: "Try to get a path for a 'vxlan' flowEncapsulationType between the given switches"
@@ -145,7 +143,7 @@ parameter. If max_latency will be equal to 0 LATENCY strategy will be used inste
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        new PathsNotReturnedExpectedError("Switch $switchPair.src.dpId doesn't support $VXLAN " +
+        new PathsNotReturnedExpectedError("Switch $switchPair.src.switchId doesn't support $VXLAN " +
                 "encapsulation type. Choose one of the supported encapsulation types $encapsTypesWithoutVxlan or " +
                 "update switch properties and add needed encapsulation type.", ~/Bad request./).matches(exc)
 

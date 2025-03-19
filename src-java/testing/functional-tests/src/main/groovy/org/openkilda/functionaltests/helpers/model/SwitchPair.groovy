@@ -2,11 +2,8 @@ package org.openkilda.functionaltests.helpers.model
 
 import static org.openkilda.functionaltests.helpers.TopologyHelper.convertToPathNodePayload
 
-import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -23,37 +20,43 @@ import static org.openkilda.testing.service.northbound.payloads.PathRequestParam
 @TupleConstructor
 @EqualsAndHashCode
 class SwitchPair {
-    Switch src
-    Switch dst
+    SwitchExtended src
+    SwitchExtended dst
     List<List<PathNode>> paths
     @JsonIgnore
     NorthboundService northboundService
     @JsonIgnore
     TopologyDefinition topologyDefinition
 
-    static SwitchPair singleSwitchInstance(Switch sw, NorthboundService northboundService = null) {
+    static SwitchPair singleSwitchInstance(SwitchExtended sw, NorthboundService northboundService = null) {
         new SwitchPair(src: sw, dst: sw, paths: [], northboundService: northboundService, topologyDefinition: null)
     }
 
-    static SwitchPair withNonExistingDstSwitch(Switch src, NorthboundService northboundService) {
+    static SwitchPair withNonExistingDstSwitch(SwitchExtended src, NorthboundService northboundService) {
         def nonExistingSwitch = new Switch(null, NON_EXISTENT_SWITCH_ID,
-                src.getOfVersion(),
-                src.getStatus(),
-                src.getRegions(),
-                src.getOutPorts(),
+                src.sw.getOfVersion(),
+                src.sw.getStatus(),
+                src.sw.getRegions(),
+                src.sw.getOutPorts(),
                 null, null, null)
-        new SwitchPair(src: src, dst:nonExistingSwitch, paths: [], northboundService: northboundService, topologyDefinition: null)
+        new SwitchPair(src: src, dst: new SwitchExtended(nonExistingSwitch, [], [], northboundService, null, null, null, null) ,
+                paths: [], northboundService: northboundService, topologyDefinition: null)
     }
 
     List<Path> getPathsFromApi(Map<PathRequestParameter, Object> parameters = [:]) {
-        List<PathDto> pathsFromApi = northboundService.getPaths([(SRC_SWITCH): src.getDpId(),
-                                           (DST_SWITCH): dst.getDpId()] + parameters)
+        List<PathDto> pathsFromApi = northboundService.getPaths([(SRC_SWITCH): src.switchId,
+                                           (DST_SWITCH): dst.switchId] + parameters)
         return pathsFromApi.collect {new Path(it, topologyDefinition)}
     }
 
     @JsonIgnore
-    List<Switch> toList() {
+    List<SwitchExtended> toList() {
         return [src, dst]
+    }
+
+    @JsonIgnore
+    List<Integer> getServicePorts() {
+        src.getServicePorts() + dst.getServicePorts()
     }
 
     @JsonIgnore
@@ -65,27 +68,26 @@ class SwitchPair {
                 topologyDefinition: topologyDefinition)
     }
 
-    boolean hasOf13Path() {
-        def possibleDefaultPaths = paths.findAll {
-            it.size() == paths.min { it.size() }.size()
-        }
-        !possibleDefaultPaths.find { path ->
-            path[1..-2].every { it.switchId.description.contains("OF_12") }
-        }
+    List<List<PathNode>> possibleDefaultPaths() {
+        paths.findAll { it.size() == paths.min { it.size() }.size() }
     }
 
     @Override
     String toString() {
-        return "$src.dpId-$dst.dpId"
+        return "$src.switchId-$dst.switchId"
     }
 
     String hwSwString() {
-        return "$src.hwSwString-$dst.hwSwString"
+        return "${src.hwSwString()}-${dst.hwSwString()}"
     }
 
     @JsonIgnore
     Boolean isTraffExamCapable() {
-        return !(src.getTraffGens().isEmpty() || dst.getTraffGens().isEmpty())
+        return !(src.traffGenPorts.isEmpty() || dst.traffGenPorts.isEmpty())
+    }
+
+    static Closure NOT_WB_ENDPOINTS = {
+        SwitchPair swP-> !swP.src.wb5164 && !swP.dst.wb5164
     }
 
     List<Path> retrieveAvailablePaths(){
