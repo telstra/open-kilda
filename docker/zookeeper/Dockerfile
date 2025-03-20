@@ -16,15 +16,15 @@
 ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
-ENV PACKAGE zookeeper-3.4.9
+ENV PACKAGE apache-zookeeper-3.8.0
 
 WORKDIR /tmp/
 
-RUN    wget -q https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/$PACKAGE.tar.gz \
-    && wget -q https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/$PACKAGE.tar.gz.md5 \
-    && md5sum -c $PACKAGE.tar.gz.md5 \
-    && tar -xzf $PACKAGE.tar.gz --directory /opt/ \
-    && ln -s /opt/$PACKAGE /opt/zookeeper \
+RUN wget -q https://archive.apache.org/dist/zookeeper/zookeeper-3.8.0/$PACKAGE-bin.tar.gz \
+    && wget -q https://archive.apache.org/dist/zookeeper/zookeeper-3.8.0/$PACKAGE-bin.tar.gz.sha512 \
+    && sha512sum -c $PACKAGE-bin.tar.gz.sha512 \
+    && tar -xzf $PACKAGE-bin.tar.gz --directory /opt/ \
+    && ln -s /opt/$PACKAGE-bin /opt/zookeeper \
     && rm -rfv /tmp/*
 
 WORKDIR /opt/zookeeper/
