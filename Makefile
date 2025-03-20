@@ -1,7 +1,7 @@
 # 'make' will build docker images and try to run it.
 default: update-props build-stable up-test-mode
 
-.PHONY: update-props update-props-blue update-props-green update-props-dryrun build-confd
+.PHONY: build-libs update-props update-props-blue update-props-green update-props-dryrun build-confd
 
 CONFD_DOCKER_COMMAND := docker run --rm -v $(shell pwd):$(shell pwd) -w $(shell pwd) -u $(shell id -u):$(shell id -g) -e HOSTNAME=$(shell hostname) kilda/confd
 
@@ -25,5 +25,8 @@ update-props-green: $(BUILD_CONFD)
 
 update-props-dryrun: $(BUILD_CONFD)
 	$(UPDATE_PROPS) -noop
+
+build-libs:
+	cd docker && bash libs.sh
 
 include generated.mk
