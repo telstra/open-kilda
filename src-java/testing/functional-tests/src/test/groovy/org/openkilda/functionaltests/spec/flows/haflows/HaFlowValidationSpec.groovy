@@ -2,16 +2,15 @@ package org.openkilda.functionaltests.spec.flows.haflows
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.model.SwitchRules.missingRuleCookieIds
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
-import org.openkilda.functionaltests.helpers.model.SwitchMetersFactory
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
+import org.openkilda.model.SwitchId
 
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
@@ -20,13 +19,6 @@ import spock.lang.Shared
 @Narrative("""Verify that missing HA-Flow rule is detected by switch/flow validations""")
 @Tags([HA_FLOW])
 class HaFlowValidationSpec extends HealthCheckSpecification {
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
-
-    @Autowired
-    @Shared
-    SwitchMetersFactory switchMetersFactory
 
     @Shared
     @Autowired
@@ -39,11 +31,11 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Validate HA-Flow"
-        def validationResult = haFlow.validate()
+        def validationResult = haFlow.validateAndCollectDiscrepancy()
 
         then: "HA-Flow is validated successfully"
         validationResult.asExpected
-        validationResult.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty() }
+        validationResult.subFlowsDiscrepancies.isEmpty()
     }
 
     def "HA-Flow validation should fail in case of missing rule on #switchRole switch"() {
@@ -52,18 +44,20 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Delete HA-Flow rule on switch"
-        def swIdToManipulate = switchToManipulate(haFlow)
-        def switchRules = switchRulesFactory.get(swIdToManipulate)
-        def haFlowRuleToDelete = switchRules.forHaFlow(haFlow).shuffled().first()
-        switchRules.delete(haFlowRuleToDelete)
+        SwitchExtended swToManipulate = switches.all().findSpecific(switchToManipulate(haFlow) as SwitchId)
+        def haFlowCookiesFromDB = haFlow.retrieveCookiesFromDb()
+        def haFlowRuleToDelete = swToManipulate.rulesManager.getRules().find { swRule ->
+            haFlowCookiesFromDB.contains(swRule.getCookie())
+        }
+        swToManipulate.rulesManager.delete(haFlowRuleToDelete)
 
         then: "HA-Flow validation returns deleted rule in 'Discrepancies' section"
         Wrappers.wait(RULES_DELETION_TIME) {
-            def validationResponse = haFlow.validate()
-            assert !validationResponse.asExpected
-            def missingRules = validationResponse.getSubFlowValidationResults().collect { it.getDiscrepancies() }.flatten()
+            def discrepancies = haFlow.validateAndCollectDiscrepancy()
+            assert !discrepancies.asExpected
+            def missingRules = discrepancies.retrieveAllRulesCookieFromDiscrepancy()
             assert missingRules.size() == 1, "We deleted only one rule"
-            assert missingRules.get(0).getRule().contains(haFlowRuleToDelete.getCookie().toString())
+            assert missingRules.first() == haFlowRuleToDelete.getCookie()
         }
 
         where:
@@ -81,21 +75,18 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Delete HA-Flow meter"
-        def swIdToManipulate = switchToManipulate(haFlow)
-        def switchMeters = switchMetersFactory.get(swIdToManipulate)
-        def switchRules = switchRulesFactory.get(swIdToManipulate)
+        SwitchExtended swToManipulate = switches.all().findSpecific(switchToManipulate(haFlow) as SwitchId)
 
-        def haFlowMeterToDelete = switchMeters.forHaFlow(haFlow).first()
-        def expectedDeletedSwitchRules = switchRules.relatedToMeter(haFlowMeterToDelete)
-        switchMeters.delete(haFlowMeterToDelete)
+        def haFlowMeterToDelete = swToManipulate.metersManager.forHaFlow(haFlow).first()
+        def expectedDeletedSwitchRules = swToManipulate.rulesManager.relatedToMeter(haFlowMeterToDelete)
+        swToManipulate.metersManager.delete(haFlowMeterToDelete)
 
         then: "HA-Flow validation returns rules related to deleted meter in 'Discrepancies' section"
         Wrappers.wait(RULES_DELETION_TIME) {
-            def validationResponse = haFlow.validate()
-            assert !validationResponse.asExpected
-            def missingMeters = validationResponse.getSubFlowValidationResults().collect { it.getDiscrepancies() }.flatten()
-            assert missingMeters.size() == expectedDeletedSwitchRules.size()
-            assert missingRuleCookieIds(missingMeters) == expectedDeletedSwitchRules.collect { it.getCookie() } as Set
+            def discrepancies = haFlow.validateAndCollectDiscrepancy()
+            assert !discrepancies.asExpected
+            def missingMeters = discrepancies.retrieveAllRulesCookieFromDiscrepancy()
+            assert missingMeters == expectedDeletedSwitchRules.collect { it.getCookie() } as Set
         }
 
         where:

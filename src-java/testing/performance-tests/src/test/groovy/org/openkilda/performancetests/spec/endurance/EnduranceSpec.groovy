@@ -55,17 +55,17 @@ class EnduranceSpec extends BaseSpecification {
 
         setup: "Create a topology and a 'dice' with random events"
         def topo = topoHelper.createRandomTopology(preset.switchesAmount, preset.islsAmount)
-        flowFactory.setTopology(topo)
+        setTopologyInContext(topo)
         def dice = new Dice([
                 new Face(chance: 25, event: this.&deleteFlow),
-                new Face(chance: 25, event: { createFlow(topo,true) }),
+                new Face(chance: 25, event: { createFlow(true) }),
                 new Face(chance: 25, event: { blinkIsl(topo.isls) }),
                 new Face(chance: 0, event: { TimeUnit.SECONDS.sleep(3) }),
                 new Face(chance: 25, event: { massReroute(topo) })
         ])
 
         and: "As starting point, create some amount of random flows in it"
-        preset.flowsToStartWith.times { createFlow(topo) }
+        preset.flowsToStartWith.times { createFlow() }
         Wrappers.wait(flows.size() * 1.5) {
             flows.each {
                 assert it.retrieveFlowStatus().status == FlowState.UP
@@ -146,11 +146,11 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
 
         setup: "Create a topology"
         def topo = topoHelper.createRandomTopology(switchesAmount, islsAmount)
-        flowFactory.setTopology(topo)
+        setTopologyInContext(topo)
 
         when: "Create 4094 flows"
         flowsAmount.times {
-            createFlow(topo, false, false)
+            createFlow(false, false)
             def numberOfCreatedFlow = it + 1
             log.debug("Number of created flow: $numberOfCreatedFlow/$flowsAmount")
 
@@ -175,11 +175,11 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
 
         setup: "Create a topology"
         def topo = topoHelper.createRandomTopology(switchesAmount, islsAmount)
-        flowFactory.setTopology(topo)
+        setTopologyInContext(topo)
 
         when: "Try to create 2047 flows"
         flowsAmount.times {
-            createFlow(topo, false, true)
+            createFlow(false, true)
             def numberOfCreatedFlow = it + 1
             log.debug("Number of created flow: $numberOfCreatedFlow/$flowsAmount")
 
@@ -198,10 +198,12 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
 
     //TODO(rtretiak): test that continuously add/remove different switches. Ensure no memory leak over time
 
-    def createFlow(CustomTopology topo, waitForRules = false, boolean protectedPath = false) {
+    def createFlow(waitForRules = false, boolean protectedPath = false) {
         List<SwitchPortVlan> busyEndpoints = flows.collect{ it.occupiedEndpoints() }.flatten() as List<SwitchPortVlan>
+        def srcSw = switches.all().first()
         Wrappers.silent {
-            def flow = flowFactory.getBuilder(topo.switches.first(), pickRandom(topo.switches - topo.switches.first()), false, busyEndpoints)
+            def dstSw = pickRandom(switches.all().getListOfSwitches() - srcSw)
+            def flow = flowFactory.getBuilder(srcSw, dstSw, false, busyEndpoints)
                     .withProtectedPath(protectedPath)
                     .build()
             log.info "creating flow $flow.flowId"

@@ -22,6 +22,7 @@ import org.openkilda.exception.TwoFaKeyNotSetException;
 import org.openkilda.security.CustomWebAuthenticationDetails;
 import org.openkilda.security.TwoFactorUtility;
 
+import jakarta.annotation.security.PermitAll;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
@@ -91,11 +92,11 @@ public class LoginController extends BaseController {
      * @param request  the request
      * @return the model and view
      */
-
+    @PermitAll
     @RequestMapping(value = "/authenticate", method = RequestMethod.POST)
     public ModelAndView authenticate(@RequestParam("username") String username,
-                                     @RequestParam("password") final String password, final HttpServletRequest request,
-                                     RedirectAttributes redir) {
+            @RequestParam("password") final String password, final HttpServletRequest request,
+            RedirectAttributes redir) {
         ModelAndView modelAndView = new ModelAndView(IConstants.View.LOGIN);
         String error = null;
         username = username != null ? username.toLowerCase() : null;

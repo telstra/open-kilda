@@ -52,7 +52,7 @@ class FlowStatSpec extends HealthCheckSpecification {
     def "System is able to collect stats after intentional swapping flow path to protected"() {
         given: "Two active neighboring switches with two diverse paths at least"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
-        def srcSwitchId = switchPair.getSrc().getDpId()
+        def srcSwitchId = switchPair.src.switchId
 
         and: "Flow with protected path"
         def flow = flowFactory.getBuilder(switchPair).withProtectedPath(true).build()
@@ -125,7 +125,7 @@ class FlowStatSpec extends HealthCheckSpecification {
                 .withTraffgensOnBothEnds()
                 .withAtLeastNNonOverlappingPaths(3)
                 .random()
-        def srcSwitchId = switchPair.getSrc().getDpId()
+        def srcSwitchId = switchPair.src.switchId
 
         and: "A flow with protected path"
         def flow = flowFactory.getBuilder(switchPair).withProtectedPath(true).build()
@@ -133,8 +133,8 @@ class FlowStatSpec extends HealthCheckSpecification {
 
         def flowPathInfo = flow.retrieveAllEntityPaths()
         assert !flowPathInfo.flowPath.protectedPath.isPathAbsent()
-        def mainPathIsls = flowPathInfo.flowPath.getMainPathInvolvedIsls()
-        def protectedPathIsls = flowPathInfo.flowPath.getProtectedPathInvolvedIsls()
+        def mainPathIsls = flowPathInfo.getMainPathInvolvedIsls()
+        def protectedPathIsls = flowPathInfo.getProtectedPathInvolvedIsls()
 
         when: "Generate traffic on the given flow"
         def traffExam = traffExamProvider.get()
@@ -170,7 +170,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == UP }
 
         def flowPathInfoAfterRerouting = flow.retrieveAllEntityPaths()
-        def newMainPath = flowPathInfoAfterRerouting.flowPath.getMainPathInvolvedIsls()
+        def newMainPath = flowPathInfoAfterRerouting.getMainPathInvolvedIsls()
         newMainPath != mainPathIsls
         newMainPath != protectedPathIsls
 
@@ -204,7 +204,7 @@ class FlowStatSpec extends HealthCheckSpecification {
                 .withTraffgensOnBothEnds()
                 .withAtLeastNNonOverlappingPaths(3)
                 .random()
-        def srcSwitchId = switchPair.getSrc().getDpId()
+        def srcSwitchId = switchPair.src.switchId
 
         and: "A flow with protected path"
         def flow = flowFactory.getBuilder(switchPair).withProtectedPath(true).build()
@@ -269,7 +269,7 @@ class FlowStatSpec extends HealthCheckSpecification {
                 .withTraffgensOnBothEnds()
                 .withAtLeastNNonOverlappingPaths(2)
                 .random()
-        def srcSwitchId = switchPair.getSrc().getDpId()
+        def srcSwitchId = switchPair.src.switchId
 
         and: "A flow with protected path"
         def flow = flowFactory.getBuilder(switchPair).withProtectedPath(true).build()
@@ -279,7 +279,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def flowPathInfo = flow.retrieveAllEntityPaths()
         def mainPathIsls = flowPathInfo.flowPath.path.forward.getInvolvedIsls()
         def protectedPathIsls = flowPathInfo.flowPath.protectedPath.forward.getInvolvedIsls()
-        def altIsls = topology.getRelatedIsls(switchPair.src) - mainPathIsls - protectedPathIsls.first()
+        def altIsls = topology.getRelatedIsls(switchPair.src.switchId) - mainPathIsls - protectedPathIsls.first()
         islHelper.breakIsls(altIsls)
 
         when: "Break ISL on a protected path (bring port down) for changing the flow state to DEGRADED"
@@ -314,7 +314,7 @@ class FlowStatSpec extends HealthCheckSpecification {
     def "System collects stats when flow is pinned and unmetered"() {
         given: "Two active not neighboring switches"
         def switchPair = switchPairs.all().nonNeighbouring().withTraffgensOnBothEnds().random()
-        def srcSwitchId = switchPair.getSrc().getDpId()
+        def srcSwitchId = switchPair.src.switchId
 
         and: "An unmetered flow"
         def flow = flowFactory.getBuilder(switchPair)
@@ -325,7 +325,6 @@ class FlowStatSpec extends HealthCheckSpecification {
                 .create()
 
         when: "Generate traffic on the given flow"
-        Date startTime = new Date()
         def traffExam = traffExamProvider.get()
         Exam exam = flow.traffExam(traffExam, flow.maximumBandwidth, 3).forward.tap { udp = true }
         exam.setResources(traffExam.startExam(exam))
@@ -346,12 +345,11 @@ class FlowStatSpec extends HealthCheckSpecification {
     def "System is able to collect stats after partial updating(port) on a flow endpoint"() {
         given: "Two active neighboring switches connected to the traffgens"
         def switchPair = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
-        def srcSwitchId = switchPair.getSrc().getDpId()
+        def srcSwitchId = switchPair.src.switchId
 
         and: "A flow with updated port on src endpoint via partial update"
-        def traffgenPortOnSrcSw = topology.activeTraffGens.find { it.switchConnected ==  switchPair.src}.switchPort
-        def srcFlowPort = (topology.getAllowedPortsForSwitch(
-                topology.find(switchPair.src.dpId)) - traffgenPortOnSrcSw).last()
+        def traffgenPortOnSrcSw = switchPair.src.traffGenPorts.first()
+        def srcFlowPort = (switchPair.src.getPorts() - traffgenPortOnSrcSw).last()
 
         def flow = flowFactory.getBuilder(switchPair).withSourcePort(srcFlowPort).build()
                 .create()
@@ -379,10 +377,10 @@ class FlowStatSpec extends HealthCheckSpecification {
     def "System is able to collect stats after partial updating(vlan) on a flow endpoint"() {
         given: "Two active neighboring switches connected to the traffgens"
         def switchPair = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
-        def srcSwitchId = switchPair.getSrc().getDpId()
+        def srcSwitchId = switchPair.src.switchId
 
         and: "A flow with updated vlan on src endpoint via partial update"
-        def traffgenPortOnSrcSw = topology.activeTraffGens.find { it.switchConnected ==  switchPair.src}.switchPort
+        def traffgenPortOnSrcSw = switchPair.src.traffGenPorts.first()
 
         def flow = flowFactory.getBuilder(switchPair)
                 .withSourcePort(traffgenPortOnSrcSw)
@@ -432,8 +430,8 @@ class FlowStatSpec extends HealthCheckSpecification {
         def mainReverseCookie = flowInfo.reversePath.cookie.value
         Wrappers.wait(statsRouterInterval) {
             def stats = flowStats.of(flow.flowId)
-            stats.get(FLOW_RAW_BYTES, switchPair.getSrc().getDpId(), mainForwardCookie).hasNonZeroValues()
-            stats.get(FLOW_RAW_BYTES, switchPair.getSrc().getDpId(), mainReverseCookie).hasNonZeroValues()
+            stats.get(FLOW_RAW_BYTES, switchPair.src.switchId, mainForwardCookie).hasNonZeroValues()
+            stats.get(FLOW_RAW_BYTES, switchPair.src.switchId, mainReverseCookie).hasNonZeroValues()
         }
     }
 }

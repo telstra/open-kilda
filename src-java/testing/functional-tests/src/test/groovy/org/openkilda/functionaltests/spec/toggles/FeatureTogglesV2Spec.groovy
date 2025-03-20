@@ -19,8 +19,6 @@ import org.openkilda.functionaltests.error.flow.FlowForbiddenToUpdateExpectedErr
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
-import org.openkilda.functionaltests.helpers.model.FlowActionType
-import org.openkilda.functionaltests.helpers.model.FlowStatusHistoryEvent
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 
@@ -52,13 +50,14 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
 
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
-        def flow = flowFactory.getRandom(topology.activeSwitches[0], topology.activeSwitches[1])
+        def swPair = switchPairs.all().random()
+        def flow = flowFactory.getRandom(swPair)
 
         when: "Set create_flow toggle to false"
         featureToggles.createFlowEnabled(false)
 
         and: "Try to create a new flow"
-        flowFactory.getBuilder(topology.activeSwitches[0], topology.activeSwitches[1]).build().sendCreateRequest()
+        flowFactory.getBuilder(swPair).build().sendCreateRequest()
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
@@ -73,7 +72,8 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
 
     def "System forbids updating flows when 'update_flow' toggle is set to false"() {
         given: "Existing flow"
-        def flow = flowFactory.getRandom(topology.activeSwitches[0], topology.activeSwitches[1])
+        def swPair = switchPairs.all().random()
+        def flow = flowFactory.getRandom(swPair)
 
         when: "Set update_flow toggle to false"
         featureToggles.updateFlowEnabled(false)
@@ -86,12 +86,13 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         new FlowForbiddenToUpdateExpectedError(~/Flow update feature is disabled/).matches(e)
 
         and: "Creating new flow is still possible"
-        flowFactory.getRandom(topology.activeSwitches[0], topology.activeSwitches[1])
+        flowFactory.getRandom(switchPairs.all().random())
     }
 
     def "System forbids deleting flows when 'delete_flow' toggle is set to false"() {
         given: "Existing flow"
-        def flow = flowFactory.getRandom(topology.activeSwitches[0], topology.activeSwitches[1])
+        def swPair = switchPairs.all().random()
+        def flow = flowFactory.getRandom(swPair)
 
         when: "Set delete_flow toggle to false"
         featureToggles.deleteFlowEnabled(false)
@@ -104,7 +105,7 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         new FlowForbiddenToDeleteExpectedError(~/Flow delete feature is disabled/).matches(e)
 
         and: "Creating new flow is still possible"
-        def newFlow = flowFactory.getRandom(topology.activeSwitches[0], topology.activeSwitches[1])
+        def newFlow = flowFactory.getRandom(switchPairs.all().random())
 
         and: "Updating of flow is still possible"
         flow.update(flow.tap { it.description = it.description + "updated" })
@@ -139,7 +140,7 @@ feature toggle"() {
 
         and: "Init a flow reroute by breaking current path"
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def islToBreak = flowPathInfo.flowPath.getInvolvedIsls().first()
+        def islToBreak = flowPathInfo.getInvolvedIsls().first()
         islHelper.breakIsl(islToBreak)
 
         then: "Flow is rerouted"
@@ -161,7 +162,7 @@ feature toggle"() {
 
         and: "Init a flow reroute by breaking a new current path"
         def newFlowPathInfo = flow.retrieveAllEntityPaths()
-        def newIslToBreak = newFlowPathInfo.flowPath.getInvolvedIsls().first()
+        def newIslToBreak = newFlowPathInfo.getInvolvedIsls().first()
         islHelper.breakIsl(newIslToBreak)
 
         then: "Flow is rerouted"
@@ -180,8 +181,8 @@ feature toggle"() {
         given: "A switch pair which supports 'transit_vlan' and 'vxlan' encapsulation types"
         and: "The 'vxlan' encapsulation type is disabled in swProps on the src switch"
         def swPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().withAtLeastNPaths(2).random()
-        def initSrcSwProps = switchHelper.getCachedSwProps(swPair.src.dpId)
-        switchHelper.updateSwitchProperties(swPair.src, initSrcSwProps.jacksonCopy().tap {
+        def initSrcSwProps = swPair.src.getCachedProps()
+        swPair.src.updateProperties(initSrcSwProps.jacksonCopy().tap {
             it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
         })
 
@@ -199,7 +200,7 @@ feature toggle"() {
 
         and: "Init a flow reroute by breaking current path"
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def islToBreak = flowPathInfo.flowPath.getInvolvedIsls().first()
+        def islToBreak = flowPathInfo.getInvolvedIsls().first()
         islHelper.breakIsl(islToBreak)
 
         then: "Flow is not rerouted"
@@ -249,8 +250,8 @@ feature toggle"() {
 
         //you have to break all altPaths to avoid rerouting when flowPath is broken
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def flowInvolvedIsls = flowPathInfo.flowPath.getInvolvedIsls()
-        def altIsls = topology.getRelatedIsls(switchPair.src) - flowInvolvedIsls.first()
+        def flowInvolvedIsls = flowPathInfo.getInvolvedIsls()
+        def altIsls = topology.getRelatedIsls(switchPair.src.switchId) - flowInvolvedIsls.first()
         islHelper.breakIsls(altIsls)
 
         and: "Set flowsRerouteOnIslDiscovery=false"

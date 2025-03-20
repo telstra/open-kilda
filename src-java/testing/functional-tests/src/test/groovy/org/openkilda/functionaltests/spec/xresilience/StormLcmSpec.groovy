@@ -1,13 +1,13 @@
 package org.openkilda.functionaltests.spec.xresilience
 
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.assertj.core.api.Assertions.assertThat
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
 import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -15,6 +15,7 @@ import org.openkilda.functionaltests.helpers.WfmManipulator
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchDbData
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
@@ -62,6 +63,20 @@ class StormLcmSpec extends HealthCheckSpecification {
         wfmManipulator = new WfmManipulator(dockerHost)
     }
 
+    def cleanupSpec() {
+        Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
+            assert northbound.getAllSwitches().findAll {
+                it.switchId in topology.switches.dpId && it.state == SwitchChangeType.ACTIVATED
+            }.size() == topology.activeSwitches.size()
+        }
+
+        Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
+            assert northbound.getAllLinks().findAll {
+                it.source.switchId in topology.switches.dpId && it.state == IslChangeType.DISCOVERED
+            }.size() == topology.islsForActiveSwitches.size() * 2
+        }
+    }
+
     @Tags(LOW_PRIORITY)
     // note: it takes ~15 minutes to run this test
     def "System survives Storm topologies restart"() {
@@ -82,27 +97,25 @@ class StormLcmSpec extends HealthCheckSpecification {
         flows.each { flow -> flow.validateAndCollectDiscrepancies().isEmpty() }
 
         and: "Database dump"
-        //unstable for parallel runs even when isolated. why?
-//        def relationsDump = database.dumpAllRelations()
-        def switchesDump = database.dumpAllSwitches()
+        def initialSwitchesDump =  database.dumpAllSwitches().collect { new SwitchDbData((it.data))}
+        def initialGraphRelations
+        Wrappers.wait(STATS_LOGGING_TIMEOUT) {
+            initialGraphRelations = database.dumpAllRelations()
+            // waiting for both switch_properties and flow_stats "has" relations
+            assert database.dumpAllRelations().findAll { it.label == "has" }.size() == flowsAmount + topology.activeSwitches.size()
+        }
+        def initialRelationsDump = collectRelationsDetails(initialGraphRelations)
 
         when: "Storm topologies are restarted"
         wfmManipulator.restartWfm()
 
         then: "Database nodes and relations are unchanged"
-        def newRelation = database.dumpAllRelations()
-        def newSwitches = database.dumpAllSwitches()
-        expect newSwitches, sameBeanAs(switchesDump).ignoring("data.timeModify")
-                .ignoring("data.socketAddress.port")
-//        expect newRelation, sameBeanAs(relationsDump).ignoring("properties.time_modify")
-//                .ignoring("properties.latency")
-//                .ignoring("properties.time_create")
-//                .ignoring("properties.switch_address_port")
-//                .ignoring("properties.connected_at")
-//                .ignoring("properties.master")
-//                .ignoring("inVertex")
-//                .ignoring("outVertex")
-//                .ignoring("id")
+        def newSwitchesDump = database.dumpAllSwitches().collect { new SwitchDbData((it.data))}
+        assertThat(newSwitchesDump).containsExactlyInAnyOrder(*initialSwitchesDump)
+
+        def graphRelationsAfterWfmRestarting = database.dumpAllRelations()
+        def newRelationsDump = collectRelationsDetails(graphRelationsAfterWfmRestarting)
+        assertThat(newRelationsDump).containsExactlyInAnyOrder(*initialRelationsDump)
 
         and: "Topology is recovered after storm topology restarting"
         Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
@@ -170,6 +183,21 @@ class StormLcmSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET * 3) {
             assert database.getIsls(topology.getIsls()).every {it.status == IslStatus.ACTIVE}
             assert northbound.getAllLinks().every {it.state == IslChangeType.DISCOVERED}
+        }
+    }
+
+    private def collectRelationsDetails(List relationsDump) {
+        List<String> propertiesFieldsToIgnore = ["time_modify", "latency", "time_create",
+                                                 "switch_address_port", "connected_at", "master"]
+        relationsDump.collect {
+            //there is no need to ignore inVertex, outVertex, id as ONLY label and properties fields are used
+            [(it.label + "_data"): [it.properties().collectEntries {
+                if (it?.key in propertiesFieldsToIgnore) {
+                    [:]
+                } else {
+                    [(it?.key): it?.value]
+                }
+            }.findAll()]]
         }
     }
 }

@@ -10,6 +10,7 @@ import org.openkilda.functionaltests.helpers.Dice
 import org.openkilda.functionaltests.helpers.Dice.Face
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchOfVersion
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
@@ -64,7 +65,8 @@ class EnduranceV2Spec extends BaseSpecification {
         //cleanup any existing labs first
         northbound.getAllFlows().each { FlowPayload flow -> northboundV2.deleteFlow(flow.id) }
         topoHelper.purgeTopology()
-        setTopologies(topoHelper.createRandomTopology(preset.switchesAmount, preset.islsAmount))
+        topology = topoHelper.createRandomTopology(preset.switchesAmount, preset.islsAmount)
+        setTopologyInContext(topology)
 
         and: "As starting point, create some amount of random flows in it"
         preset.flowsToStartWith.times { createFlow(makeFlowPayload()) }
@@ -170,7 +172,9 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
 
         makeFlowPayload = {
             List<SwitchPortVlan> busyEndpoints = flows.collect { it.occupiedEndpoints() }.flatten() as List<SwitchPortVlan>
-            FlowExtended flow = flowFactory.getBuilder(topology.switches.first(), pickRandom(topology.switches - topology.switches.first()), false, busyEndpoints)
+            def srcSw = switches.all().first()
+            def dstSw = pickRandom(switches.all().getListOfSwitches() - srcSw)
+            FlowExtended flow = flowFactory.getBuilder(srcSw, dstSw, false, busyEndpoints)
                     .withBandwidth(200000)
                     .withProtectedPath(r.nextBoolean()).build()
             return flow
@@ -195,7 +199,8 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         Assume.assumeThat(preset.debug, equalTo(debug))
 
         given: "A live env with certain topology deployed and existing flows"
-        setTopologies(topoHelper.readCurrentTopology())
+        topology = topoHelper.readCurrentTopology()
+        setTopologyInContext(topology)
         topoHelper.setTopology(topology)
         def existingFlows = northboundV2.getAllFlows().collect {
             new FlowExtended(it, northbound, northboundV2, topology, flowFactory.cleanupManager, database)
@@ -311,12 +316,6 @@ idle, mass manual reroute, isl break. Step repeats for pre-defined amount of tim
 
     //TODO(rtretiak): test that continuously add/remove different switches. Ensure no memory leak over time
 
-    def setTopologies(TopologyDefinition topology) {
-        this.topology = topology
-        flowFactory.topology = topology
-
-    }
-
     def createFlow(FlowExtended flow, waitForRules = false) {
         Wrappers.silent {
             log.info "creating flow $flow.flowId"
@@ -410,9 +409,9 @@ idle, mass manual reroute, isl break. Step repeats for pre-defined amount of tim
         if (flow.source.switchId == flow.destination.switchId) {
             return false
         } else {
-            def srcSw = topology.find(flow.source.switchId)
-            def dstSw = topology.find(flow.destination.switchId)
-            !(srcSw.ofVersion == "OF_12" || srcSw.centec || dstSw.ofVersion == "OF_12" || dstSw.centec)
+            def srcSw = switches.all().findSpecific(flow.source.switchId)
+            def dstSw = switches.all().findSpecific(flow.destination.switchId)
+            !(srcSw.isOf12Version() || srcSw.isCentec() || dstSw.isOf12Version() || dstSw.isCentec())
         }
     }
 }

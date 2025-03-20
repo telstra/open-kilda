@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers.model
 
+import org.openkilda.testing.service.database.Database
+
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.google.common.collect.ImmutableList
 import groovy.transform.AutoClone
@@ -59,10 +61,10 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
  */
 
 @Slf4j
-@EqualsAndHashCode(excludes = 'northboundV2, topologyDefinition, cleanupManager')
+@EqualsAndHashCode(excludes = 'northboundV2, topologyDefinition, database, cleanupManager')
 @Builder
 @AutoClone
-@ToString(includeNames = true, excludes = 'northboundV2, topologyDefinition, cleanupManager')
+@ToString(includeNames = true, excludes = 'northboundV2, topologyDefinition, database, cleanupManager')
 class HaFlowExtended {
     String haFlowId
     FlowState status
@@ -99,19 +101,25 @@ class HaFlowExtended {
     @JsonIgnore
     TopologyDefinition topologyDefinition
 
+    @JsonIgnore
+    Database database
+
     HaFlowExtended(String haFlowId,
                    NorthboundServiceV2 northboundV2,
                    TopologyDefinition topologyDefinition,
+                   Database database,
                    CleanupManager cleanupManager) {
         this.haFlowId = haFlowId
         this.northboundV2 = northboundV2
         this.topologyDefinition = topologyDefinition
+        this.database = database
         this.cleanupManager = cleanupManager
     }
 
     HaFlowExtended(HaFlow haFlow,
                    NorthboundServiceV2 northboundV2,
                    TopologyDefinition topologyDefinition,
+                   Database database,
                    CleanupManager cleanupManager) {
         this.haFlowId = haFlow.haFlowId
         this.status = FlowState.getByValue(haFlow.status)
@@ -148,6 +156,7 @@ class HaFlowExtended {
 
         this.northboundV2 = northboundV2
         this.topologyDefinition = topologyDefinition
+        this.database = database
         this.cleanupManager = cleanupManager
     }
 
@@ -229,7 +238,7 @@ class HaFlowExtended {
                 FlowState.getByValue(it.status) == flowState
             }
         }
-        return new HaFlowExtended(flowDetails, northboundV2, topologyDefinition, cleanupManager)
+        return new HaFlowExtended(flowDetails, northboundV2, topologyDefinition, database, cleanupManager)
     }
 
     void waitForHistoryEvent(HaFlowActionType action, double timeout = WAIT_OFFSET) {
@@ -241,7 +250,7 @@ class HaFlowExtended {
     HaFlowExtended sendPartialUpdateRequest(HaFlowPatchPayload updateRequest) {
         log.debug("Updating ha-flow '${haFlowId}'(partial update)")
         def haFlow = northboundV2.partialUpdateHaFlow(haFlowId, updateRequest)
-        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, cleanupManager)
+        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, database, cleanupManager)
     }
 
     HaFlowExtended partialUpdate(HaFlowPatchPayload updateRequest) {
@@ -253,7 +262,7 @@ class HaFlowExtended {
     HaFlowExtended sendUpdateRequest(HaFlowUpdatePayload updateRequest) {
         log.debug("Updating ha-flow '${haFlowId}'")
         def haFlow = northboundV2.updateHaFlow(haFlowId, updateRequest)
-        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, cleanupManager)
+        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, database, cleanupManager)
     }
 
     HaFlowExtended update(HaFlowUpdatePayload updateRequest) {
@@ -270,18 +279,24 @@ class HaFlowExtended {
     HaFlowExtended retrieveDetails() {
         log.debug("Getting ha-flow details '${haFlowId}'")
         def haFlow = northboundV2.getHaFlow(haFlowId)
-        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, cleanupManager)
+        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, database, cleanupManager)
     }
 
     HaFlowExtended swap() {
         log.debug("Swap ha-flow '${haFlowId}'")
         def haFlow = northboundV2.swapHaFlowPaths(haFlowId)
-        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, cleanupManager)
+        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, database, cleanupManager)
     }
 
-    HaFlowPingResult ping(int timeoutMillis) {
+    HaFlowPingResult ping(HaFlowPingPayload haFlowPingPayload = new HaFlowPingPayload(2000)) {
         log.debug("Ping ha-flow '${haFlowId}'")
-        northboundV2.pingHaFlow(haFlowId, new HaFlowPingPayload(timeoutMillis))
+        northboundV2.pingHaFlow(haFlowId, haFlowPingPayload)
+    }
+
+    ComplexFlowPingResponse pingAndCollectDiscrepancies(HaFlowPingPayload haFlowPingPayload = new HaFlowPingPayload(2000)) {
+        def response = ping(haFlowPingPayload)
+        assert response.haFlowId == haFlowId, "Ping response for an incorrect ha-flow"
+        new ComplexFlowPingResponse(response)
     }
 
     List<SwitchPortVlan> occupiedEndpoints() {
@@ -295,14 +310,21 @@ class HaFlowExtended {
         northboundV2.validateHaFlow(haFlowId)
     }
 
+    ComplexFlowValidationResponse validateAndCollectDiscrepancy() {
+        def validationResponse = validate()
+        new ComplexFlowValidationResponse(validationResponse)
+    }
+
     HaFlowSyncResult sync() {
         log.debug("Sync ha-flow '${haFlowId}'")
         northboundV2.syncHaFlow(haFlowId)
     }
 
     HaFlow delete() {
-        Wrappers.wait(WAIT_OFFSET * 2) {
-            assert !(FlowState.getByValue(northboundV2.getHaFlow(haFlowId)?.status) in [FlowState.IN_PROGRESS, FlowState.DOWN])
+        if (haFlowId in northboundV2.getAllHaFlows().haFlowId) {
+            Wrappers.wait(WAIT_OFFSET * 2) {
+                assert !(FlowState.getByValue(northboundV2.getHaFlow(haFlowId)?.status) in [FlowState.IN_PROGRESS, FlowState.DOWN])
+            }
         }
         log.debug("Deleting ha-flow '$haFlowId'")
         def response = northboundV2.deleteHaFlow(haFlowId)
@@ -324,13 +346,18 @@ class HaFlowExtended {
         }
     }
 
+    List<Long> retrieveCookiesFromDb() {
+        (database.getHaFlowCookies(haFlowId) + database.getHaSubFlowsCookies(subFlows*.haSubFlowId))
+                .collect { it.getValue() }
+    }
+
     HaFlowBidirectionalExam traffExam(TraffExamService traffExam, long bandwidth = 0, Long duration = 5) {
         log.debug("Traffic generation for ha-flow '${haFlowId}'")
         def subFlow1 = subFlows.first()
         def subFlow2 = subFlows.last()
-        Optional<TraffGen> shared = Optional.ofNullable(topologyDefinition.getTraffGen(sharedEndpoint.switchId))
-        Optional<TraffGen> ep1 = Optional.ofNullable(topologyDefinition.getTraffGen(subFlow1.endpointSwitchId))
-        Optional<TraffGen> ep2 = Optional.ofNullable(topologyDefinition.getTraffGen(subFlow2.endpointSwitchId))
+        Optional<TraffGen> shared = Optional.ofNullable(topologyDefinition.getTraffGen(sharedEndpoint.switchId, sharedEndpoint.portNumber))
+        Optional<TraffGen> ep1 = Optional.ofNullable(topologyDefinition.getTraffGen(subFlow1.endpointSwitchId, subFlow1.endpointPort))
+        Optional<TraffGen> ep2 = Optional.ofNullable(topologyDefinition.getTraffGen(subFlow2.endpointSwitchId, subFlow2.endpointPort))
         assert [shared, ep1, ep2].every { it.isPresent() }
 
         List<Vlan> srcVlanId = ImmutableList.of(new Vlan(sharedEndpoint.vlanId), new Vlan(sharedEndpoint.innerVlanId))

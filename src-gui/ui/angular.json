@@ -26,6 +26,8 @@
               "src/assets"
             ],
             "styles": [
+              "@angular/cdk/overlay-prebuilt.css",
+              "node_modules/@perfectmemory/ngx-contextmenu/src/assets/stylesheets/base.scss",
               "node_modules/bootstrap/dist/css/bootstrap.min.css",
               "node_modules/font-awesome/css/font-awesome.css",
               "node_modules/datatables.net-dt/css/jquery.dataTables.css",

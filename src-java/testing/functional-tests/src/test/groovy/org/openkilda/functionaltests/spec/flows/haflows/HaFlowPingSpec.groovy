@@ -2,13 +2,10 @@ package org.openkilda.functionaltests.spec.flows.haflows
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
-import org.openkilda.functionaltests.helpers.model.HaFlowExtended
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.functionaltests.model.stats.FlowStats
-import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -35,10 +32,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 class HaFlowPingSpec extends HealthCheckSpecification {
     @Value('${flow.ping.interval}')
     int pingInterval
-
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
 
     @Autowired
     @Shared
@@ -137,7 +130,19 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         haFlow.retrieveDetails().periodicPings
 
         and: "Packet counter on catch ping rules grows due to pings happening"
-        arePingRuleCountersGrow(swT, haFlow)
+        String encapsulationType = haFlow.encapsulationType.toString()
+        def sharedSwitchPacketCount = swT.shared.rulesManager.pingRule(encapsulationType).packetCount
+        def ep1SwitchPacketCount = swT.ep1.rulesManager.pingRule(encapsulationType).packetCount
+        def ep2SwitchPacketCount = swT.ep2.rulesManager.pingRule(encapsulationType).packetCount
+
+        wait(pingInterval + STATS_LOGGING_TIMEOUT + WAIT_OFFSET) {
+            def sharedPacketCountNow = swT.shared.rulesManager.pingRule(encapsulationType).packetCount
+            def ep1PacketCountNow = swT.ep1.rulesManager.pingRule(encapsulationType).packetCount
+            def ep2PacketCountNow = swT.ep2.rulesManager.pingRule(encapsulationType).packetCount
+
+            assert sharedPacketCountNow > sharedSwitchPacketCount && ep1PacketCountNow > ep1SwitchPacketCount &&
+                    ep2PacketCountNow > ep2SwitchPacketCount
+        }
 
         and: "Metrics for HA-subflows have 'success' in tsdb"
         wait(pingInterval + WAIT_OFFSET, 2) {
@@ -160,18 +165,20 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(switchTriplet)
 
         when: "Ping HA-Flow"
-        def pingResult = haFlow.ping(2000)
+        def response = haFlow.pingAndCollectDiscrepancies()
 
         then: "HA-Flow ping is not successful and the appropriate error message has been returned"
-        !pingResult.isPingSuccess()
-        pingResult.haFlowId == haFlow.haFlowId
-        pingResult.error == "Temporary disabled. HaFlow ${haFlow.haFlowId} has one sub-flow with endpoint switch equals to Y-point switch"
+        verifyAll {
+            assert !response.pingSuccess
+            assert response.error == "Temporary disabled. HaFlow ${haFlow.haFlowId} has one sub-flow with endpoint switch equals to Y-point switch"
+            assert response.subFlowsDiscrepancies.isEmpty()
+        }
     }
 
     @Tags([LOW_PRIORITY])
     def "Able to ping HA-Flow when neither of the sub-flows end on Y-Point"() {
         given: "HA-Flow has been created"
-        def swT = switchTriplets.all(true).findSwitchTripletWithYPointOnSharedEp()
+        def swT = switchTriplets.all().nonNeighbouring().findSwitchTripletWithYPointOnSharedEp()
         def haFlow = haFlowFactory.getRandom(swT)
 
         and: "Neither of the sub-flows end on Y-Point (ping is disabled for such kind of HA-Flow)"
@@ -179,37 +186,62 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         assert !paths.sharedPath.path.forward.nodes.nodes
 
         when: "Ping HA-Flow"
-        def pingResult = haFlow.ping(2000)
+        def pingResult = haFlow.ping()
 
         then: "HA-Flow ping is successful"
         pingResult.isPingSuccess()
         pingResult.haFlowId == haFlow.haFlowId
         !pingResult.error
 
-        and: "Successful ping for both sub-flows in FORWARD direction"
-        pingResult.subFlows.each {subFlow ->
-            assert subFlow.forward.pingSuccess && !subFlow.forward.error
+        when: "Break one sub-flow by removing flow rules from the intermediate switch"
+        def haFlowPath = haFlow.retrievedAllEntityPaths()
+
+        def subFlow1Id = haFlowPath.subFlowPaths.first().flowId
+        def subFlow1Switch = switches.all().findSpecific(haFlowPath.getSubFlowIsls(subFlow1Id).last().srcSwitch.dpId)
+
+        def subFlow2Id = haFlowPath.subFlowPaths.last().flowId
+        def subFlow2Switch = switches.all().findSpecific(haFlowPath.getSubFlowIsls(subFlow2Id).last().srcSwitch.dpId)
+
+        def rulesToDelete = subFlow1Switch.rulesManager.getNotDefaultRules().cookie
+        rulesToDelete.each { cookie -> subFlow1Switch.rulesManager.delete(cookie) }
+
+        def collectedDiscrepancies = haFlow.pingAndCollectDiscrepancies()
+
+        then: "HA-Flow ping is not successful, and ping for one sub-flow shows that path is broken"
+        def expectedDiscrepancy = [(FlowDirection.FORWARD): "No ping for reasonable time",
+                                   (FlowDirection.REVERSE): "No ping for reasonable time"]
+        verifyAll {
+            assert !collectedDiscrepancies.pingSuccess
+            assert collectedDiscrepancies.subFlowsDiscrepancies
+                    .find { it.subFlowId == subFlow1Id }.flowDiscrepancies == expectedDiscrepancy
+            assert !collectedDiscrepancies.subFlowsDiscrepancies.find { it.subFlowId == subFlow2Id }
         }
 
-        and: "Successful ping for both sub-flows in REVERSE direction"
-        pingResult.subFlows.each {subFlow ->
-            assert subFlow.reverse.pingSuccess && !subFlow.reverse.error
+        when: "Break another sub-flow by removing flow rules from the intermediate switch(after fixing previous discrepancy)"
+        subFlow1Switch.synchronize()
+
+        rulesToDelete = subFlow2Switch.rulesManager.getNotDefaultRules().cookie
+        rulesToDelete.each { cookie -> subFlow2Switch.rulesManager.delete(cookie) }
+
+        collectedDiscrepancies = haFlow.pingAndCollectDiscrepancies()
+
+        then: "HA-Flow ping is not successful, and ping for another sub-flow shows that path is broken"
+        verifyAll {
+            assert !collectedDiscrepancies.pingSuccess
+            assert collectedDiscrepancies.subFlowsDiscrepancies
+                    .find { it.subFlowId == subFlow2Id }.flowDiscrepancies == expectedDiscrepancy
+            assert !collectedDiscrepancies.subFlowsDiscrepancies.find { it.subFlowId == subFlow1Id }
         }
-    }
 
-    private void arePingRuleCountersGrow(SwitchTriplet swT, HaFlowExtended haFlow) {
-        def sharedSwitchPacketCount = getPacketCountOfVlanPingRule(swT.shared.dpId, haFlow)
-        def ep1SwitchPacketCount = getPacketCountOfVlanPingRule(swT.ep1.dpId, haFlow)
-        def ep2SwitchPacketCount = getPacketCountOfVlanPingRule(swT.ep2.dpId, haFlow)
+        when: "All required rules have been installed(sync)"
+        subFlow2Switch.synchronize()
+        collectedDiscrepancies = haFlow.pingAndCollectDiscrepancies()
 
-        wait(pingInterval + STATS_LOGGING_TIMEOUT + WAIT_OFFSET) {
-            assert getPacketCountOfVlanPingRule(swT.shared.dpId, haFlow) > sharedSwitchPacketCount
-            assert getPacketCountOfVlanPingRule(swT.ep1.dpId, haFlow) > ep1SwitchPacketCount
-            assert getPacketCountOfVlanPingRule(swT.ep2.dpId, haFlow) > ep2SwitchPacketCount
+        then: "HA-Flow ping is successful for both sub-flows"
+        verifyAll {
+            assert collectedDiscrepancies.pingSuccess
+            assert !collectedDiscrepancies.error
+            assert collectedDiscrepancies.subFlowsDiscrepancies.isEmpty()
         }
-    }
-
-    private long getPacketCountOfVlanPingRule(SwitchId switchId, HaFlowExtended haFlow) {
-        return switchRulesFactory.get(switchId).pingRule(haFlow.encapsulationType.toString()).packetCount
     }
 }

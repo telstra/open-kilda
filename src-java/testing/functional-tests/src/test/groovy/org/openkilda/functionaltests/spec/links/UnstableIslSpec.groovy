@@ -5,6 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FA
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
@@ -73,20 +74,20 @@ class UnstableIslSpec extends HealthCheckSpecification {
     def "ISL is not considered unstable after deactivating/activating switch"() {
         //Switches with roundtrip isl latency will not have ISLs failed given that round trip rules remain installed
         given: "A switch that does not support round trip isl latency"
-        def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
+        def sw = switches.all().getListOfSwitches().find { !it.getDbFeatures().contains(NOVIFLOW_COPY_FIELD)}
         assumeTrue(sw as boolean, "This test cannot be run if all switches support roundtrip is latency")
 
         and: "Cost of related ISLs"
-        def swIsls = topology.getRelatedIsls(sw)
+        def swIsls = topology.getRelatedIsls(sw.switchId)
 
         when: "Deactivate the switch"
-        def blockData = switchHelper.knockoutSwitch(sw, RW, true)
+        def blockData = sw.knockout(RW, true)
 
         then: "Switch ISL is not 'unstable'"
         [swIsls[0], swIsls[0].reversed].each { assert database.getIslTimeUnstable(it) == null }
 
         when: "Activate the switch"
-        switchHelper.reviveSwitch(sw, blockData, true)
+        sw.revive(blockData, true)
 
         then: "Switch ISL is not 'unstable'"
         [swIsls[0], swIsls[0].reversed].each { assert database.getIslTimeUnstable(it) == null }
@@ -103,7 +104,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
         def secondPathIsls = availablePaths.findAll { it != firstPathIsls }.min { it.size() }
 
         and: "All alternative paths are unavailable (bring ports down on the srcSwitch)"
-        def altPathsIsls = topology.getRelatedIsls(switchPair.src) - firstPathIsls.first() - secondPathIsls.first()
+        def altPathsIsls = topology.getRelatedIsls(switchPair.src.switchId) - firstPathIsls.first() - secondPathIsls.first()
         islHelper.breakIsls(altPathsIsls)
 
         and: "First path is unstable (due to bringing port down/up)"
@@ -132,7 +133,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
         then: "Flow is created on the stable path(secondPath)"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == secondPathIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == secondPathIsls
         }
 
         when: "Mark first path as stable(update the 'time_unstable' field in db)"
@@ -148,7 +149,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
         then: "Flow is rerouted"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == firstPathIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == firstPathIsls
         }
     }
 }

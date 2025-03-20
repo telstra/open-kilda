@@ -8,7 +8,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload
@@ -34,7 +34,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         given: "Switches with three not overlapping paths at least"
         def swT = switchTriplets.all(false, false).withAllDifferentEndpoints()
                 .withAtLeastNNonOverlappingPaths(4).random()
-        println("[" + swT.shared.dpId + "] " + swT.ep1.dpId + "---" + swT.ep2.dpId )
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create three Y-Flows with diversity enabled"
@@ -98,7 +97,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def flow = flowFactory.getRandom(swT.shared, swT.ep1, false)
         def subFlowId = yFlow.subFlows.first().flowId
         def involvedIslSubFlow = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == subFlowId }.getInvolvedIsls()
-        def involvedIslSimpleFlow = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def involvedIslSimpleFlow = flow.retrieveAllEntityPaths().getInvolvedIsls()
         assert involvedIslSubFlow == involvedIslSimpleFlow
 
         when: "Update Y-Flow to become diverse with simple multiSwitch flow"
@@ -158,11 +157,11 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "Simple multiSwitch flow"
-        def flow = flowFactory.getRandom(switchPair.src, switchPair.dst, false)
+        def flow = flowFactory.getRandom(switchPair, false)
 
         when: "Create a Y-Flow with one switch sub flow and diversity with simple flow"
         def swT = switchTriplets.all(true, true)
-                .findSpecificSwitchTriplet(switchPair.src.dpId, switchPair.src.dpId, switchPair.dst.dpId)
+                .findSpecificSwitchTriplet(switchPair.src, switchPair.src, switchPair.dst)
         def yFlow = yFlowFactory.getBuilder(swT, false).withDiverseFlow(flow.flowId).build().create()
 
         then: "Create response contains information about diverse flow"
@@ -252,13 +251,11 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def yFlow1 = yFlowFactory.getRandom(swT, false)
 
         and: "Create one-switch y-flows on shared and ep1 switches in the same diversity group"
-        def swTAllAsSharedSw = switchTriplets.all(true, true)
-                .findSpecificSwitchTriplet(swT.shared.dpId, swT.shared.dpId, swT.shared.dpId)
+        def swTAllAsSharedSw = switchTriplets.all(true, true).withSpecificSingleSwitch(swT.shared.sw)
         def yFlow2 = yFlowFactory.getBuilder(swTAllAsSharedSw, false, yFlow1.occupiedEndpoints())
                 .withDiverseFlow(yFlow1.yFlowId).build().create()
 
-        def swTAllAsEp1 = switchTriplets.all(true, true)
-                .findSpecificSwitchTriplet(swT.ep1.dpId, swT.ep1.dpId, swT.ep1.dpId)
+        def swTAllAsEp1 = switchTriplets.all(true, true).withSpecificSingleSwitch(swT.ep1.sw)
         def yFlow3 = yFlowFactory.getBuilder(swTAllAsEp1, false, yFlow1.occupiedEndpoints() + yFlow2.occupiedEndpoints())
                 .withDiverseFlow(yFlow1.yFlowId).build().create()
 

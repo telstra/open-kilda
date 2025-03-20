@@ -36,6 +36,8 @@ export const MessageObj = {
     bfd_flag_updated: 'BFD flag updated successfully!',
     flows_evacuated: 'All flows are evacuated successfully!',
     error_flows_evacuated: 'Error in evacuating flows!',
+    info_cannot_evacuate_flows_from_switch: 'Can not evacuate flows while switch is not under maintenance.',
+    info_cannot_evacuate_flows_from_isl: 'Can not evacuate flows while ISL is not under maintenance.',
     reverse_graph_no_data: 'Backward graph API did not return data.',
     forward_graph_no_data: 'Forward graph API did not return data.',
     updating_isl_bandwidth: 'Updating ISL max bandwidth',

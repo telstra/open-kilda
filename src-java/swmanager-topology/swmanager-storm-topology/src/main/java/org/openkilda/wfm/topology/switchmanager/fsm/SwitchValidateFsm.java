@@ -98,7 +98,7 @@ public class SwitchValidateFsm extends AbstractStateMachine<
     private final SwitchValidateRequest request;
     private final SwitchManagerCarrier carrier;
     private final ValidationService validationService;
-    private static final Map<String, CommandData> requestsTable = new HashMap<>();
+    private final Map<String, CommandData> requestsTable = new HashMap<>();
     private final NoArgGenerator requestIdGenerator = Generators.timeBasedGenerator();
 
     private SwitchValidationContext validationContext;

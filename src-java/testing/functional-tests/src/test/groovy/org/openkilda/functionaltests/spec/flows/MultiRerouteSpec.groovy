@@ -42,7 +42,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         }
         //ensure all flows are on the same path
         flows[1..-1].each {
-            assert it.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == currentPathIsls
+            assert it.retrieveAllEntityPaths().getInvolvedIsls() == currentPathIsls
         }
 
         when: "Make another path more preferable"
@@ -70,7 +70,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         wait(WAIT_OFFSET * 3) {
             def assertions = new SoftAssertionsWrapper()
             flowsOnPrefPath = flows.findAll {
-                it.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == prefPathIsls
+                it.retrieveAllEntityPaths().getInvolvedIsls() == prefPathIsls
             }
             flowsOnPrefPath.each { flow ->
                 assertions.checkSucceeds { assert flow.retrieveFlowStatus().status == FlowState.UP }
@@ -85,7 +85,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
             def assertions = new SoftAssertionsWrapper()
             restFlows.each { flow ->
                 assertions.checkSucceeds { assert flow.retrieveFlowStatus().status == FlowState.UP }
-                assertions.checkSucceeds { assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() != prefPathIsls }
+                assertions.checkSucceeds { assert flow.retrieveAllEntityPaths().getInvolvedIsls() != prefPathIsls }
             }
             assertions.verify()
         }

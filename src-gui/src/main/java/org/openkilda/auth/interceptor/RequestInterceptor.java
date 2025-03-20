@@ -23,6 +23,7 @@ import org.openkilda.constants.IConstants.ApplicationSetting;
 import org.openkilda.constants.Status;
 import org.openkilda.service.ApplicationSettingService;
 
+import jakarta.annotation.security.PermitAll;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -41,6 +42,7 @@ import org.usermanagement.service.PermissionService;
 import org.usermanagement.service.RoleService;
 import org.usermanagement.util.MessageUtils;
 
+import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.util.HashSet;
 import java.util.List;
@@ -73,33 +75,42 @@ public class RequestInterceptor implements AsyncHandlerInterceptor {
 
     @Override
     public boolean preHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler)
-            throws AccessDeniedException {
+            throws IOException {
         String correlationId = request.getParameter(CORRELATION_ID);
         correlationId = correlationId == null ? UUID.randomUUID().toString() : correlationId;
 
         HttpSession session = request.getSession();
-        UserInfo userInfo = null;
         if (IConstants.SessionTimeout.TIME_IN_MINUTE == null) {
             IConstants.SessionTimeout.TIME_IN_MINUTE = Integer.valueOf(applicationSettingService
                     .getApplicationSettings().get(ApplicationSetting.SESSION_TIMEOUT.name()));
         }
         session.setMaxInactiveInterval(IConstants.SessionTimeout.TIME_IN_MINUTE * 60);
-        userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
-        if (userInfo != null) {
+        UserInfo userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
+        if (handler instanceof HandlerMethod) {
+            HandlerMethod handlerMethod = (HandlerMethod) handler;
+            PermitAll permitAllAnnotation = handlerMethod.getMethodAnnotation(PermitAll.class);
+            if (permitAllAnnotation != null) {
+                setCorIdAndGet(correlationId);
+                return true;
+            }
+            if (userInfo == null) {
+                setCorIdAndGet(correlationId);
+                response.sendRedirect(String.format("%s/%s", request.getContextPath(), "401"));
+                return true;
+            }
             validateUser(userInfo);
-            if (handler instanceof HandlerMethod) {
-                HandlerMethod handlerMethod = (HandlerMethod) handler;
-                Permissions permissions = handlerMethod.getMethod().getAnnotation(Permissions.class);
-                if (permissions != null) {
-                    validateAndPopulatePermisssion(userInfo, permissions);
-                }
+            Permissions permissions = handlerMethod.getMethod().getAnnotation(Permissions.class);
+            if (permissions != null) {
+                validateAndPopulatePermisssion(userInfo, permissions);
             }
             updateRequestContext(correlationId, request, userInfo);
-        } else {
-            RequestContext requestContext = serverContext.getRequestContext();
-            requestContext.setCorrelationId(correlationId);
         }
         return true;
+    }
+
+    private void setCorIdAndGet(String correlationId) {
+        RequestContext requestContext = serverContext.getRequestContext();
+        requestContext.setCorrelationId(correlationId);
     }
 
     @Override

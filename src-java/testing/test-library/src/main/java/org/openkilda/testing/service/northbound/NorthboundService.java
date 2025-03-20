@@ -52,12 +52,12 @@ import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
-import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import org.openkilda.testing.service.northbound.payloads.PathDto;
 import org.openkilda.testing.service.northbound.payloads.PathRequestParameter;
+import org.openkilda.testing.service.northbound.payloads.SwitchSyncExtendedResult;
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult;
 
 import java.util.List;
@@ -127,7 +127,7 @@ public interface NorthboundService {
 
     RulesSyncResult synchronizeSwitchRules(SwitchId switchId);
 
-    SwitchSyncResult synchronizeSwitch(SwitchId switchId, boolean removeExcess);
+    SwitchSyncExtendedResult synchronizeSwitch(SwitchId switchId, boolean removeExcess);
 
     RulesValidationResult validateSwitchRules(SwitchId switchId);
 

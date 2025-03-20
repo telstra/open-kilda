@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.helpers.model
 
 import org.openkilda.functionaltests.model.stats.Direction
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import groovy.transform.Canonical
@@ -25,12 +26,8 @@ class FlowPathModel {
                 (path.reverse.getInvolvedIsls() + protectedPath?.reverse?.getInvolvedIsls()).findAll()
     }
 
-    List<Isl> getMainPathInvolvedIsls(Direction direction = Direction.FORWARD) {
-        direction == Direction.FORWARD ? path.forward.getInvolvedIsls() : path.reverse.getInvolvedIsls()
+    List<SwitchId> getTransitSwitches(Direction direction = Direction.FORWARD) {
+        direction == Direction.FORWARD ? (path.forward.getTransitInvolvedSwitches() + protectedPath?.forward?.getTransitInvolvedSwitches()).findAll() :
+                (path.reverse.getTransitInvolvedSwitches() + protectedPath?.reverse?.getTransitInvolvedSwitches()).findAll()
     }
-
-    List<Isl> getProtectedPathInvolvedIsls(Direction direction = Direction.FORWARD) {
-        direction == Direction.FORWARD ? protectedPath.forward.getInvolvedIsls() :  protectedPath.reverse.getInvolvedIsls()
-    }
-
 }

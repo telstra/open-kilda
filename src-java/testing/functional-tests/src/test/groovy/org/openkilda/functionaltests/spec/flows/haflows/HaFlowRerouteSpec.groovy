@@ -1,26 +1,11 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import groovy.util.logging.Slf4j
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
-import org.openkilda.functionaltests.model.stats.HaFlowStats
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowStatus
-import org.openkilda.model.history.DumpType
-import org.openkilda.testing.service.northbound.model.HaFlowActionType
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Issue
-import spock.lang.Narrative
-import spock.lang.Shared
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_RAW_BITS
@@ -29,21 +14,21 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
-import org.openkilda.functionaltests.helpers.model.HaFlowExtended
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.model.stats.HaFlowStats
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowStatus
 import org.openkilda.model.history.DumpType
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.northbound.model.HaFlowActionType
 import org.openkilda.testing.service.traffexam.TraffExamService
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.Shared
 
-import jakarta.inject.Provider
+import javax.inject.Provider
 
 @Slf4j
 @Narrative("Verify reroute operations on HA-flows.")
@@ -61,7 +46,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    @Tags([TOPOLOGY_DEPENDENT, ISL_RECOVER_ON_FAIL])
+    @Tags([ISL_RECOVER_ON_FAIL])
     @Issue("https://github.com/telstra/open-kilda/issues/5647 (hardware)")
     def "Valid HA-flow can be rerouted"() {
         given: "An HA-flow"
@@ -108,8 +93,9 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         haFlow.validate().asExpected
 
         and: "All involved switches pass switch validation"
-        def allInvolvedSwitchIds = initialPaths.getInvolvedSwitches() + newPaths.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
+        def allInvolvedSwitchIds = switches.all().findSpecific(
+                [initialPaths, newPaths].collectMany { it.getInvolvedSwitches() })
+        synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         and: "Traffic passes through HA-Flow"
         if (swT.isTraffExamAvailable()) {
@@ -175,16 +161,17 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         haFlow.validate().asExpected
 
         and: "All involved switches pass switch validation"
-        def allInvolvedSwitchIds = (initialPaths.getInvolvedSwitches() + newPaths.getInvolvedSwitches()).unique()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
+        def allInvolvedSwitchIds = switches.all().findSpecific(
+                [initialPaths, newPaths].collectMany { it.getInvolvedSwitches() })
+        synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "HA-flow goes to 'Down' status when ISl of the HA-flow fails and there is no alt path to reroute"() {
         given: "An HA-flow without alternative paths"
         def swT = switchTriplets.all().withAllDifferentEndpoints().switchTriplets.find {
-            def yPoints = topologyHelper.findPotentialYPoints(it)
-            yPoints.size() == 1 && yPoints[0] != it.shared.dpId
+            def yPoints = it.findPotentialYPoints()
+            yPoints.size() == 1 && yPoints[0] != it.shared.switchId
         }
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def haFlow = haFlowFactory.getRandom(swT)
@@ -212,6 +199,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches pass switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(initialPaths.getInvolvedSwitches()).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(initialPaths)
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
     }
 }

@@ -23,7 +23,7 @@ jobs:
         mv confd-0.16.0-linux-amd64 /opt/confd/bin/confd
         chmod +x /opt/confd/bin/confd
     - name: Gradle cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: |
           ~/.gradle/caches

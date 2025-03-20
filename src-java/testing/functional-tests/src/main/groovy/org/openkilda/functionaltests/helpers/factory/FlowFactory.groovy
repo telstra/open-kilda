@@ -7,6 +7,7 @@ import static org.springframework.beans.factory.config.ConfigurableBeanFactory.S
 
 import org.openkilda.functionaltests.helpers.builder.FlowBuilder
 import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
@@ -48,8 +49,12 @@ class FlowFactory {
         getBuilder(switchPair.src, switchPair.dst, useTraffgenPorts, busyEndpoints)
     }
 
-    FlowBuilder getBuilder(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEndpoints = []) {
+    FlowBuilder getBuilder(SwitchExtended srcSwitch, SwitchExtended dstSwitch, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEndpoints = []) {
         return new FlowBuilder(srcSwitch, dstSwitch, northbound, northboundV2, topology, cleanupManager, database, useTraffgenPorts, busyEndpoints)
+    }
+
+    FlowBuilder getSingleSwBuilder(SwitchExtended srcSwitch, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEndpoints = []) {
+        getBuilder(srcSwitch, srcSwitch, useTraffgenPorts, busyEndpoints)
     }
 
     /*
@@ -61,14 +66,14 @@ class FlowFactory {
         return getRandom(switchPair.src, switchPair.dst, useTraffgenPorts, expectedFlowState, busyEndpoints)
     }
 
-    FlowExtended getRandom(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true, FlowState expectedFlowState = UP,
+    FlowExtended getRandom(SwitchExtended srcSwitch, SwitchExtended dstSwitch, boolean useTraffgenPorts = true, FlowState expectedFlowState = UP,
                            List<SwitchPortVlan> busyEndpoints = []) {
         return getBuilder(srcSwitch, dstSwitch, useTraffgenPorts, busyEndpoints).build().create(expectedFlowState)
     }
 
-    FlowExtended getRandomV1(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true, FlowState expectedFlowState = UP,
+    FlowExtended getSingleSwRandom(SwitchExtended srcSwitch, boolean useTraffgenPorts = true, FlowState expectedFlowState = UP,
                            List<SwitchPortVlan> busyEndpoints = []) {
-        return getBuilder(srcSwitch, dstSwitch, useTraffgenPorts, busyEndpoints).build().createV1(expectedFlowState)
+        getRandom(srcSwitch, srcSwitch, useTraffgenPorts, expectedFlowState, busyEndpoints)
     }
 
     FlowExtended getRandomV1(SwitchPair switchPair, boolean useTraffgenPorts = true, FlowState expectedFlowState = UP,

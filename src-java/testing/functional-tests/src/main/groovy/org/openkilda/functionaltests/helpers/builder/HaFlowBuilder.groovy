@@ -2,8 +2,7 @@ package org.openkilda.functionaltests.helpers.builder
 
 import static org.openkilda.functionaltests.helpers.FlowNameGenerator.HA_FLOW
 import static org.openkilda.functionaltests.helpers.StringGenerator.generateDescription
-import static org.openkilda.functionaltests.helpers.SwitchHelper.getRandomAvailablePort
-import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.randomVlan
 
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
@@ -14,6 +13,7 @@ import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
 import groovy.util.logging.Slf4j
@@ -31,27 +31,26 @@ class HaFlowBuilder {
     HaFlowBuilder(SwitchTriplet swT,
                   NorthboundServiceV2 northboundV2,
                   TopologyDefinition topologyDefinition,
+                  Database database,
                   CleanupManager cleanupManager,
                   boolean useTraffgenPorts = true,
                   List<SwitchPortVlan> busyEndpoints = []) {
-        this.haFlowExtended = new HaFlowExtended(HA_FLOW.generateId(), northboundV2, topologyDefinition, cleanupManager)
+        this.haFlowExtended = new HaFlowExtended(HA_FLOW.generateId(), northboundV2, topologyDefinition, database, cleanupManager)
 
         this.haFlowExtended.sharedEndpoint = HaFlowSharedEndpoint.builder()
-                .switchId(swT.shared.dpId)
-                .portNumber(getRandomAvailablePort(swT.shared, topologyDefinition, useTraffgenPorts,
-                        busyEndpoints.findAll { it.sw == swT.shared.dpId }*.port))
-                .vlanId(randomVlan([]))
+                .switchId(swT.shared.switchId)
+                .portNumber(swT.shared.getRandomPortNumber(useTraffgenPorts, busyEndpoints.findAll { it.sw == swT.shared.switchId }*.port))
+                .vlanId(randomVlan(busyEndpoints.findAll { it.sw == swT.shared.switchId }*.vlan))
                 .build()
         def se = this.haFlowExtended.sharedEndpoint
         busyEndpoints << new SwitchPortVlan(se.switchId, se.portNumber, se.vlanId)
         this.haFlowExtended.subFlows = [swT.ep1, swT.ep2].collect { sw ->
             HaSubFlowExtended ep = HaSubFlowExtended.builder()
                     .haSubFlowId("${this.haFlowExtended.haFlowId}${SUBFLOW_SUFFIX_LIST.pop()}")
-                    .endpointSwitchId(sw.dpId)
-                    .endpointPort(getRandomAvailablePort(sw, topologyDefinition, useTraffgenPorts,
-                            busyEndpoints.findAll { it.sw == sw.dpId }*.port))
-                    .endpointVlan(randomVlan()).build()
-            busyEndpoints << new SwitchPortVlan(sw.dpId, ep.endpointPort, ep.endpointVlan)
+                    .endpointSwitchId(sw.switchId)
+                    .endpointPort(sw.getRandomPortNumber(useTraffgenPorts, busyEndpoints.findAll { it.sw == sw.switchId }*.port))
+                    .endpointVlan(randomVlan(busyEndpoints.findAll { it.sw == sw.switchId }*.vlan)).build()
+            busyEndpoints << new SwitchPortVlan(sw.switchId, ep.endpointPort, ep.endpointVlan)
             return ep
         }
         this.haFlowExtended.description = generateDescription()

@@ -4,7 +4,7 @@ import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.SwitchHelper.getRandomAvailablePort
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.messaging.payload.flow.FlowState.UP
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -77,7 +77,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         and: "All flows have different paths"
         def allInvolvedIsls = [flow1, flow2, flow3].collectMany { flow ->
-           flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+           flow.retrieveAllEntityPaths().getInvolvedIsls()
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
@@ -149,7 +149,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         [flow1Path.getPathNodes(), flow2PathUpdated.getPathNodes(), flow3PathUpdated.getPathNodes()].toSet().size() == 3
 
         def allInvolvedIsls = [flow1Path, flow2PathUpdated, flow3PathUpdated].collectMany { path ->
-            path.flowPath.getInvolvedIsls()
+            path.getInvolvedIsls()
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
     }
@@ -171,11 +171,11 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect {flow ->
            flow.retrieveAllEntityPaths()
         }
-        def allInvolvedIsls = [flow1Path, flow2Path, flow3Path].collectMany { path -> path.flowPath.getInvolvedIsls()}
+        def allInvolvedIsls = [flow1Path, flow2Path, flow3Path].collectMany { path -> path.getInvolvedIsls()}
         assert allInvolvedIsls.unique(false) == allInvolvedIsls
 
         and: "Flow1 path is the most preferable"
-        def flow1Isls = flow1Path.flowPath.getInvolvedIsls()
+        def flow1Isls = flow1Path.getInvolvedIsls()
         switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { !it.containsAll(flow1Isls) }
                 .each { islHelper.makePathIslsMorePreferable(flow1Isls, it) }
 
@@ -185,8 +185,8 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         then: "The flow became not diverse and rerouted to the more preferable path (path of the first flow)"
         def flow2PathUpdated = flow2.retrieveAllEntityPaths()
-        flow2PathUpdated.flowPath.getInvolvedIsls() != flow2Path.flowPath.getInvolvedIsls()
-        flow2PathUpdated.flowPath.getInvolvedIsls() == flow1Path.flowPath.getInvolvedIsls()
+        flow2PathUpdated.getInvolvedIsls() != flow2Path.getInvolvedIsls()
+        flow2PathUpdated.getInvolvedIsls() == flow1Path.getInvolvedIsls()
 
         and: "The 'diverse_with' field is removed"
         !flow2.retrieveDetails().diverseWith
@@ -204,8 +204,8 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         then: "The flow became not diverse and rerouted to the more preferable path (path of the first flow)"
         def flow3PathUpdated = flow3.retrieveAllEntityPaths()
-        flow3PathUpdated.flowPath.getInvolvedIsls() != flow3Path.flowPath.getInvolvedIsls()
-        flow3PathUpdated.flowPath.getInvolvedIsls() == flow1Path.flowPath.getInvolvedIsls()
+        flow3PathUpdated.getInvolvedIsls() != flow3Path.getInvolvedIsls()
+        flow3PathUpdated.getInvolvedIsls() == flow1Path.getInvolvedIsls()
 
         and: "The 'diverse_with' field is removed"
         !flow3.retrieveDetails().diverseWith
@@ -221,7 +221,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def flow1Path = flow1.retrieveAllEntityPaths().getPathNodes()
 
         and: "Make all alternative paths unavailable (bring ports down on the source switch)"
-        def broughtDownIsls = topology.getRelatedIsls(switchPair.getSrc())
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src.switchId)
                 .findAll {it.srcPort != flow1Path.first().portNo}
         islHelper.breakIsls(broughtDownIsls)
 
@@ -246,7 +246,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         and: "Create a flow going through these switches"
         def flow1 = flowFactory.getRandom(switchPair, false)
-        def initialFlowIsls = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def initialFlowIsls = flow1.retrieveAllEntityPaths().getInvolvedIsls()
 
         and: "Make each alternative path less preferable than the first flow path"
         def altPaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
@@ -267,7 +267,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def flow2Path = flow2.retrieveAllEntityPaths()
 
         then: "The flow is built through the most preferable path (path of the first flow)"
-        flow2Path.flowPath.getInvolvedIsls() == initialFlowIsls
+        flow2Path.getInvolvedIsls() == initialFlowIsls
 
         when: "Create the third flow with diversity enabled"
         def flow3 = flowFactory.getBuilder(switchPair, false, (flow1.occupiedEndpoints() + flow2.occupiedEndpoints()))
@@ -276,8 +276,8 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def flow3Path = flow3.retrieveAllEntityPaths()
 
         then: "The flow is built through one of alternative paths because they are preferable already"
-        def involvedIsls = [flow2Path, flow3Path].collectMany {path -> path.flowPath.getInvolvedIsls() }
-        flow3Path.flowPath.getInvolvedIsls() != flow2Path.flowPath.getInvolvedIsls()
+        def involvedIsls = [flow2Path, flow3Path].collectMany {path -> path.getInvolvedIsls() }
+        flow3Path.getInvolvedIsls() != flow2Path.getInvolvedIsls()
         involvedIsls.unique(false) == involvedIsls
     }
 
@@ -331,7 +331,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         cleanup:
         //https://github.com/telstra/open-kilda/issues/5221
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
+        synchronizeAndCollectFixedDiscrepancies(switchPair.toList())
     }
 
     @Tags([LOW_PRIORITY])
@@ -347,8 +347,8 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         when: "Update the second flow to become diverse and single-switch"
        def updatedFlow2 = flow2.update(flow2.deepCopy().tap {
             it.diverseWith = [flow1.flowId]
-            it.destination.switchId = switchPair1.src.dpId
-            it.destination.portNumber = getRandomAvailablePort(switchPair1.src, topologyDefinition, false,
+            it.destination.switchId = switchPair1.src.switchId
+            it.destination.portNumber = switchPair1.src.getRandomPortNumber(false,
                     [flow1.source.portNumber, flow2.source.portNumber])
         })
         updatedFlow2.waitForHistoryEvent(FlowActionType.UPDATE)
@@ -380,7 +380,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         and: "All flows have different paths"
         def allInvolvedIsls = [flow1, flow2, flow3].collectMany {flow ->
-            flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+            flow.retrieveAllEntityPaths().getInvolvedIsls()
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
     }

@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.helpers.model
 
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
-import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -29,9 +28,9 @@ import org.springframework.stereotype.Component
 class SwitchTriplets {
     List<SwitchTriplet> switchTriplets
     @Autowired
-    TopologyHelper topologyHelper
-    @Autowired
     TopologyDefinition topology
+    @Autowired
+    Switches switches
 
     SwitchTriplets(List<SwitchTriplet> switchTriplets) {
         this.switchTriplets = switchTriplets
@@ -68,7 +67,7 @@ class SwitchTriplets {
 
     SwitchTriplets withAtLeastNIslOnSharedEndpoint(int islNumber) {
         switchTriplets = switchTriplets.findAll {
-            topology.getRelatedIsls(it.shared).size() >= 5
+            topology.getRelatedIsls(it.shared.switchId).size() >= islNumber
         }
         return this
     }
@@ -84,10 +83,10 @@ class SwitchTriplets {
     }
 
     SwitchTriplets withS42Support() {
-        def server42switches = topology.getActiveServer42Switches()
+        def server42switches = switches.all().withS42Support().getListOfSwitches()
         switchTriplets = switchTriplets.findAll {
-            it.shared.dpId in server42switches.dpId && it.ep1.dpId in server42switches.dpId
-                    && it.ep2.dpId in server42switches.dpId
+            it.shared in server42switches && it.ep1 in server42switches
+                    && it.ep2 in server42switches
         }
         return this
     }
@@ -118,7 +117,7 @@ class SwitchTriplets {
     }
 
     SwitchTriplet withSpecificSingleSwitch(Switch sw) {
-        singleSwitch().switchTriplets.find { it.shared.dpId == sw.dpId}
+        singleSwitch().switchTriplets.find { it.shared.switchId == sw.dpId}
 
     }
 
@@ -133,24 +132,25 @@ class SwitchTriplets {
         }
     }
 
-    SwitchTriplet findSpecificSwitchTriplet(SwitchId shared, SwitchId ep1, SwitchId ep2) {
+    SwitchTriplet findSpecificSwitchTriplet(SwitchExtended shared, SwitchExtended ep1, SwitchExtended ep2) {
         return switchTriplets.find {
-            it.shared.getDpId() == shared
-                    && it.ep1.getDpId() == ep1
-                    && it.ep2.getDpId() == ep2
+            it.shared == shared
+                    && it.ep1 == ep1
+                    && it.ep2 == ep2
         }
     }
 
     SwitchTriplet findSwitchTripletForYFlowWithProtectedPaths(boolean isYPointOnSharedEp = false) {
         return switchTriplets.find {
-            def ep1paths = it.pathsEp1.findAll { path -> !path.any { node -> node.switchId == it.ep2.dpId } }
+            def ep1paths = it.pathsEp1.findAll { path -> !path.any { node -> node.switchId == it.ep2.switchId } }
                     .unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def ep2paths = it.pathsEp2.findAll { path -> !path.any { node -> node.switchId == it.ep1.dpId } }
+            def ep2paths = it.pathsEp2.findAll { path -> !path.any { node -> node.switchId == it.ep1.switchId } }
                     .unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def yPoints = topologyHelper.findPotentialYPoints(it)
+            def yPoints = it.findPotentialYPoints()
 
-            yPoints.size() == 1 && (isYPointOnSharedEp ? yPoints[0] == it.shared.dpId : yPoints[0] != it.shared.dpId) && yPoints[0] != it.ep1.dpId && yPoints[0] != it.ep2.dpId &&
-                    ep1paths.size() >= 2 && ep2paths.size() >= 2
+            yPoints.size() == 1 && (isYPointOnSharedEp ? yPoints[0] == it.shared.switchId : yPoints[0] != it.shared.switchId)
+                    && yPoints[0] != it.ep1.switchId && yPoints[0] != it.ep2.switchId
+                    && ep1paths.size() >= 2 && ep2paths.size() >= 2
         }
     }
 
@@ -184,7 +184,7 @@ class SwitchTriplets {
 
     SwitchTriplet findSwitchTripletWithYPointOnSharedEp() {
         return switchTriplets.find {
-            topologyHelper.findPotentialYPoints(it).size() == 1 && it.getShared().getDpId() == topologyHelper.findPotentialYPoints(it).get(0)
+            it.findPotentialYPoints().size() == 1 && it.shared.switchId == it.findPotentialYPoints().get(0)
         }
     }
 
@@ -195,11 +195,11 @@ class SwitchTriplets {
 
 
     SwitchTriplet findSwitchTripletWithOnlySharedSwS42Support() {
-        def server42switches = topology.getActiveServer42Switches()
+        def server42switches = switches.all().withS42Support().getListOfSwitches()
         return switchTriplets.find {
-            it.shared.dpId in server42switches.dpId
-                    && !(it.ep1.dpId in server42switches.dpId)
-                    && !(it.ep2.dpId in server42switches.dpId)
+            it.shared in server42switches
+                    && !(it.ep1 in server42switches)
+                    && !(it.ep2 in server42switches)
         }
     }
 
@@ -217,17 +217,17 @@ class SwitchTriplets {
 
     @Memoized
     private List<SwitchTriplet> getSwitchTripletsCached(boolean includeSingleSwitch) {
-        return [topology.activeSwitches, topology.activeSwitches, topology.activeSwitches].combinations()
+        return [switches.all().getListOfSwitches(), switches.all().getListOfSwitches(), switches.all().getListOfSwitches()].combinations()
                 .findAll { shared, ep1, ep2 -> includeSingleSwitch || shared != ep1 && shared != ep2 } //non-single-switch
                 .unique { triplet -> [triplet[0], [triplet[1], triplet[2]].sort()] } //no reversed versions of ep1/ep2
-                .collect { Switch shared, Switch ep1, Switch ep2 ->
+                .collect { SwitchExtended shared, SwitchExtended ep1, SwitchExtended ep2 ->
                     new SwitchTriplet(
                             shared: shared,
                             ep1: ep1,
                             ep2: ep2,
-                            pathsEp1: retrievePairPathNode(shared.dpId, ep1.dpId),
-                            pathsEp2: retrievePairPathNode(shared.dpId, ep2.dpId),
-                            topologyDefinition: topology)
+                            pathsEp1: retrievePairPathNode(shared.switchId, ep1.switchId),
+                            pathsEp2: retrievePairPathNode(shared.switchId, ep2.switchId),
+                            topology: topology)
                 }
     }
 

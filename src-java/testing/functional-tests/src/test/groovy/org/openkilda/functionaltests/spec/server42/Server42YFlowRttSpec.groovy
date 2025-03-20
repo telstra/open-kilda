@@ -8,11 +8,13 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.VXLAN
+import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
 import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
 import static org.openkilda.functionaltests.model.stats.Origin.SERVER_42
+import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -24,15 +26,13 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.builder.YFlowBuilder
+import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.yflows.SubFlowPatchPayload
@@ -60,10 +60,6 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
     @Value('${flow.sla.check.interval.seconds}')
     Integer flowSlaCheckIntervalSeconds
 
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
-
     @Shared
     SwitchTriplet switchTripletWithYPointOnSharedEp
 
@@ -75,7 +71,6 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
                 .withSharedEpInTheMiddleOfTheChain().random()
         switchTripletWithYPointOnSubFlowEnd = switchTriplets.all().withAllDifferentEndpoints().withS42Support()
                 .withSharedEpEp1Ep2InChain().random()
-
     }
 
     @Tags(TOPOLOGY_DEPENDENT)
@@ -85,13 +80,14 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
         assert swT, "There is no switch triplet for the further Y-Flow creation"
+        isSharedEndpointYPoint ?: makeBothYFlowSubFlowsHaveTheLongestSharedPath(swT)
 
         when: "Set server42FlowRtt toggle to true"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on all switches"
-        def initialSwitchesProps = [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true, true)] }
+        [swT.shared, swT.ep1, swT.ep2].each { sw -> sw.setServer42FlowRttForSwitch(true, true) }
 
         and: "Create a Y-Flow"
         YFlowExtended yFlow = setupRequiredParams(yFlowFactory.getBuilder(swT)).create()
@@ -117,11 +113,8 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         then: "All Server42 flow-related rules are deleted"
         withPool {
             Wrappers.wait(RULES_INSTALLATION_TIME) {
-                initialSwitchesProps.keySet().eachParallel { sw ->
-                    assert switchRulesFactory.get(sw.dpId).getRules().findAll {
-                        new Cookie(it.cookie).getType() in [CookieType.SERVER_42_FLOW_RTT_INPUT,
-                                                            CookieType.SERVER_42_FLOW_RTT_INGRESS]
-                    }.empty
+                [swT.shared, swT.ep1, swT.ep2].eachParallel { sw ->
+                    assert sw.rulesManager.getServer42FlowRelatedRules().empty
                 }
             }
         }
@@ -145,22 +138,22 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
 
         def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
+        isSharedEndpointYPoint ?: makeBothYFlowSubFlowsHaveTheLongestSharedPath(swT)
 
         and: "server42FlowRtt feature enabled globally and on src/dst switch"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
-        [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        [swT.shared, swT.ep1, swT.ep2].each { sw -> sw.setServer42FlowRttForSwitch(true) }
 
         when: "Create a Y-Flow"
         def yFlow = yFlowFactory.getRandom(swT)
         assert isSharedEndpointYPoint ? yFlow.sharedEndpoint.switchId == yFlow.yPoint : yFlow.sharedEndpoint.switchId != yFlow.yPoint
 
-
         then: "Involved switches pass switch validation"
-        List<SwitchId> involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        def involvedSwitches = switches.all().findSwitchesInPath(yFlow.retrieveAllEntityPaths())
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
+            validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
         }
 
         and: "Stats for both directions are available for the first sub-flow"
@@ -181,9 +174,9 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         when: "Disable flow rtt on shared switch"
         //for y-flow shared switch is src sw
-        switchHelper.setServer42FlowRttForSwitch(swT.shared, false)
+        swT.shared.setServer42FlowRttForSwitch(false)
         Wrappers.wait(RULES_INSTALLATION_TIME, 3) {
-            assert !switchHelper.validateAndCollectFoundDiscrepancies(swT.shared.dpId).isPresent()
+            assert !swT.shared.validateAndCollectFoundDiscrepancies().isPresent()
         }
 
         then: "Stats are available in REVERSE direction for both sub-flows"
@@ -219,9 +212,9 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         and: "server42FlowRtt feature enabled globally and switch ON for appropriate switches(swT)"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
-        [swT.shared].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        swT.shared.setServer42FlowRttForSwitch(true)
 
         when: "Create a Y-Flow"
         def yFlow = yFlowFactory.getRandom(swT)
@@ -259,7 +252,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         }
 
         when: "Disable server42FlowRtt on the src switch"
-        switchHelper.setServer42FlowRttForSwitch(swT.shared, false)
+        swT.shared.setServer42FlowRttForSwitch(false)
 
         then: "Flow monitoring stats for FORWARD direction are available for both sub-flows"
         Wrappers.wait(flowSlaCheckIntervalSeconds * 3, 1) {
@@ -280,9 +273,9 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         and: "server42FlowRtt feature enabled globally and switch ON for appropriate switches(swT)"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
-        def initialSwitchesProps = [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        [swT.shared, swT.ep1, swT.ep2].each { sw -> sw.setServer42FlowRttForSwitch(true) }
 
         and: "Create a Y-Flow"
         def yFlow = yFlowFactory.getBuilder(swT).withProtectedPath(true).build().create()
@@ -326,11 +319,10 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         yFlow.validate().asExpected
 
         and: "All switches are valid"
-        def involvedSwitches = yFlowPathAfterSwap.getInvolvedSwitches()
+        def involvedSwitches = switches.all().findSwitchesInPath(yFlowPathAfterSwap)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            involvedSwitches.each { swId ->
-                switchHelper.validate(swId).isAsExpected()
-            }
+            assert validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
+
         }
 
         and: "Stats are available for both FORWARD and REVERSE directions are available for the first sub-flow"
@@ -355,11 +347,8 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         then: "All Server42 flow-related rules are deleted"
         withPool {
             Wrappers.wait(RULES_INSTALLATION_TIME) {
-                initialSwitchesProps.keySet().eachParallel { sw ->
-                    assert switchRulesFactory.get(sw.dpId).getRules().findAll {
-                        new Cookie(it.cookie).getType() in [CookieType.SERVER_42_FLOW_RTT_INPUT,
-                                                            CookieType.SERVER_42_FLOW_RTT_INGRESS]
-                    }.empty
+                [swT.shared, swT.ep1, swT.ep2].eachParallel { sw ->
+                    assert sw.rulesManager.getServer42FlowRelatedRules().empty
                 }
             }
         }
@@ -372,12 +361,13 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
 
         def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
+        isSharedEndpointYPoint ?: makeBothYFlowSubFlowsHaveTheLongestSharedPath(swT)
 
         and: "server42FlowRtt feature enabled globally and switch ON for appropriate switches(swT)"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
-        [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        [swT.shared, swT.ep1, swT.ep2].each { sw -> sw.setServer42FlowRttForSwitch(true) }
 
         and: "Create a Y-Flow"
         def yFlow = yFlowFactory.getRandom(swT)
@@ -400,25 +390,20 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         }
 
         when: "Delete ingress server42 rule related to the flow on the shared switches"
-        def switchRules = switchRulesFactory.get(swT.shared.dpId)
-        def cookiesToDelete = switchRules.getRulesByCookieType(CookieType.SERVER_42_FLOW_RTT_INGRESS).cookie
-        cookiesToDelete.each { cookie -> switchRules.delete(cookie) }
+        def cookiesToDelete = swT.shared.rulesManager.getRulesByCookieType(CookieType.SERVER_42_FLOW_RTT_INGRESS).cookie
+        cookiesToDelete.each { cookie -> swT.shared.rulesManager.delete(cookie) }
         def timeWhenMissingRuleIsDetected = new Date().getTime() + SERVER42_STATS_LAG * 1000
 
         then: "System detects missing rule on the shared switch"
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(swT.shared.dpId).get()
-                    .rules.missing*.getCookie().sort() == cookiesToDelete.sort()
+            assert swT.shared.validate().rules.missing*.getCookie().sort() == cookiesToDelete.sort()
         }
 
         and: "Y-Flow is valid and UP"
-        verifyAll(yFlow.validate()) { validationResult ->
+        verifyAll(yFlow.validateAndCollectDiscrepancy()) { validationResult ->
             assert !validationResult.asExpected
-            validationResult.getSubFlowValidationResults().findAll { it.direction == "FORWARD" }.each {
-                assert !it.asExpected
-            }
-            validationResult.getSubFlowValidationResults().findAll { it.direction == "REVERSE" }.each {
-                assert it.asExpected
+            validationResult.subFlowsDiscrepancies.each {
+                assert it.flowDiscrepancies.get(FlowDirection.FORWARD) && !it.flowDiscrepancies.get(FlowDirection.REVERSE)
             }
         }
 
@@ -445,8 +430,8 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         then: "Missing ingress server42 rule is reinstalled on the shared switch"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert !switchHelper.validateAndCollectFoundDiscrepancies(swT.shared.dpId).isPresent()
-            assert switchRules.getRulesByCookieType(CookieType.SERVER_42_FLOW_RTT_INGRESS).cookie.size() == 2
+            assert !swT.shared.validateAndCollectFoundDiscrepancies().isPresent()
+            assert swT.shared.rulesManager.getRulesByCookieType(CookieType.SERVER_42_FLOW_RTT_INGRESS).cookie.size() == 2
         }
         def timeWhenMissingRuleIsReinstalled = new Date().getTime()
 
@@ -474,9 +459,9 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         and: "server42FlowRtt feature enabled globally and switch ON for appropriate switches(swT)"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
-        [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        [swT.shared, swT.ep1, swT.ep2].each { sw -> sw.setServer42FlowRttForSwitch(true) }
 
         and: "Create a Y-Flow"
         def yFlow = yFlowFactory.getRandom(swT)
@@ -515,7 +500,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         and: "Each switch from triplet is valid"
         [swT.shared, swT.ep1, swT.ep2].each {
-            !switchHelper.synchronizeAndCollectFixedDiscrepancies(it.dpId).isPresent()
+            !it.synchronizeAndCollectFixedDiscrepancies().isPresent()
         }
 
         where:
@@ -563,23 +548,24 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
 
         def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
+        isSharedEndpointYPoint ?: makeBothYFlowSubFlowsHaveTheLongestSharedPath(swT)
         def statsWaitSeconds = 4
 
         and: "server42FlowRtt toggle is turned off"
         featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(false)
-        switchHelper.waitForS42SwRulesSetup(false)
+        switches.all().waitForS42SwRulesSetup(false)
 
         and: "server42FlowRtt is turned off on all switches"
-        def initialSwitchesProps = [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, false, false)] }
+        [swT.shared, swT.ep1, swT.ep2].each { sw -> sw.setServer42FlowRttForSwitch(false, false) }
 
         when: "Create a Y-Flow"
         def yFlow = yFlowFactory.getRandom(swT)
         assert isSharedEndpointYPoint ? yFlow.sharedEndpoint.switchId == yFlow.yPoint : yFlow.sharedEndpoint.switchId != yFlow.yPoint
 
         then: "Involved switches pass switch validation"
-        List<SwitchId> involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        def involvedSwitches = switches.all().findSwitchesInPath(yFlow.retrieveAllEntityPaths())
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
+            assert validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
         }
 
         and: "Expect no Y-Flow rtt stats for FORWARD and REVERSE directions"
@@ -592,7 +578,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         when: "Enable global rtt toggle"
         featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
         then: "Expect no flow rtt stats for FORWARD and REVERSE direction for the first sub-flow"
         verifyAll(flowStats.of(yFlow.subFlows.first().flowId)) { subFlow1Stats ->
@@ -608,7 +594,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         when: "Enable switch rtt toggle on src and dst"
         [swT.shared, swT.ep1, swT.ep2].each {
-            switchHelper.setServer42FlowRttForSwitch(it, true, true)
+            it.setServer42FlowRttForSwitch(true, true)
         }
         def checkpointTime = new Date().getTime()
 
@@ -629,8 +615,8 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         }
 
         when: "Disable switch rtt toggle on ep1 and ep2 ends"
-        switchHelper.setServer42FlowRttForSwitch(swT.ep1, false, true)
-        switchHelper.setServer42FlowRttForSwitch(swT.ep2, false, true)
+        swT.ep1.setServer42FlowRttForSwitch(false, true)
+        swT.ep2.setServer42FlowRttForSwitch(false, true)
         checkpointTime = new Date().getTime()
 
         then: "Stats for FORWARD direction are available for both sub-flows"
@@ -641,7 +627,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         when: "Disable global toggle"
         featureToggles.server42FlowRtt(false)
-        switchHelper.waitForS42SwRulesSetup(false)
+        switches.all().waitForS42SwRulesSetup(false)
 
         and: "Wait for several seconds"
         checkpointTime = new Date().getTime()
@@ -660,6 +646,12 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         where:
         isSharedEndpointYPoint << [true, false]
+    }
+
+    private void makeBothYFlowSubFlowsHaveTheLongestSharedPath(SwitchTriplet swT) {
+        def pathToManipulate = swT.pathsEp1[0].size() >  swT.pathsEp2[0].size()
+                ? swT.retrieveAvailablePathsEp2().first() : swT.retrieveAvailablePathsEp1().first()
+        islHelper.updateIslsCost(pathToManipulate.getInvolvedIsls(), DEFAULT_COST - 5)
     }
 
 }

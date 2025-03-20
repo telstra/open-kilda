@@ -15,10 +15,10 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.functionaltests.model.stats.Origin
@@ -42,10 +42,6 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
     @Autowired
     FlowStats flowStats
 
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
-
     @Tags(TOPOLOGY_DEPENDENT)
     def "Create an Ha-Flow (#description) with server42 Rtt feature and check datapoints in tsdb"() {
         given: "Three active switches with server42 connected"
@@ -57,10 +53,10 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
 
         when: "Set server42FlowRtt toggle to true"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on all switches"
-        [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        [swT.shared, swT.ep1, swT.ep2].each { sw -> sw.setServer42FlowRttForSwitch(true) }
 
         and: "Create Ha-Flow"
         HaFlowExtended haFlow = haFlowBuilder(swT).build().create()
@@ -103,10 +99,10 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
 
         and: "Set server42FlowRtt toggle to true"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
+        switches.all().waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on all switches"
-        [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        [swT.shared, swT.ep1, swT.ep2].each { sw -> sw.setServer42FlowRttForSwitch(true) }
 
         and: "Create Ha-Flow"
         HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
@@ -125,21 +121,19 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
 
         when: "Delete ingress server42 rule(s) related to the flow on the shared switch"
         //if ha-flow doesn't have shared path, shared endpoint is y-point and has server42 flow rtt ingress rule per sub-Flows
-        def switchRules = switchRulesFactory.get(swT.shared.dpId)
-        def cookiesToDelete = switchRules.getRulesByCookieType(CookieType.SERVER_42_FLOW_RTT_INGRESS).cookie
-        cookiesToDelete.each { switchRules.delete(it) }
+        def cookiesToDelete = swT.shared.rulesManager.getRulesByCookieType(CookieType.SERVER_42_FLOW_RTT_INGRESS).cookie
+        cookiesToDelete.each { swT.shared.rulesManager.delete(it) }
 
         then: "System detects missing rule on the shared switch"
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert northbound.validateSwitch(swT.shared.dpId).rules.missing.sort() == cookiesToDelete.sort()
+            assert swT.shared.validate().rules.missing.cookie.sort() == cookiesToDelete.sort()
         }
 
         and: "Ha-Flow is valid and UP"
-        haFlow.validate().subFlowValidationResults.each { validationInfo ->
-            if (validationInfo.direction == "forward") {
-                assert !validationInfo.asExpected
-            } else {
-                assert validationInfo.asExpected
+        verifyAll(haFlow.validateAndCollectDiscrepancy()) { validationResult ->
+            assert !validationResult.asExpected
+            validationResult.subFlowsDiscrepancies.each {
+                assert it.flowDiscrepancies.get(FlowDirection.FORWARD) && !it.flowDiscrepancies.get(FlowDirection.REVERSE)
             }
         }
         haFlow.retrieveDetails().status == FlowState.UP
@@ -166,8 +160,8 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
         then: "Missing ingress server42 rules are reinstalled on the shared switch"
         int expectedCookiesNumber = isHaFlowWithSharedPath ? 1 : 2
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert northbound.validateSwitch(swT.shared.dpId).rules.missing.empty
-            assert switchRules.getRulesByCookieType(CookieType.SERVER_42_FLOW_RTT_INGRESS).cookie.size() == expectedCookiesNumber
+            assert swT.shared.validate().rules.missing.empty
+            assert  swT.shared.rulesManager.getRulesByCookieType(CookieType.SERVER_42_FLOW_RTT_INGRESS).cookie.size() == expectedCookiesNumber
         }
         def timeWhenMissingRuleIsReinstalled = new Date().getTime()
 

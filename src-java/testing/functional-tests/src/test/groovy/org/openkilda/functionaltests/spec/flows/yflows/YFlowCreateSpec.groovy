@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
+import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -17,9 +19,8 @@ import org.openkilda.functionaltests.helpers.builder.YFlowBuilder
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowActionType
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.model.SwitchFeature
-import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.ExamReport
@@ -73,9 +74,9 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         def paths = yFlow.retrieveAllEntityPaths()
 
         and: "Y-Flow passes flow validation"
-        with(yFlow.validate()) {
+        with(yFlow.validateAndCollectDiscrepancy()) {
             it.asExpected
-            it.subFlowValidationResults.each { assert it.asExpected }
+            it.subFlowsDiscrepancies.isEmpty()
         }
 
         and: "Both sub-flows pass flow validation"
@@ -85,17 +86,14 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         and: "YFlow is pingable"
         if (swT.shared != swT.ep1 || swT.shared != swT.ep2) {
-            def response = yFlow.ping()
+            def response = yFlow.pingAndCollectDiscrepancies()
             !response.error
-            response.subFlows.each {
-                assert it.forward.pingSuccess
-                assert it.reverse.pingSuccess
-            }
+            response.subFlowsDiscrepancies.isEmpty()
         }
 
         and: "All involved switches pass switch validation"
-        def involvedSwitches = paths.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(paths)
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         and: "Bandwidth is properly consumed on shared and non-shared ISLs(not applicable for single switch Y-Flow)"
         def allLinksAfter = northbound.getAllLinks()
@@ -179,7 +177,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         and: "All involved switches pass switch validation"
         Wrappers.wait(WAIT_OFFSET) {
-            switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
+            validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
         }
 
         where:
@@ -277,9 +275,9 @@ switch '${flow.yFlow.sharedEndpoint.switchId}' is occupied by an ISL \(source en
                 [
                         descr       : "ep2 on s42 port",
                         yFlowBuilder: {
-                            def swTriplet = switchTriplets.all(true).getSwitchTriplets().find { it.ep2.prop?.server42Port }
+                            def swTriplet = switchTriplets.all(true).getSwitchTriplets().find { it.ep2.sw.prop?.server42Port }
                             if (swTriplet) {
-                                return yFlowFactory.getBuilder(swTriplet).withEp2Port(swTriplet.ep2.prop.server42Port)
+                                return yFlowFactory.getBuilder(swTriplet).withEp2Port(swTriplet.ep2.sw.prop.server42Port)
                             }
                             return null
                         }(),
@@ -291,9 +289,9 @@ switch '${flow.yFlow.sharedEndpoint.switchId}' is occupied by an ISL \(source en
                 [
                         descr       : "shared endpoint on s42 port",
                         yFlowBuilder: {
-                            def swTriplet = switchTriplets.all().getSwitchTriplets().find { it.shared.prop?.server42Port }
+                            def swTriplet = switchTriplets.all().getSwitchTriplets().find { it.shared.sw.prop?.server42Port }
                             if (swTriplet) {
-                                return yFlowFactory.getBuilder(swTriplet).withSharedEpPort(swTriplet.shared.prop.server42Port)
+                                return yFlowFactory.getBuilder(swTriplet).withSharedEpPort(swTriplet.shared.sw.prop.server42Port)
                             }
                             return null
                         }(),
@@ -348,11 +346,11 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
     @Tags([HARDWARE])
     def "System forbids to create a Y-Flow with conflict: shared endpoint port is inside a LAG group"() {
         given: "A LAG port"
-        def swT = switchTriplets.all().getSwitchTriplets().find { it.shared.features.contains(SwitchFeature.LAG) }
+        def swT = switchTriplets.all().withAllDifferentEndpoints()
+                .getSwitchTriplets().find { it.shared.getDbFeatures().contains(SwitchFeature.LAG) }
         assumeTrue(swT != null, "Unable to find a switch that supports LAG")
-        def portsArray = topology.getAllowedPortsForSwitch(swT.shared)[-2, -1] as Set
-        def payload = new LagPortRequest(portNumbers: portsArray)
-        def lagPort = switchHelper.createLagLogicalPort(swT.shared.dpId, portsArray).logicalPortNumber
+        def portsArray = swT.shared.getPorts()[-2, -1] as Set
+        def lagPortNumber = swT.shared.getLagPort(portsArray).create().logicalPortNumber
 
         when: "Try creating a Y-Flow with shared endpoint port being inside LAG"
         def yFlow = yFlowFactory.getBuilder(swT).withSharedEpPort(portsArray[0]).build().create()
@@ -360,7 +358,7 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
         then: "Error is received, describing the problem"
         def exc = thrown(HttpClientErrorException)
         new YFlowNotCreatedExpectedError(
-                ~/Port ${portsArray[0]} on switch $swT.shared.dpId is used as part of LAG port $lagPort/).matches(exc)
+                ~/Port ${portsArray[0]} on switch $swT.shared.switchId is used as part of LAG port $lagPortNumber/).matches(exc)
         and: "'Get' y-flows doesn't return the flow"
         Wrappers.wait(WAIT_OFFSET) { //even on error system briefly creates an 'in progress' flow
             assert !yFlow || !northboundV2.getYFlow(yFlow.yFlowId)
@@ -387,8 +385,8 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
         def slowestLinkSwitchIds = [slowestLinkOnTheWest.getSrcSwitchId(), slowestLinkOnTheWest.getDestSwitchId()]
         def switchTriplet = switchTriplets.all(true, false).getSwitchTriplets()
                 .find {
-                    def yPoints = topologyHelper.findPotentialYPoints(it)
-                    slowestLinkSwitchIds.contains(it.shared.getDpId()) &&
+                    def yPoints = it.findPotentialYPoints()
+                    slowestLinkSwitchIds.contains(it.shared.switchId) &&
                             !slowestLinkSwitchIds.intersect(yPoints).isEmpty()
                 }
         assumeTrue(switchTriplet != null, "No suiting switches found.")
@@ -445,7 +443,7 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
                     .reverse()
                     .first()
             def swT = owner.switchTriplets.all(false, true).getSwitchTriplets().find() {
-                it.shared == sw && it.ep1 == sw && it.ep2 == sw
+                it.shared.sw == sw && it.ep1.sw == sw && it.ep2.sw == sw
             }
             def yFlowBuilder = owner.yFlowFactory.getBuilder(swT)
             add([swT: swT, yFlowBuilder: yFlowBuilder, coveredCases: ["se-ep1-ep2 same sw (one-switch Y-Flow)"]])
@@ -459,52 +457,52 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
                 //se = shared endpoint, ep = subflow endpoint, yp = y-point
                 [name     : "se is wb and se!=yp",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.dpId
+                     def yPoints = swT.findPotentialYPoints()
+                     swT.shared.isWb5164() && yPoints.size() == 1 && yPoints[0] != swT.shared.switchId
                  }],
                 [name     : "se is non-wb and se!=yp",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.dpId
+                     def yPoints = swT.findPotentialYPoints()
+                     !swT.shared.isWb5164() && yPoints.size() == 1 && yPoints[0] != swT.shared.switchId
                  }],
                 [name     : "ep on wb and different eps", //ep1 is not the same sw as ep2
-                 condition: { SwitchTriplet swT -> swT.ep1.wb5164 && swT.ep1 != swT.ep2 }],
+                 condition: { SwitchTriplet swT -> swT.ep1.isWb5164() && swT.ep1 != swT.ep2 }],
                 [name     : "ep on non-wb and different eps", //ep1 is not the same sw as ep2
-                 condition: { SwitchTriplet swT -> !swT.ep1.wb5164 && swT.ep1 != swT.ep2 }],
+                 condition: { SwitchTriplet swT -> !swT.ep1.isWb5164() && swT.ep1 != swT.ep2 }],
                 [name     : "se+yp on wb",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared.dpId
+                     def yPoints = swT.findPotentialYPoints()
+                     swT.shared.isWb5164() && yPoints.size() == 1 && yPoints[0] == swT.shared.switchId
                  }],
                 [name     : "se+yp on non-wb",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared.dpId
+                     def yPoints = swT.findPotentialYPoints()
+                     !swT.shared.isWb5164() && yPoints.size() == 1 && yPoints[0] == swT.shared.switchId
                  }],
                 [name     : "yp on wb and yp!=se!=ep",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.dpId && yPoints[0] != swT.ep1.dpId && yPoints[0] != swT.ep2.dpId
+                     def yPoints = swT.findPotentialYPoints()
+                     swT.shared.isWb5164() && yPoints.size() == 1 && yPoints[0] != swT.shared.switchId && yPoints[0] != swT.ep1.switchId && yPoints[0] != swT.ep2.switchId
                  }],
                 [name     : "yp on non-wb and yp!=se!=ep",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.dpId && yPoints[0] != swT.ep1.dpId && yPoints[0] != swT.ep2.dpId
+                     def yPoints = swT.findPotentialYPoints()
+                     !swT.shared.isWb5164() && yPoints.size() == 1 && yPoints[0] != swT.shared.switchId && yPoints[0] != swT.ep1.switchId && yPoints[0] != swT.ep2.switchId
                  }],
                 [name     : "ep+yp on wb",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1.dpId || yPoints[0] == swT.ep2.dpId)
+                     def yPoints = swT.findPotentialYPoints()
+                     swT.shared.isWb5164() && yPoints.size() == 1 && (yPoints[0] == swT.ep1.switchId || yPoints[0] == swT.ep2.switchId)
                  }],
                 [name     : "ep+yp on non-wb",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1.dpId || yPoints[0] == swT.ep2.dpId)
+                     def yPoints = swT.findPotentialYPoints()
+                     !swT.shared.isWb5164() && yPoints.size() == 1 && (yPoints[0] == swT.ep1.switchId || yPoints[0] == swT.ep2.switchId)
                  }],
                 [name     : "yp==se",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     yPoints.size() == 1 && yPoints[0] == swT.shared.dpId && swT.shared != swT.ep1 && swT.shared != swT.ep2
+                     def yPoints = swT.findPotentialYPoints()
+                     yPoints.size() == 1 && yPoints[0] == swT.shared.switchId && swT.shared != swT.ep1 && swT.shared != swT.ep2
                  }]
         ]
         requiredCases.each { it.picked = false }
@@ -538,6 +536,6 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
     static boolean isTrafficApplicable(SwitchTriplet swT) {
         def isOneSw = swT ? (swT.shared == swT.ep1 && swT.shared == swT.ep2) : false
         def amountTraffgens = isOneSw ? 1 : 0
-        swT ? [swT.shared, swT.ep1, swT.ep2].every { it.traffGens.size() > amountTraffgens } : false
+        swT ? [swT.shared, swT.ep1, swT.ep2].every { it.traffGenPorts.size() > amountTraffgens } : false
     }
 }

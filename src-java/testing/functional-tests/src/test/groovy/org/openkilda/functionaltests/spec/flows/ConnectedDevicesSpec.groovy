@@ -5,7 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.SwitchHelper.getRandomAvailablePort
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.messaging.payload.flow.FlowState.UP
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
 import static org.openkilda.model.cookie.Cookie.ARP_INGRESS_COOKIE
@@ -18,8 +18,6 @@ import static org.openkilda.model.cookie.Cookie.LLDP_INPUT_PRE_DROP_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_TRANSIT_COOKIE
-import static org.openkilda.model.cookie.CookieBase.CookieType.ARP_INPUT_CUSTOMER_TYPE
-import static org.openkilda.model.cookie.CookieBase.CookieType.LLDP_INPUT_CUSTOMER_TYPE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -31,27 +29,20 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.builder.FlowBuilder
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
-import org.openkilda.model.Flow
-import org.openkilda.model.MeterId
-import org.openkilda.model.SwitchFeature
-import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.ConnectedDeviceDto
-import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDeviceDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.ArpData
 import org.openkilda.testing.service.traffexam.model.LldpData
-import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import com.github.javafaker.Faker
 import groovy.transform.AutoClone
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
+import jakarta.inject.Provider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -59,7 +50,6 @@ import spock.lang.See
 import spock.lang.Shared
 
 import java.time.Instant
-import jakarta.inject.Provider
 
 @Slf4j
 @Narrative("""
@@ -74,41 +64,46 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
 
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
             @IterationTag(tags = [SMOKE, SMOKE_SWITCHES], iterationNameRegex = /srcLldp=true and dstLldp=true/),
             @IterationTag(tags = [HARDWARE], iterationNameRegex = /VXLAN/)
     ])
-    def "Able to create a #flowDescr flow with lldp and arp enabled on #devicesDescr, encapsulation #data.encapsulation"() {
+    def "Able to create a #flowDescr flow with lldp and arp enabled on #devicesDescr, encapsulation #data.encapsulation, swPair: #hw"() {
         assumeTrue(data.encapsulation != FlowEncapsulationType.VXLAN,
                 "Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
         assumeTrue(data.switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2,
                 "Unable to find swPair with protected path")
 
         given: "A flow with enabled or disabled connected devices"
+        def swPair = !data.oneSwitch ? data.switchPair : switchPairs.singleSwitch()
+                .getSwitchPairs().find { it.src == data.switchPair.src }
         def expectedFlowEntity = getFlowWithConnectedDevices(data)
                 .withEncapsulationType(data.encapsulation).build()
 
         when: "Create a flow with connected devices"
         def flow = expectedFlowEntity.create()
-        List<SwitchId> flowInvolvedSwitches = [flow.source.getSwitchId(), flow.destination.getSwitchId()]
 
         then: "Flow has been created successfully and validated"
         flow.hasTheSameDetectedDevicesAs(expectedFlowEntity)
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Source and destination switches pass validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(swPair.toList()).isEmpty()
 
         and: "ARP/LLDP rules/meters have been installed"
-        def flowDBDetails = flow.retrieveDetailsFromDB()
-        waitForDevicesInputRules(flowDBDetails)
-        validateLldpArpMeters(flow.source.switchId)
-        validateLldpArpMeters(flow.destination.switchId)
+        def connectedDevicesInfo = flow.retrieveDetailsFromDB().detectConnectedDevices
+        swPair.src.rulesManager.waitForDeviceRelatedInputRules(connectedDevicesInfo.srcArp, connectedDevicesInfo.srcLldp)
+        swPair.dst.rulesManager.waitForDeviceRelatedInputRules(connectedDevicesInfo.dstArp, connectedDevicesInfo.dstLldp)
+
+        swPair.toList().each { sw ->
+            def validationResponse = sw.validate()
+            assert validationResponse.meters.asExpected
+            [LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE, ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE].each { cookie ->
+                assert validationResponse.meters.proper.findAll { it.meterId == createMeterIdForDefaultRule(cookie).value }.size() == 1
+            }
+        }
 
         when: "Devices send lldp and arp packets on each flow endpoint"
         def tgService = traffExamProvider.get()
@@ -138,8 +133,10 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
 
         then: "Delete action removed all rules and meters"
         Wrappers.wait(WAIT_OFFSET) {
-            validateSwitchHasNoFlowRulesAndMeters(flow.source.switchId)
-            validateSwitchHasNoFlowRulesAndMeters(flow.destination.switchId)
+            swPair.toList().each { sw ->
+                assert sw.rulesManager.getNotDefaultRules().isEmpty()
+                assert sw.metersManager.getNotDefaultMeters().isEmpty()
+            }
         }
 
         where:
@@ -181,6 +178,8 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         flowDescr = sprintf("%s%s%s", data.encapsulation, data.protectedFlow ? " protected" : "",
                 data.oneSwitch ? " oneSwitch" : "")
         devicesDescr = getDescr(data.srcEnabled, data.dstEnabled)
+        hw = data.oneSwitch ? "${data.switchPair.src.hwSwString()}"
+                : "${data.switchPair.src.hwSwString()} - ${data.switchPair.dst.hwSwString()}"
     }
 
     @AutoClone
@@ -193,9 +192,10 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
     def "Able to update flow from srcDevices=#oldSrcEnabled, dstDevices=#oldDstEnabled to \
 srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         given: "Flow with specific configuration of connected devices"
-        def flow = getFlowWithConnectedDevices(true, false, oldSrcEnabled, oldDstEnabled)
-                .build().create()
-        List<SwitchId> flowInvolvedSwitches = [flow.source.getSwitchId(), flow.destination.getSwitchId()]
+        def swPair = getUniqueSwitchPairs()?.first()
+        assumeTrue(swPair as boolean, "Unable to find a switchPair with traffgens for the requested flow arguments")
+        def flow = getFlowWithConnectedDevices(true, false,
+                oldSrcEnabled, oldDstEnabled, swPair).build().create()
 
         when: "Update the flow with connected devices"
         def expectedFlowEntity = flow.deepCopy().tap {
@@ -209,11 +209,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         updatedFlow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "ARP/LLDP rules have been installed"
-        def flowDBDetails = flow.retrieveDetailsFromDB()
-        waitForDevicesInputRules(flowDBDetails)
+        def detectedDevicesInfo = flow.retrieveDetailsFromDB().detectConnectedDevices
+        swPair.src.rulesManager.waitForDeviceRelatedInputRules(detectedDevicesInfo.srcArp, detectedDevicesInfo.srcLldp)
+        swPair.dst.rulesManager.waitForDeviceRelatedInputRules(detectedDevicesInfo.dstArp, detectedDevicesInfo.dstLldp)
 
         and: "Source and destination switches pass validation (includes meters check)"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(swPair.toList()).isEmpty()
 
         when: "Devices send lldp and arp packets on each flow endpoint"
         def tgService = traffExamProvider.get()
@@ -256,10 +257,11 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "Able to detect devices on a single-switch different-port flow"() {
         given: "A flow between different ports on the same switch"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def sw = topology.activeTraffGens*.switchConnected.first()
+        def sw = switches.all().withTraffGens().getListOfSwitches().find { it.traffGenPorts.size() > 1}
 
-        def expectedFlowEntity = flowFactory.getBuilder(sw, sw).withDetectedDevicesOnSrc(true, true).build()
+        def expectedFlowEntity = flowFactory.getSingleSwBuilder(sw).withDetectedDevicesOnSrc(true, true).build()
         def flow = expectedFlowEntity.create()
+        assert flow.source.portNumber != flow.destination.portNumber
 
         when: "Device connects to src endpoint and send lldp and arp packets"
         def tgService = traffExamProvider.get()
@@ -293,8 +295,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
     def "Able to swap flow paths with connected devices (srcDevices=#srcEnabled, dstDevices=#dstEnabled)"() {
         given: "Protected flow with connected devices"
-        def expectedFlowEntity = getFlowWithConnectedDevices(true, false, srcEnabled, dstEnabled).build()
-        def flowInvolvedSwitches = [expectedFlowEntity.source.switchId, expectedFlowEntity.destination.switchId]
+        def swPair = getUniqueSwitchPairs()?.first()
+        assumeTrue(swPair as boolean, "Unable to find a switchPair with traffgens for the requested flow arguments")
+        def expectedFlowEntity = getFlowWithConnectedDevices(true, false,
+                srcEnabled, dstEnabled, swPair).build()
 
         and: "Created protected flow with enabled or disabled connected devices"
         def flow = expectedFlowEntity.create()
@@ -306,11 +310,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "ARP/LLDP rules have been installed"
-        def swappedFlow = flow.retrieveDetailsFromDB()
-        waitForDevicesInputRules(swappedFlow)
+        def detectedDevicesInfo = flow.retrieveDetailsFromDB().detectConnectedDevices
+        swPair.src.rulesManager.waitForDeviceRelatedInputRules(detectedDevicesInfo.srcArp, detectedDevicesInfo.srcLldp)
+        swPair.dst.rulesManager.waitForDeviceRelatedInputRules(detectedDevicesInfo.dstArp, detectedDevicesInfo.dstLldp)
 
         and: "Source and destination switches pass validation (includes meters check)"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(swPair.toList()).isEmpty()
 
         when: "Devices send lldp and arp packets on each flow endpoint"
         def tgService = traffExamProvider.get()
@@ -481,9 +486,9 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "System properly detects devices if feature is 'off' on switch level and 'on' on flow level"() {
         given: "A switch with devices feature turned off"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def tg = topology.activeTraffGens.shuffled().first()
-        def sw = tg.switchConnected
-        def swProps = northbound.getSwitchProperties(sw.dpId)
+        def sw = switches.all().withTraffGens().random()
+        def tg = topology.getActiveTraffGen(sw.switchId)
+        def swProps = sw.getProps()
         assert !swProps.switchLldp
         assert !swProps.switchArp
 
@@ -491,28 +496,25 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
         def deviceVlan = 666
-        def device = switchHelper.addConnectedDevice(traffExamProvider.get(), tg, [deviceVlan])
+        def device = sw.addConnectedDevice(traffExamProvider.get(), tg, [deviceVlan])
         device.sendLldp(lldpData)
         device.sendArp(arpData)
 
         then: "No devices are detected for the switch"
         Wrappers.timedLoop(2) {
-            assert northboundV2.getConnectedDevices(sw.dpId).ports.empty
+            assert sw.getConnectedDevices().ports.empty
             sleep(50)
         }
 
         when: "Flow is created on a target switch with devices feature 'on'"
-        def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        def dst = switches.all().withTraffGens().getListOfSwitches().find { it != sw }
 
         def flow = flowFactory.getBuilder(sw, dst).withDetectedDevicesOnSrc(true, true)
                 .withSourceVlan(deviceVlan).withSourcePort(tg.switchPort).build().create()
 
         and: "Flow is valid and pingable"
         flow.validateAndCollectDiscrepancies().isEmpty()
-        verifyAll(flow.ping()) {
-            assert it.forward.pingSuccess
-            assert it.reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "Device sends an lldp+arp packet into a flow port on that switch (with a correct flow vlan)"
         device.sendLldp(lldpData)
@@ -529,7 +531,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Devices are registered per-switch"
-        verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) {
+        verifyAll(sw.getConnectedDevices().ports) {
             it.size() == 1
             it[0].portNumber == tg.switchPort
             it[0].lldp.first().vlan == flow.source.vlanId
@@ -544,16 +546,17 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "System properly detects devices if feature is 'on' on switch level and 'off' on flow level"() {
         given: "A switch with devices feature turned on"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def tg = topology.activeTraffGens[0]
-        def sw = tg.switchConnected
-        def initialProps = switchHelper.getCachedSwProps(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
+
+        def sw = switches.all().withTraffGens().random()
+        def tg = topology.getActiveTraffGen(sw.switchId)
+        def initialProps = sw.getCachedProps()
+        sw.updateProperties(initialProps.jacksonCopy().tap {
             it.switchLldp = true
             it.switchArp = true
         })
 
         and: "Flow is created on a target switch with devices feature 'off'"
-        def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        def dst = switches.all().getListOfSwitches().find { it != sw }
         def flow = flowFactory.getBuilder(sw, dst).withDetectedDevicesOnSrc(false, false)
                 .build().create()
 
@@ -565,7 +568,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "ARP and LLDP devices are registered per-switch"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) {
+            verifyAll(sw.getConnectedDevices().ports) {
                 it.size() == 1
                 it[0].portNumber == tg.switchPort
                 it[0].lldp.first().vlan == flow.source.vlanId
@@ -590,10 +593,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "Able to detect devices on free switch port (no flow or isl)"() {
         given: "A switch with devices feature turned on"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def tg = topology.activeTraffGens[0]
-        def sw = tg.switchConnected
-        def initialProps = switchHelper.getCachedSwProps(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
+        def sw = switches.all().withTraffGens().first()
+        def tg = topology.getActiveTraffGen(sw.switchId)
+        def initialProps = sw.getCachedProps()
+        sw.updateProperties(initialProps.jacksonCopy().tap {
             it.switchLldp = true
             it.switchArp = true
         })
@@ -602,14 +605,14 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
         def vlan = 123
-        switchHelper.addConnectedDevice(traffExamProvider.get(), tg, [vlan]).withCloseable {
+        sw.addConnectedDevice(traffExamProvider.get(), tg, [vlan]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
         }
 
         then: "Corresponding devices are detected on a switch port"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports.find { it.portNumber == tg.switchPort }) { port ->
+            verifyAll(sw.getConnectedDevices().ports.find { it.portNumber == tg.switchPort }) { port ->
                 port.portNumber == tg.switchPort
                 port.lldp.first().vlan == vlan
                 verifyEquals(port.lldp.first(), lldpData)
@@ -622,20 +625,20 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "Able to distinguish devices between default and non-default single-switch flows (#descr)"() {
         given: "A switch with devices feature turned on"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def tg = topology.activeTraffGens[0]
-        def sw = tg.switchConnected
-        def initialProps = switchHelper.getCachedSwProps(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
+        def sw = switches.all().withTraffGens().random()
+        def tg = topology.getActiveTraffGen(sw.switchId)
+        def initialProps = sw.getCachedProps()
+        sw.updateProperties(initialProps.jacksonCopy().tap {
             it.switchLldp = true
             it.switchArp = true
         })
 
         and: "A single-sw flow with devices feature 'on'"
-        def expectedFlowEntity = flowFactory.getBuilder(sw, sw).withDetectedDevicesOnSrc(true, true)
+        def expectedFlowEntity = flowFactory.getSingleSwBuilder(sw).withDetectedDevicesOnSrc(true, true)
         def flow = expectedFlowEntity.build().create()
 
         and: "A single-sw default flow with devices feature 'on'"
-        def defaultFlow = flowFactory.getBuilder(sw, sw, true, flow.occupiedEndpoints())
+        def defaultFlow = flowFactory.getSingleSwBuilder(sw, true, flow.occupiedEndpoints())
                 .withDetectedDevicesOnSrc(true, true)
                 .withSourcePort(flow.source.portNumber).build()
                 .tap {
@@ -643,21 +646,21 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                     dstDefault && (it.destination.vlanId = 0)
                     //when single-switch flow has full port on src and dst, ports should be different on these endpoints
                     // as llpd and arp send from tg on src, we can use non-tg port for dst
-                    dstDefault && (it.destination.portNumber = getRandomAvailablePort(sw, topology, false, [flow.source.portNumber]))
+                    dstDefault && (it.destination.portNumber = (sw.getRandomPortNumber( false, [flow.source.portNumber])))
                 }
                 .create()
 
         when: "Devices send lldp and arp packets into a flow port with flow vlan"
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
-        switchHelper.addConnectedDevice(traffExamProvider.get(), tg, [flow.source.vlanId]).withCloseable {
+        sw.addConnectedDevice(traffExamProvider.get(), tg, [flow.source.vlanId]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
         }
 
         then: "Corresponding devices are detected on a switch port with reference to corresponding non-default flow"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) {
+            verifyAll(sw.getConnectedDevices().ports) {
                 it.size() == 1
                 it[0].portNumber == tg.switchPort
                 it[0].lldp.first().flowId == flow.flowId
@@ -686,14 +689,14 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def lldpData2 = LldpData.buildRandom()
         def arpData2 = ArpData.buildRandom()
         def vlan = flow.source.vlanId - 1
-        switchHelper.addConnectedDevice(traffExamProvider.get(), tg, [vlan]).withCloseable {
+        sw.addConnectedDevice(traffExamProvider.get(), tg, [vlan]).withCloseable {
             it.sendLldp(lldpData2)
             it.sendArp(arpData2)
         }
 
         then: "Corresponding devices are detected on a switch port with reference to corresponding default flow"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) {
+            verifyAll(sw.getConnectedDevices().ports) {
                 it.size() == 1
                 it[0].portNumber == tg.switchPort
                 it[0].lldp.size() == 2
@@ -729,14 +732,14 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def lldpData3 = LldpData.buildRandom()
         def arpData3 = ArpData.buildRandom()
         def vlans = [vlan - 1, vlan - 2]
-        switchHelper.addConnectedDevice(traffExamProvider.get(), tg, vlans).withCloseable {
+        sw.addConnectedDevice(traffExamProvider.get(), tg, vlans).withCloseable {
             it.sendLldp(lldpData3)
             it.sendArp(arpData3)
         }
 
         then: "Corresponding devices are detected on a switch port with reference to corresponding default flow"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northboundV2.getConnectedDevices(sw.dpId).ports) {
+            verifyAll(sw.getConnectedDevices().ports) {
                 it.size() == 1
                 it[0].portNumber == tg.switchPort
                 it[0].lldp.size() == 3
@@ -775,18 +778,22 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
     def "System properly detects device vlan in case of #descr"() {
         given: "Flow with connected devices"
-        def expectedFlowEntity = getFlowWithConnectedDevices(true, false, true, true).build().tap {
+        def swPair = getUniqueSwitchPairs()?.first()
+        assumeTrue(swPair as boolean, "Unable to find a switchPair with traffgens for the requested flow arguments")
+
+        def expectedFlowEntity = getFlowWithConnectedDevices(true, false,
+                true, true, swPair).build().tap {
             srcDefault && (it.source.vlanId = 0)
             dstDefault && (it.destination.vlanId = 0)
         }
-        def srcTg = topology.activeTraffGens
-                .find { it.switchConnected.dpId == expectedFlowEntity.source.switchId && it.switchPort == expectedFlowEntity.source.portNumber }
-        def dstTg = topology.activeTraffGens
-                .find { it.switchConnected.dpId == expectedFlowEntity.destination.switchId && it.switchPort == expectedFlowEntity.source.portNumber }
+        def srcTg = topology.getTraffGen(expectedFlowEntity.source.switchId, expectedFlowEntity.source.portNumber)
+        def dstTg = topology.getTraffGen(expectedFlowEntity.destination.switchId, expectedFlowEntity.source.portNumber)
 
         and: "A flow with enbaled connected devices, #descr"
         def flow = expectedFlowEntity.create()
-        waitForDevicesInputRules(flow.retrieveDetailsFromDB())
+        def detectedDevicesInfo = flow.retrieveDetailsFromDB().detectConnectedDevices
+        swPair.src.rulesManager.waitForDeviceRelatedInputRules(detectedDevicesInfo.srcArp, detectedDevicesInfo.srcLldp)
+        swPair.dst.rulesManager.waitForDeviceRelatedInputRules(detectedDevicesInfo.dstArp, detectedDevicesInfo.dstLldp)
 
         when: "Devices send lldp and arp packets on each flow endpoint"
         //use this vlan if flow endpoint is 'default' and should catch any vlan
@@ -818,7 +825,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Devices are registered on src switch"
-        verifyAll(northboundV2.getConnectedDevices(flow.source.switchId).ports) {
+        verifyAll(swPair.src.getConnectedDevices().ports) {
             it.size() == 1
             it[0].portNumber == srcTg.switchPort
             it[0].lldp.size() == 1
@@ -832,7 +839,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Device are registered on dst switch"
-        verifyAll(northboundV2.getConnectedDevices(flow.destination.switchId).ports) {
+        verifyAll(swPair.dst.getConnectedDevices().ports) {
             it.size() == 1
             it[0].portNumber == dstTg.switchPort
             it[0].lldp.size() == 1
@@ -860,7 +867,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 "Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
 
         given: "Two switches connected to traffgen"
-        def switchPair = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
+        def swPairs = switchPairs.all().neighbouring().withTraffgensOnBothEnds()
+        // there is an issue with physical switch (lldp traffic)
+        profile == "virtual" ?: swPairs.excludeSwitches([switches.all().getListOfSwitches().find { it.switchId.toString().contains("40")}])
+        def switchPair = switchPairs.random()
 
         and: "A QinQ flow with enabled connected devices on src has been created"
         def flow = flowFactory.getBuilder(switchPair)
@@ -874,11 +884,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "ARP/LLDP rules have been installed"
-        def createdFlow = flow.retrieveDetailsFromDB()
-        waitForDevicesInputRules(createdFlow)
+        def detectedDevicesInfo = flow.retrieveDetailsFromDB().detectConnectedDevices
+        switchPair.src.rulesManager.waitForDeviceRelatedInputRules(detectedDevicesInfo.srcArp, detectedDevicesInfo.srcLldp)
+        switchPair.dst.rulesManager.waitForDeviceRelatedInputRules(detectedDevicesInfo.dstArp, detectedDevicesInfo.dstLldp)
 
         and: "Source and destination switches pass validation (includes meters check)"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies([switchPair.src.dpId, switchPair.dst.dpId]).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(switchPair.toList()).isEmpty()
 
         when: "Devices send lldp and arp packets on each flow endpoint"
         def tgService = traffExamProvider.get()
@@ -904,7 +915,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Devices are registered on the src switch only"
-        verifyAll(northboundV2.getConnectedDevices(flow.source.switchId).ports) {
+        verifyAll(switchPair.src.getConnectedDevices().ports) {
             it.size() == 1
             it[0].portNumber == flow.source.portNumber
             it[0].lldp.size() == 1
@@ -916,14 +927,15 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             it[0].arp.first().vlan == (flow.source.vlanId ? flow.source.vlanId : innerVlanId) //due to issue 3475
             verifyEquals(it[0].arp.first(), srcArpData)
         }
-        northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
+        switchPair.dst.getConnectedDevices().ports.empty
 
         and: "Delete the flow"
         flow.delete()
 
         and: "Delete action removed all rules and meters"
         Wrappers.wait(WAIT_OFFSET) {
-            validateSwitchHasNoFlowRulesAndMeters(switchPair.src.dpId)
+           switchPair.src.rulesManager.getNotDefaultRules().isEmpty()
+           switchPair.src.metersManager.getNotDefaultMeters().isEmpty()
         }
 
         where:
@@ -945,7 +957,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 .withSourceInnerVlan(200)
                 .withDetectedDevicesOnSrc(true, true).build()
                 .create()
-        waitForDevicesInputRules(flow.retrieveDetailsFromDB())
+
+        def detectedDevicesInfo = flow.retrieveDetailsFromDB().detectConnectedDevices
+        switchPair.src.rulesManager.waitForDeviceRelatedInputRules(detectedDevicesInfo.srcArp, detectedDevicesInfo.srcLldp)
+        switchPair.dst.rulesManager.waitForDeviceRelatedInputRules(detectedDevicesInfo.dstArp, detectedDevicesInfo.dstLldp)
 
         when: "Devices send lldp and arp packets on src flow endpoint and match outerVlan only"
         def tgService = traffExamProvider.get()
@@ -968,18 +983,17 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Devices are not registered on the src/dst switches"
-        northboundV2.getConnectedDevices(flow.source.switchId).ports.empty
-        northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
+        switchPair.src.getConnectedDevices().ports.empty
+        switchPair.dst.getConnectedDevices().ports.empty
     }
 
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices on a qinq single-switch different-port flow"() {
         given: "A flow between different ports on the same switch"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def sw = topology.activeTraffGens*.switchConnected.first()
-        assumeTrue(sw.asBoolean(), "Wasn't able to find switch connected to traffGen")
+        def sw = switches.all().withTraffGens().first()
 
-        def flow = flowFactory.getBuilder(sw, sw, true)
+        def flow = flowFactory.getSingleSwBuilder(sw,true)
                 .withDetectedDevicesOnSrc(true, true)
                 .withSourceVlan(vlanId)
                 .withSourceInnerVlan(innerVlanId)
@@ -1005,7 +1019,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Devices are registered on the switch"
-        verifyAll(northboundV2.getConnectedDevices(flow.source.switchId).ports) {
+        verifyAll(sw.getConnectedDevices().ports) {
             it.size() == 1
             it[0].portNumber == flow.source.portNumber
             it[0].lldp.size() == 1
@@ -1030,13 +1044,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "Able to detect devices when two qinq single-switch different-port flows exist with the same outerVlanId"() {
         given: "Two flows between different ports on the same switch with the same outerVlanId"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def tgsList = topology.activeTraffGens.collate(2, 1, false)
-                .find { it[0].switchConnected == it[1].switchConnected }
 
+        def sw = switches.all().withTraffGens().getListOfSwitches().find { it.traffGenPorts.size() > 1 }
+        def tgsList = topology.getTraffGens().findAll { it.switchConnected.dpId == sw.switchId}
         assumeTrue(!tgsList.isEmpty(), "Wasn't able to find a switch with at least 2 trafGens")
-        def sw = tgsList.first().switchConnected //switch that has 2 or more tgs
 
-        def flow1 = flowFactory.getBuilder(sw, sw, true)
+        def flow1 = flowFactory.getSingleSwBuilder(sw, true)
                 .withDetectedDevicesOnSrc(true, true)
                 .withSourcePort(tgsList.first().switchPort)
                 .withSourceVlan(commonOuterVlanId)
@@ -1045,7 +1058,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 .withDestinationPort(tgsList.last().switchPort).build()
                 .create()
 
-        def flow2 = flowFactory.getBuilder(sw, sw, true)
+        def flow2 = flowFactory.getSingleSwBuilder(sw, true)
                 .withDetectedDevicesOnSrc(true, true)
                 .withSourcePort(tgsList.first().switchPort)
                 .withSourceVlan(commonOuterVlanId)
@@ -1081,7 +1094,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Devices are registered on the switch"
-        verifyAll(northboundV2.getConnectedDevices(flow1.source.switchId).ports) {
+        verifyAll(sw.getConnectedDevices().ports) {
             it.size() == 1
             it[0].portNumber == flow1.source.portNumber
             it[0].lldp.size() == 1
@@ -1103,16 +1116,16 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "Switch is not containing extra rules after connected devices removal"() {
         when: "A switch with devices feature turned on"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def tg = topology.activeTraffGens[0]
-        def sw = tg.switchConnected
-        def initialProps = switchHelper.getCachedSwProps(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
+        def swPair = switchPairs.all().withTraffgensOnBothEnds().random()
+
+        def initialProps = swPair.src.getCachedProps()
+        swPair.src.updateProperties(initialProps.jacksonCopy().tap {
             it.switchLldp = true
             it.switchArp = true
         })
 
         then: "The appropriate switch-related ARP/LLDP rules+meters are installed on switch"
-        verifyAll(switchHelper.validate(sw.dpId)) { validateResponse ->
+        verifyAll(swPair.src.validate()) { validateResponse ->
             assert validateResponse.rules.asExpected && validateResponse.meters.asExpected
 
             [LLDP_TRANSIT_COOKIE, LLDP_INGRESS_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE].each { lldpCookie ->
@@ -1127,14 +1140,13 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         and: "Flow is created on a target switch with devices feature 'off'"
-        def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
-        def flow = flowFactory.getBuilder(sw, dst)
+        def flow = flowFactory.getBuilder(swPair)
                 .withDetectedDevicesOnSrc(false, false)
                 .withDetectedDevicesOnDst(false, false).build()
                 .create()
 
         when: "Turn LLDP and ARP detection off on switch"
-        switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
+        swPair.src.updateProperties(initialProps.jacksonCopy().tap {
             it.switchLldp = false
             it.switchArp = false
         })
@@ -1143,10 +1155,12 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flow.update(flow.tap { it.maximumBandwidth = flow.maximumBandwidth + 1 })
 
         then: "Check excess rules are not registered on device"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
+        !swPair.src.synchronizeAndCollectFixedDiscrepancies().isPresent()
 
         and: "The appropriate switch-related ARP/LLDP rules+meters are removed from switch"
-        verifyAll(switchHelper.validate(sw.dpId)) { validateResponse ->
+        verifyAll(swPair.src.validate()) { validateResponse ->
+            assert validateResponse.rules.asExpected && validateResponse.meters.asExpected
+
             [LLDP_TRANSIT_COOKIE, LLDP_INGRESS_COOKIE, LLDP_INPUT_PRE_DROP_COOKIE].each { lldpCookie ->
                 assert validateResponse.rules.proper.findAll { it.cookie == lldpCookie }.isEmpty()
                 assert validateResponse.meters.proper.findAll { it.meterId == createMeterIdForDefaultRule(lldpCookie).value }.isEmpty()
@@ -1161,31 +1175,29 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
     def "System starts detect connected after device properties turned on"() {
         given: "A switch with devices feature turned off"
-        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def tg = topology.activeTraffGens.shuffled().first()
-        def sw = tg.getSwitchConnected()
-        def initialPropsSource = switchHelper.getCachedSwProps(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
+        assumeTrue(topology.activeTraffGens.size() > 1, "Require at least 2 switch with connected traffgen")
+        def swPair = switchPairs.all().withTraffgensOnBothEnds().random()
+
+        def initialPropsSource = swPair.src.getCachedProps()
+        swPair.src.updateProperties(initialPropsSource.jacksonCopy().tap {
             it.switchLldp = false
             it.switchArp = false
         })
 
         and: "Flow is created on a target switch with devices feature 'off'"
-        def dstTg = topology.activeTraffGens.find { it != tg && it.getSwitchConnected().getDpId() != sw.getDpId() }
-        def dst = dstTg.getSwitchConnected()
         def outerVlan = 100
-        def flow = flowFactory.getBuilder(sw, dst, true)
+        def flow = flowFactory.getBuilder(swPair, true)
                 .withSourceVlan(outerVlan)
                 .withSourceInnerVlan(200)
                 .withDetectedDevicesOnSrc(false, false)
                 .withDetectedDevicesOnDst(false, false).build()
                 .create()
 
-        assert northboundV2.getConnectedDevices(flow.source.switchId).ports.empty
-        assert northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
+        assert swPair.src.getConnectedDevices().ports.empty
+        assert swPair.dst.getConnectedDevices().ports.empty
 
         when: "update device properties and send lldp and arp packets on flow"
-        switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
+        swPair.src.updateProperties(initialPropsSource.jacksonCopy().tap {
             it.switchLldp = true
             it.switchArp = true
         })
@@ -1202,7 +1214,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         then: "Getting connecting devices show corresponding devices on src endpoint"
         Wrappers.wait(3) {
             //under usual condition system needs some time for devices to appear, that's why timeLoop is used here
-            verifyAll(northboundV2.getConnectedDevices(sw.dpId)) {
+            verifyAll(swPair.src.getConnectedDevices()) {
                 !(it.ports.lldp.empty)
                 !(it.ports.arp.empty)
             }
@@ -1219,21 +1231,18 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
     def "System stops receiving statistics if config is changed to 'off'"() {
         given: "A switch with devices feature turned on"
-        assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def tg = topology.activeTraffGens.shuffled().first()
-        def sw = tg.getSwitchConnected()
-        def initialPropsSource = switchHelper.getCachedSwProps(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
+        assumeTrue(topology.activeTraffGens.size() > 1, "Require at least 2 switch with connected traffgen")
+        def swPair = switchPairs.all().withTraffgensOnBothEnds().random()
+        def initialPropsSource = swPair.src.getCachedProps()
+        swPair.src.updateProperties(initialPropsSource.jacksonCopy().tap {
             it.switchLldp = true
             it.switchArp = true
         })
 
         and: "Flow is created on a target switch with devices feature 'off'"
         def tgService = traffExamProvider.get()
-        def dstTg = topology.activeTraffGens.find { it != tg && it.getSwitchConnected().getDpId() != sw.getDpId() }
-        def dst = dstTg.getSwitchConnected()
         def outerVlan = 100
-        def flow = flowFactory.getBuilder(sw, dst)
+        def flow = flowFactory.getBuilder(swPair)
                 .withSourceVlan(outerVlan)
                 .withSourceInnerVlan(200)
                 .withDetectedDevicesOnSrc(false, false)
@@ -1241,7 +1250,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 .create()
 
         when: "update device properties and send lldp and arp packets on flow"
-        switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
+        swPair.src.updateProperties(initialPropsSource.jacksonCopy().tap {
             it.switchLldp = false
             it.switchArp = false
         })
@@ -1256,7 +1265,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         then: "Getting connecting devices doesn't show corresponding devices on src endpoint"
         Wrappers.timedLoop(3) {
             //under usual condition system needs some time for devices to appear, that's why timeLoop is used here
-            verifyAll(northboundV2.getConnectedDevices(sw.dpId)) {
+            verifyAll(swPair.src.getConnectedDevices()) {
                 it.ports.lldp.empty
                 it.ports.arp.empty
             }
@@ -1274,9 +1283,9 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assert !(oneSwitch && protectedFlow), "Cannot create one-switch flow with protected path"
         FlowBuilder flowBuilder = null
         if (oneSwitch) {
-            flowBuilder = flowFactory.getBuilder(switchPair.src, switchPair.src, true)
+            flowBuilder = flowFactory.getSingleSwBuilder(switchPair.src, true)
         } else {
-            assert switchPair.src.dpId != switchPair.dst.dpId
+            assert switchPair.src.switchId != switchPair.dst.switchId
             flowBuilder = flowFactory.getBuilder(switchPair, true).withProtectedPath(protectedFlow)
         }
         flowBuilder.withDetectedDevicesOnSrc(srcEnabled, srcEnabled)
@@ -1297,37 +1306,20 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 testData.dstEnabled, testData.switchPair)
     }
 
-    private void restoreSwitchProperties(SwitchId switchId, SwitchPropertiesDto initialProperties) {
-        Switch sw = topology.switches.find { it.dpId == switchId }
-        switchHelper.updateSwitchProperties(sw, initialProperties)
-    }
-
-    private void validateLldpArpMeters(SwitchId switchId) {
-        SoftAssertionsWrapper assertions = new SoftAssertionsWrapper()
-        def validationResponse = switchHelper.validate(switchId)
-        assertions.checkSucceeds { assert validationResponse.meters.asExpected }
-        assertions.checkSucceeds { assert validationResponse.meters.proper.findAll { it.meterId == createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE).value }.size() == 1 }
-        assertions.checkSucceeds { assert validationResponse.meters.proper.findAll { it.meterId == createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE).value }.size() == 1 }
-        assertions.checkSucceeds { assert validationResponse.meters.proper.findAll { it.meterId == createMeterIdForDefaultRule(ARP_POST_INGRESS_COOKIE).value }.size() == 1 }
-        assertions.checkSucceeds { assert validationResponse.meters.proper.findAll { it.meterId == createMeterIdForDefaultRule(ARP_POST_INGRESS_ONE_SWITCH_COOKIE).value }.size() == 1 }
-        assertions.verify()
-    }
-
     /**
      * Pick as little as possible amount of switch pairs to cover all unique switch models we have (only connected
      * to traffgens and lldp-enabled).
      */
     @Memoized
     List<SwitchPair> getUniqueSwitchPairs() {
-        def tgSwitches = topology.activeTraffGens*.switchConnected
-                .findAll { it.features.contains(SwitchFeature.MULTI_TABLE) }
+        def tgSwitches = switches.all().withTraffGens().getListOfSwitches()
         def unpickedTgSwitches = tgSwitches.unique(false) { [it.description, it.nbFormat().hardware].sort() }
         List<SwitchPair> switchPairs = switchPairs.all().withTraffgensOnBothEnds().getSwitchPairs()
         def result = []
         while (!unpickedTgSwitches.empty) {
             def pair = switchPairs.sort(false) { switchPair ->
                 //prioritize swPairs with unique traffgens on both sides
-                [switchPair.src, switchPair.dst].count { Switch sw ->
+                [switchPair.src, switchPair.dst].count { SwitchExtended sw ->
                     !unpickedTgSwitches.contains(sw)
                 }
             }.first()
@@ -1336,34 +1328,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             unpickedTgSwitches = unpickedTgSwitches - pair.src - pair.dst
         }
         return result
-    }
-
-    private void waitForSrcDevicesInputRules(Flow flow) {
-        def ruleTypes = switchRulesFactory.get(flow.srcSwitch.switchId).getRules()
-                .collect { new Cookie(it.cookie).type }
-        Wrappers.wait(WAIT_OFFSET / 2) {
-            assert !flow.detectConnectedDevices.srcArp ^ ruleTypes.contains(ARP_INPUT_CUSTOMER_TYPE)
-            assert !flow.detectConnectedDevices.srcLldp ^ ruleTypes.contains(LLDP_INPUT_CUSTOMER_TYPE)
-        }
-    }
-
-    private void waitForDstDevicesInputRules(Flow flow) {
-        def ruleTypes = switchRulesFactory.get(flow.destSwitch.switchId).getRules()
-                .collect { new Cookie(it.cookie).type }
-        Wrappers.wait(WAIT_OFFSET / 2) {
-            assert !flow.detectConnectedDevices.dstArp ^ ruleTypes.contains(ARP_INPUT_CUSTOMER_TYPE)
-            assert !flow.detectConnectedDevices.dstLldp ^ ruleTypes.contains(LLDP_INPUT_CUSTOMER_TYPE)
-        }
-    }
-
-    private void waitForDevicesInputRules(Flow flow) {
-        waitForSrcDevicesInputRules(flow)
-        waitForDstDevicesInputRules(flow)
-    }
-
-    private void validateSwitchHasNoFlowRulesAndMeters(SwitchId switchId) {
-        assert switchRulesFactory.get(switchId).getRules().count { !new Cookie(it.cookie).serviceFlag } == 0
-        assert northbound.getAllMeters(switchId).meterEntries.count { !MeterId.isMeterIdOfDefaultRule(it.meterId) } == 0
     }
 
     def verifyEquals(ConnectedDeviceDto device, LldpData lldp) {

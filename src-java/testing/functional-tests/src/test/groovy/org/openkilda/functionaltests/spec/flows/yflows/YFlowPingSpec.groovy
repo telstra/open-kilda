@@ -2,18 +2,14 @@ package org.openkilda.functionaltests.spec.flows.yflows
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
-import org.openkilda.model.SwitchId
+import org.openkilda.functionaltests.helpers.model.FlowDirection
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.model.cookie.Cookie
-import org.openkilda.northbound.dto.v2.yflows.SubFlowPingPayload
-import org.openkilda.northbound.dto.v2.yflows.UniSubFlowPingPayload
-import org.openkilda.northbound.dto.v2.yflows.YFlowPingPayload
-import org.openkilda.northbound.dto.v2.yflows.YFlowPingResult
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -38,16 +34,17 @@ class YFlowPingSpec extends HealthCheckSpecification {
         yFlow.periodicPings
 
         and: "Packet counter on catch ping rules grows due to pings happening"
-        def sharedSwitchPacketCount = getPacketCountOfVlanPingRule(swT.shared.dpId)
-        def ep1SwitchPacketCount = getPacketCountOfVlanPingRule(swT.ep1.dpId)
-        def ep2SwitchPacketCount = getPacketCountOfVlanPingRule(swT.ep2.dpId)
+        def encapsulationType = yFlow.encapsulationType.toString()
+        def sharedSwitchPacketCount = swT.shared.rulesManager.pingRule(encapsulationType).packetCount
+        def ep1SwitchPacketCount = swT.ep1.rulesManager.pingRule(encapsulationType).packetCount
+        def ep2SwitchPacketCount = swT.ep2.rulesManager.pingRule(encapsulationType).packetCount
 
-        Wrappers.wait(pingInterval + WAIT_OFFSET / 2) {
-            def sharedPacketCountNow = getPacketCountOfVlanPingRule(swT.shared.dpId)
-            def ep1PacketCountNow = getPacketCountOfVlanPingRule(swT.ep1.dpId)
-            def ep2PacketCountNow = getPacketCountOfVlanPingRule(swT.ep2.dpId)
+        wait(pingInterval + WAIT_OFFSET / 2) {
+            def sharedPacketCountNow = swT.shared.rulesManager.pingRule(encapsulationType).packetCount
+            def ep1PacketCountNow = swT.ep1.rulesManager.pingRule(encapsulationType).packetCount
+            def ep2PacketCountNow = swT.ep2.rulesManager.pingRule(encapsulationType).packetCount
 
-            sharedPacketCountNow > sharedSwitchPacketCount && ep1PacketCountNow > ep1SwitchPacketCount &&
+            assert sharedPacketCountNow > sharedSwitchPacketCount && ep1PacketCountNow > ep1SwitchPacketCount &&
                     ep2PacketCountNow > ep2SwitchPacketCount
         }
     }
@@ -55,49 +52,111 @@ class YFlowPingSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Able to ping y-flow when one of subflows is one-switch one (#5019)"() {
         given: "y-flow which has one-switch subflow"
-        def switchTriplet = switchTriplets.all(true, true).findSwitchTripletForOneSwitchSubflow()
+        def switchTriplet = switchTriplets.all().nonNeighbouring().random().tap {
+            it.ep1 = it.shared
+            it.pathsEp1 = []
+        }
         assumeTrue(switchTriplet != null, "These cases cannot be covered on given topology:")
         def yFlow = yFlowFactory.getRandom(switchTriplet)
 
-        and: "expected ping response"
-        def multiSwitchSubFlowId = yFlow.getSubFlows()
-                .find { it.getEndpoint().getSwitchId().equals(switchTriplet.getEp2().getDpId()) }
-                .getFlowId()
-        def expectedResponseSubflowPart = UniSubFlowPingPayload.builder()
-                .pingSuccess(true)
-                .build()
-        def expectedResponse = YFlowPingResult.builder()
-                .yFlowId(yFlow.yFlowId)
-                .pingSuccess(false)
-                .error("One sub flow is one-switch flow")
-                .subFlows([SubFlowPingPayload.builder()
-                                   .flowId(multiSwitchSubFlowId)
-                                   .forward(expectedResponseSubflowPart)
-                                   .reverse(expectedResponseSubflowPart)
-                                   .build()])
-                .build()
-
         when: "ping y-flow"
-        def response = yFlow.ping(new YFlowPingPayload(2000))
-        response = 'replace unpredictable latency values from ping response'(response)
+        def collectedDiscrepancies = yFlow.pingAndCollectDiscrepancies()
 
         then: "y-flow ping is not successful, but one of subflows ping is successful"
-        response == expectedResponse
-    }
-
-    def getPacketCountOfVlanPingRule(SwitchId switchId) {
-        return northbound.getSwitchRules(switchId).flowEntries
-                .findAll { it.cookie == Cookie.VERIFICATION_UNICAST_RULE_COOKIE }[0].packetCount
-    }
-
-    def 'replace unpredictable latency values from ping response'(YFlowPingResult originalResponse) {
-        //TODO: implement PingResponse model in test package to safely compare expected and actual responses without
-        //manipulating original response
-        def subFlowPingPayloadWithZeroLatency = originalResponse.subFlows[0].tap {
-            it.forward.latency = 0
-            it.reverse.latency = 0
+        verifyAll {
+            assert !collectedDiscrepancies.pingSuccess
+            assert collectedDiscrepancies.error == "One sub flow is one-switch flow"
+            assert collectedDiscrepancies.subFlowsDiscrepancies.isEmpty()
         }
-        originalResponse.subFlows[0] = subFlowPingPayloadWithZeroLatency
-        return originalResponse
+
+        when: "Break the flow by removing flow rules from the intermediate switch"
+        String subFlow = yFlow.subFlows.find { it.endpoint.switchId != yFlow.sharedEndpoint.switchId }.flowId
+        def intermediateSwId = yFlow.retrieveAllEntityPaths().getSubFlowTransitSwitches(subFlow).first()
+        def intermediateSw = switches.all().findSpecific(intermediateSwId)
+
+        def rulesToDelete = intermediateSw.rulesManager.getNotDefaultRules().cookie
+        rulesToDelete.each { cookie -> intermediateSw.rulesManager.delete(cookie) }
+
+        collectedDiscrepancies = yFlow.pingAndCollectDiscrepancies()
+
+        then: "y-flow ping is not successful, and ping for another sub-flow shows that path is broken"
+        def expectedDiscrepancy = [(FlowDirection.FORWARD): "No ping for reasonable time",
+                                   (FlowDirection.REVERSE): "No ping for reasonable time"]
+        verifyAll {
+            assert !collectedDiscrepancies.pingSuccess
+            assert collectedDiscrepancies.error == "One sub flow is one-switch flow"
+            assert collectedDiscrepancies.subFlowsDiscrepancies
+                    .find { it.subFlowId == subFlow }.flowDiscrepancies == expectedDiscrepancy
+        }
+
+        when: "All required rules have been installed(sync)"
+        intermediateSw.synchronize()
+        collectedDiscrepancies = yFlow.pingAndCollectDiscrepancies()
+
+        then: "y-flow ping is not successful, but one of subflows ping is successful"
+        verifyAll {
+            assert !collectedDiscrepancies.pingSuccess
+            assert collectedDiscrepancies.error == "One sub flow is one-switch flow"
+            assert collectedDiscrepancies.subFlowsDiscrepancies.isEmpty()
+        }
+    }
+
+    @Tags([LOW_PRIORITY])
+    def "Able to ping y-flow and detect when path is broken"() {
+        given: "y-flow has been created"
+        def switchTriplet = switchTriplets.all().nonNeighbouring().findSwitchTripletWithYPointOnSharedEp()
+        assumeTrue(switchTriplet != null, "These cases cannot be covered on given topology:")
+        def yFlow = yFlowFactory.getRandom(switchTriplet)
+
+        and: "ping for y-flow detects no discrepancy"
+        assert yFlow.ping().pingSuccess
+
+        when: "Break one sub-flow by removing flow rules from the intermediate switch"
+        def yFlowPath = yFlow.retrieveAllEntityPaths()
+        def subFlow1Id = yFlowPath.subFlowPaths.first().flowId
+        def subFlow2Id = yFlowPath.subFlowPaths.last().flowId
+
+        def subFlow1Switch = switches.all().findSpecific(yFlowPath.getSubFlowTransitSwitches(subFlow1Id).last())
+        def subFlow2Switch = switches.all().findSpecific(yFlowPath.getSubFlowTransitSwitches(subFlow2Id).last())
+
+        def rulesToDelete = subFlow1Switch.rulesManager.getNotDefaultRules().cookie
+
+        rulesToDelete.each { cookie -> subFlow1Switch.rulesManager.delete(cookie) }
+        def collectedDiscrepancies = yFlow.pingAndCollectDiscrepancies()
+
+        then: "y-flow ping is not successful, and ping for one sub-flow shows that path is broken"
+        def expectedDiscrepancy = [(FlowDirection.FORWARD): "No ping for reasonable time",
+                                   (FlowDirection.REVERSE): "No ping for reasonable time"]
+        verifyAll {
+            assert !collectedDiscrepancies.pingSuccess
+            assert collectedDiscrepancies.subFlowsDiscrepancies
+                    .find { it.subFlowId == subFlow1Id }.flowDiscrepancies == expectedDiscrepancy
+            assert !collectedDiscrepancies.subFlowsDiscrepancies.find { it.subFlowId == subFlow2Id }
+        }
+
+        when: "Break another sub-flow by removing flow rules from the intermediate switch(after fixing previous discrepancy)"
+        subFlow1Switch.synchronize()
+        rulesToDelete = subFlow2Switch.rulesManager.getNotDefaultRules().cookie
+        rulesToDelete.each { cookie -> subFlow2Switch.rulesManager.delete(cookie) }
+        collectedDiscrepancies = yFlow.pingAndCollectDiscrepancies()
+
+        then: "y-flow ping is not successful, and ping for another sub-flow shows that path is broken"
+        verifyAll {
+            assert !collectedDiscrepancies.pingSuccess
+            assert collectedDiscrepancies.subFlowsDiscrepancies
+                    .find { it.subFlowId == subFlow2Id }.flowDiscrepancies == expectedDiscrepancy
+            assert !collectedDiscrepancies.subFlowsDiscrepancies.find { it.subFlowId == subFlow1Id }
+        }
+
+        when: "All required rules have been installed(sync)"
+        subFlow2Switch.synchronize()
+        collectedDiscrepancies = yFlow.pingAndCollectDiscrepancies()
+
+        then: "y-flow ping is successful for both sub-flows"
+        verifyAll {
+            assert collectedDiscrepancies.pingSuccess
+            assert !collectedDiscrepancies.error
+            assert collectedDiscrepancies.subFlowsDiscrepancies.isEmpty()
+        }
     }
 }

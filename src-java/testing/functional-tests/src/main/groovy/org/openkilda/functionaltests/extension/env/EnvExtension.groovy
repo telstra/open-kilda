@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests.extension.env
 
-import static groovyx.gpars.GParsExecutorsPool.withPool
+import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.model.FlowEncapsulationType.*
+import static org.openkilda.model.SwitchFeature.*
 import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
 import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -9,14 +11,11 @@ import static org.openkilda.testing.Constants.HEALTH_CHECK_TIME
 import org.openkilda.functionaltests.exception.IslNotFoundException
 import org.openkilda.functionaltests.extension.spring.SpringContextListener
 import org.openkilda.functionaltests.extension.spring.SpringContextNotifier
-import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Status
@@ -45,9 +44,6 @@ import java.util.concurrent.TimeUnit
  */
 @Slf4j
 class EnvExtension extends AbstractGlobalExtension implements SpringContextListener {
-    @Autowired //init for getting swFeatures (sw.features)
-    SwitchHelper switchHelper
-
     @Autowired
     TopologyPool topologyPool
 
@@ -101,6 +97,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
             log.info("Virtual topology is successfully created")
         } else if (profile == "hardware") {
             labService.createHwLab(topology)
+            collectSwitchesPathsFromDb(topology)
             log.info("Successfully redirected to hardware topology")
         } else {
             throw new RuntimeException("Provided profile '$profile' is unknown. Select one of the following profiles:" +
@@ -180,10 +177,10 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
 
             //add 'vxlan' encapsuation as supported in case switch supports it
             topo.getActiveSwitches().each { sw ->
-                def supportedEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
-                if (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
-                        || sw.features.contains(SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-                    supportedEncapsulation << FlowEncapsulationType.VXLAN.toString()
+                def supportedEncapsulation = [TRANSIT_VLAN.toString()]
+                def swFeatures =  database.getSwitch(sw.dpId).features
+                if (swFeatures.contains(NOVIFLOW_PUSH_POP_VXLAN) || swFeatures.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+                    supportedEncapsulation << VXLAN.toString()
                 }
                 northbound.updateSwitchProperties(sw.dpId, northbound.getSwitchProperties(sw.dpId).tap {
                     supportedTransitEncapsulation = supportedEncapsulation
@@ -240,7 +237,11 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     }
 
     Closure noExcessRulesMeters = { TopologyDefinition topologyDefinition ->
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(topologyDefinition.activeSwitches*.getDpId())
+        return withPool {
+            topologyDefinition.activeSwitches.eachParallel {
+                northbound.synchronizeSwitch(it.dpId, true)
+            }
+        }
     }
 
     Closure allSwitchesConnectedToExpectedRegion = { TopologyDefinition topologyDefinition ->

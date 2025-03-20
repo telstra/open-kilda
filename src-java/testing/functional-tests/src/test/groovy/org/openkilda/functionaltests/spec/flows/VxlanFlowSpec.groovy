@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.*
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -18,21 +19,12 @@ import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
-import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
-import org.openkilda.functionaltests.model.stats.Direction
-import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -48,23 +40,17 @@ NOTE: A flow with the 'VXLAN' encapsulation is supported on a Noviflow switches.
 So, flow can be created on a Noviflow(src/dst/transit) switches only.""")
 
 class VxlanFlowSpec extends HealthCheckSpecification {
-    static Logger logger = LoggerFactory.getLogger(VxlanFlowSpec.class)
-
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
     @Autowired
     @Shared
     FlowFactory flowFactory
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
 
     @IterationTags([
             @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /TRANSIT_VLAN -> VXLAN/)
     ])
-    def "System allows to create/update encapsulation type for a flow\
-[#data.encapsulationCreate.toString() -> #data.encapsulationUpdate.toString(), #swPair.hwSwString()]"(Map data, SwitchPair swPair) {
+    def "System allows to create/update encapsulation type for a flow #description"(Map data, SwitchPair swPair) {
         when: "Create a flow with #encapsulationCreate.toString() encapsulation type"
         sleep(10000) //subsequent test fails due to traffexam. Was not able to track down the reason
         def flow = flowFactory.getBuilder(swPair)
@@ -75,28 +61,26 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flow.encapsulationType == data.encapsulationCreate
 
         and: "Correct rules are installed"
-        def vxlanRule = (flow.encapsulationType == FlowEncapsulationType.VXLAN)
+        def vxlanRule = (flow.encapsulationType == VXLAN)
         def flowInfoFromDb = flow.retrieveDetailsFromDB()
         // ingressRule should contain "pushVxlan"
         // egressRule should contain "tunnel-id"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            verifyAll( switchRulesFactory.get(swPair.src.dpId).getRules() ) { rules ->
-                rules.find {
-                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
-                }.instructions.applyActions.pushVxlan as boolean == vxlanRule
-                rules.find {
-                    it.cookie == flowInfoFromDb.reversePath.cookie.value
-                }.match.tunnelId as boolean == vxlanRule
-            }
+            def srcRules = swPair.src.rulesManager.getRules()
+            assert srcRules.find {
+                it.cookie == flowInfoFromDb.forwardPath.cookie.value
+            }.instructions.applyActions.pushVxlan as boolean == vxlanRule
+            assert srcRules.find {
+                it.cookie == flowInfoFromDb.reversePath.cookie.value
+            }.match.tunnelId as boolean == vxlanRule
 
-            verifyAll(switchRulesFactory.get(swPair.dst.dpId).getRules()) { rules ->
-                rules.find {
-                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
-                }.match.tunnelId as boolean == vxlanRule
-                rules.find {
-                    it.cookie == flowInfoFromDb.reversePath.cookie.value
-                }.instructions.applyActions.pushVxlan as boolean == vxlanRule
-            }
+            def dstRules = swPair.dst.rulesManager.getRules()
+            assert dstRules.find {
+                it.cookie == flowInfoFromDb.forwardPath.cookie.value
+            }.match.tunnelId as boolean == vxlanRule
+            assert dstRules.find {
+                it.cookie == flowInfoFromDb.reversePath.cookie.value
+            }.instructions.applyActions.pushVxlan as boolean == vxlanRule
         }
 
         and: "Flow is valid"
@@ -105,10 +89,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is pingable"
-        verifyAll(flow.ping()) {
-            forward.pingSuccess
-            reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The flow allows traffic"
         def traffExam = traffExamProvider.get()
@@ -122,15 +103,12 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                     traffExam.waitExam(direction)
                 }.every {
                     it.hasTraffic()
-                }, switchRulesFactory.get(swPair.getSrc().getDpId())
+                }, swPair.src.rulesManager.getRules()
             }
         }
 
         and: "Flow is pingable"
-        verifyAll(flow.ping()) {
-            forward.pingSuccess
-            reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
         def updateEntity = flow.deepCopy().tap {
@@ -149,10 +127,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is pingable (though sometimes we have to wait)"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(flow.ping()) {
-                forward.pingSuccess
-                reverse.pingSuccess
-            }
+           flow.pingAndCollectDiscrepancies().isEmpty()
         }
 
         and: "Rules are recreated"
@@ -162,23 +137,21 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         and: "New rules are installed correctly"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            verifyAll(switchRulesFactory.get(swPair.src.dpId).getRules()) { rules ->
-                rules.find {
-                    it.cookie == flowInfoFromDb2.forwardPath.cookie.value
-                }.instructions.applyActions.pushVxlan as boolean == !vxlanRule
-                rules.find {
-                    it.cookie == flowInfoFromDb2.reversePath.cookie.value
-                }.match.tunnelId as boolean == !vxlanRule
-            }
+            def srcRules = swPair.src.rulesManager.getRules()
+            assert srcRules.find {
+                it.cookie == flowInfoFromDb2.forwardPath.cookie.value
+            }.instructions.applyActions.pushVxlan as boolean == !vxlanRule
+            assert srcRules.find {
+                it.cookie == flowInfoFromDb2.reversePath.cookie.value
+            }.match.tunnelId as boolean == !vxlanRule
 
-            verifyAll(switchRulesFactory.get(swPair.dst.dpId).getRules()) { rules ->
-                rules.find {
-                    it.cookie == flowInfoFromDb2.forwardPath.cookie.value
-                }.match.tunnelId as boolean == !vxlanRule
-                rules.find {
-                    it.cookie == flowInfoFromDb2.reversePath.cookie.value
-                }.instructions.applyActions.pushVxlan as boolean == !vxlanRule
-            }
+            def dstRules = swPair.dst.rulesManager.getRules()
+            assert dstRules.find {
+                it.cookie == flowInfoFromDb2.forwardPath.cookie.value
+            }.match.tunnelId as boolean == !vxlanRule
+            assert dstRules.find {
+                it.cookie == flowInfoFromDb2.reversePath.cookie.value
+            }.instructions.applyActions.pushVxlan as boolean == !vxlanRule
         }
 
         and: "The flow allows traffic"
@@ -188,7 +161,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                     def resources = traffExam.startExam(direction)
                     direction.setResources(resources)
                     traffExam.waitExam(direction)
-                }.every {it.hasTraffic()}, switchRulesFactory.get(swPair.getSrc().getDpId())
+                }.every {it.hasTraffic()}, swPair.src.rulesManager.getRules()
             }
         }
 
@@ -196,22 +169,23 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         [data, swPair] << ([
                 [
                         [
-                                encapsulationCreate: FlowEncapsulationType.TRANSIT_VLAN,
-                                encapsulationUpdate: FlowEncapsulationType.VXLAN
+                                encapsulationCreate: TRANSIT_VLAN,
+                                encapsulationUpdate: VXLAN
                         ],
                         [
-                                encapsulationCreate: FlowEncapsulationType.VXLAN,
-                                encapsulationUpdate: FlowEncapsulationType.TRANSIT_VLAN
+                                encapsulationCreate: VXLAN,
+                                encapsulationUpdate: TRANSIT_VLAN
                         ]
                 ], getUniqueVxlanSwitchPairs()
         ].combinations() ?: assumeTrue(false, "Not enough VXLAN-enabled switches in topology"))
+        description = "[${data.encapsulationCreate.toString()} -> ${data.encapsulationUpdate.toString()}, ${swPair.hwSwString()}]"
     }
 
     def "Able to CRUD a pinned flow with 'VXLAN' encapsulation"() {
         when: "Create a flow"
         def switchPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().random()
         def flow = flowFactory.getBuilder(switchPair)
-                .withEncapsulationType(FlowEncapsulationType.VXLAN)
+                .withEncapsulationType(VXLAN)
                 .withPinned(true)
                 .build().create()
 
@@ -239,15 +213,16 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 .withBothSwitchesVxLanEnabled()
                 .withAtLeastNNonOverlappingPaths(2)
                 .random()
+        def vxlanSwIds = switches.all().withVxlanEnabled().getListOfSwitches().switchId
         def availablePaths = switchPair.paths.findAll { path ->
-            path*.switchId.every { switchHelper.isVxlanEnabled(it) }
+            path*.switchId.every { it in vxlanSwIds }
         }
         assumeTrue(availablePaths.size() >= 2, "Unable to find required paths between switches")
 
         when: "Create a flow with protected path"
         def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(true)
-                .withEncapsulationType(FlowEncapsulationType.VXLAN)
+                .withEncapsulationType(VXLAN)
                 .build().create()
 
         then: "Flow is created with protected path"
@@ -256,49 +231,34 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flow.retrieveDetails().statusDetails
 
         and: "Rules for main and protected paths are created"
+        def involvedSwitches = switches.all().findSwitchesInPath(flowPathInfo)
+        def flowInfoFromDb = flow.retrieveDetailsFromDB()
         Wrappers.wait(WAIT_OFFSET) {
-            HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
-                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
-            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+            flow.verifyRulesForProtectedFlowOnSwitches(involvedSwitches, flowInfoFromDb)
         }
 
-        def flowInfoFromDb = flow.retrieveDetailsFromDB()
         // ingressRule should contain "pushVxlan"
         // egressRule should contain "tunnel-id"
         // protected path creates engressRule
         def protectedForwardCookie = flowInfoFromDb.protectedForwardPath.cookie.value
         def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            verifyAll(switchRulesFactory.get(switchPair.src.dpId).getRules()) { rules ->
-                rules.find {
-                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
-                }.instructions.applyActions.pushVxlan
-                rules.find {
-                    it.cookie == flowInfoFromDb.reversePath.cookie.value
-                }.match.tunnelId
-                rules.find {
-                    it.cookie == flowInfoFromDb.protectedReversePath.cookie.value
-                }.match.tunnelId
-            }
+            def srcRules = switchPair.src.rulesManager.getRules()
+            assert srcRules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.instructions.applyActions.pushVxlan
+            assert srcRules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.match.tunnelId
+            assert srcRules.find { it.cookie == flowInfoFromDb.protectedReversePath.cookie.value }.match.tunnelId
 
-            verifyAll(switchRulesFactory.get(switchPair.dst.dpId).getRules()) { rules ->
-                rules.find {
-                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
-                }.match.tunnelId
-                rules.find {
-                    it.cookie == flowInfoFromDb.reversePath.cookie.value
-                }.instructions.applyActions.pushVxlan
-                rules.find {
-                    it.cookie == flowInfoFromDb.protectedForwardPath.cookie.value
-                }.match.tunnelId
-            }
+            def dstRules = switchPair.dst.rulesManager.getRules()
+            assert dstRules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.match.tunnelId
+            assert dstRules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.instructions.applyActions.pushVxlan
+            assert dstRules.find { it.cookie == flowInfoFromDb.protectedForwardPath.cookie.value }.match.tunnelId
         }
 
         and: "Validation of flow must be successful"
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
-        def protectedFlowPath = flow.retrieveAllEntityPaths().getPathNodes(Direction.FORWARD, true)
+        def protectedPatSwitches = switches.all().findSpecific(flow.retrieveAllEntityPaths().getProtectedPathSwitches())
         def updateEntity = flow.deepCopy().tap { it.allocateProtectedPath = false }
         flow.update(updateEntity)
 
@@ -308,37 +268,25 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         and: "Rules for protected path are deleted"
         Wrappers.wait(RULES_DELETION_TIME) {
-            protectedFlowPath.each { sw ->
-                def rules = switchRulesFactory.get(sw.switchId).getRules().findAll {
-                    !new Cookie(it.cookie).serviceFlag
-                }
+            protectedPatSwitches.each { sw ->
+                def rules = sw.rulesManager.getNotDefaultRules()
                 assert rules.every { it.cookie != protectedForwardCookie && it.cookie != protectedReverseCookie }
             }
         }
 
         and: "And rules for main path are recreacted"
+        def flowInfoFromDb2 = flow.retrieveDetailsFromDB()
+        assert [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value].sort() !=
+                [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
+
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            def flowInfoFromDb2 = flow.retrieveDetailsFromDB()
-            assert [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value].sort() !=
-                    [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
+            def srcRules = switchPair.src.rulesManager.getRules()
+            assert srcRules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }.instructions.applyActions.pushVxlan
+            assert srcRules.find { it.cookie == flowInfoFromDb2.reversePath.cookie.value }.match.tunnelId
 
-            verifyAll(switchRulesFactory.get(switchPair.src.dpId).getRules()) { rules ->
-                rules.find {
-                    it.cookie == flowInfoFromDb2.forwardPath.cookie.value
-                }.instructions.applyActions.pushVxlan
-                rules.find {
-                    it.cookie == flowInfoFromDb2.reversePath.cookie.value
-                }.match.tunnelId
-            }
-
-            verifyAll(switchRulesFactory.get(switchPair.dst.dpId).getRules()) { rules ->
-                rules.find {
-                    it.cookie == flowInfoFromDb2.forwardPath.cookie.value
-                }.match.tunnelId
-                rules.find {
-                    it.cookie == flowInfoFromDb2.reversePath.cookie.value
-                }.instructions.applyActions.pushVxlan
-            }
+            def dstRules = switchPair.dst.rulesManager.getRules()
+            assert dstRules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }.match.tunnelId
+            assert dstRules.find { it.cookie == flowInfoFromDb2.reversePath.cookie.value }.instructions.applyActions.pushVxlan
         }
 
         and: "Validation of flow must be successful"
@@ -357,7 +305,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def defaultFlow = flowFactory.getBuilder(switchPair)
                 .withSourceVlan(0)
                 .withDestinationVlan(0)
-                .withEncapsulationType(FlowEncapsulationType.VXLAN)
+                .withEncapsulationType(VXLAN)
                 .build().create()
 
         def flow = flowFactory.getBuilder(switchPair)
@@ -380,43 +328,41 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     def "Unable to create a VXLAN flow when src and dst switches do not support it"() {
         given: "Src and dst switches do not support VXLAN"
         def switchPair = switchPairs.all().random()
-        Map<Switch, SwitchPropertiesDto> initProps = [switchPair.src, switchPair.dst].collectEntries {
-            [(it): switchHelper.getCachedSwProps(it.dpId)]
-        }
-        initProps.each { sw, swProp ->
-            switchHelper.updateSwitchProperties(sw, swProp.jacksonCopy().tap {
-                it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
+        [switchPair.src, switchPair.dst].each { sw ->
+            def props = sw.getCachedProps()
+            sw.updateProperties(props.jacksonCopy().tap {
+                it.supportedTransitEncapsulation = [TRANSIT_VLAN.toString()]
             })
         }
 
         when: "Try to create a VXLAN flow"
         def flowEntity = flowFactory.getBuilder(switchPair)
-                .withEncapsulationType(FlowEncapsulationType.VXLAN)
+                .withEncapsulationType(VXLAN)
                 .build()
         flowEntity.create()
 
         then: "Human readable error is returned"
         def createError = thrown(HttpClientErrorException)
         def actualCreateError= getUnsupportedVxlanErrorDescription(
-                "source", switchPair.src.dpId, [FlowEncapsulationType.TRANSIT_VLAN])
+                "source", switchPair.src.switchId, [TRANSIT_VLAN])
         new FlowNotCreatedExpectedError(~/$actualCreateError/).matches(createError)
 
         when: "Create a VLAN flow"
         flowEntity.tap {
-            it.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
+            it.encapsulationType = TRANSIT_VLAN
         }
         def flow = flowEntity.create()
 
         and: "Try updated its encap type to VXLAN"
         def updateFlowEntity = flow.tap {
-            it.encapsulationType = FlowEncapsulationType.VXLAN
+            it.encapsulationType = VXLAN
         }
         flow.update(updateFlowEntity)
 
         then: "Human readable error is returned"
         def updateError = thrown(HttpClientErrorException)
         def actualUpdateDesc= getUnsupportedVxlanErrorDescription(
-                "source", switchPair.src.dpId, [FlowEncapsulationType.TRANSIT_VLAN])
+                "source", switchPair.src.switchId, [TRANSIT_VLAN])
         new FlowNotUpdatedExpectedError(~/$actualUpdateDesc/).matches(updateError)
     }
 
@@ -425,17 +371,18 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         given: "Shortest path transit switch does not support VXLAN and alt paths with VXLAN are available"
         Path noVxlanPath
         SwitchId noVxlanSwId
+        List<SwitchId> vxlanEnabledSws = switches.all().withVxlanEnabled().getListOfSwitches().switchId
         def switchPair = switchPairs.all().getSwitchPairs().find {
             def availablePath = it.retrieveAvailablePaths()
             noVxlanPath = availablePath.find {
                 def involvedSwitches = it.getInvolvedSwitches()
                 noVxlanSwId = involvedSwitches[1]
-                involvedSwitches.size() == 3 && involvedSwitches[0,-1].every { swId -> switchHelper.isVxlanEnabled(swId) }
+                involvedSwitches.size() == 3 && involvedSwitches[0,-1].every { it in vxlanEnabledSws}
             }
             Path vxlanPath = availablePath.findAll { it != noVxlanPath }.find {
                 def involvedSwitches = it.getInvolvedSwitches()
                 involvedSwitches.size() >= 3 && !involvedSwitches[1..-2].contains(noVxlanSwId) &&
-                        involvedSwitches[1..-2].every { swId -> switchHelper.isVxlanEnabled(swId) }
+                        involvedSwitches[1..-2].every { it in vxlanEnabledSws }
             }
             noVxlanPath && vxlanPath
         }
@@ -447,43 +394,46 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 .each { islHelper.makePathIslsMorePreferable(noVxlanPathIsls, it) }
 
         def initNoVxlanSwProps
-        def isVxlanEnabledOnNoVxlanSw = switchHelper.isVxlanEnabled(noVxlanSwId)
+        def isVxlanEnabledOnNoVxlanSw = noVxlanSwId in vxlanEnabledSws
         if (isVxlanEnabledOnNoVxlanSw) {
-            initNoVxlanSwProps = switchHelper.getCachedSwProps(noVxlanSwId)
-            switchHelper.updateSwitchProperties(topology.activeSwitches.find{ it.dpId == noVxlanSwId }, initNoVxlanSwProps.jacksonCopy().tap {
-                it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
+            def swToManipulate = switches.all().findSpecific(noVxlanSwId)
+            initNoVxlanSwProps = swToManipulate.getCachedProps()
+            swToManipulate.updateProperties(initNoVxlanSwProps.jacksonCopy().tap {
+                it.supportedTransitEncapsulation = [TRANSIT_VLAN.toString()]
             })
         }
 
         when: "Create a VXLAN flow"
         def flow = flowFactory.getBuilder(switchPair)
-                .withEncapsulationType(FlowEncapsulationType.VXLAN)
+                .withEncapsulationType(VXLAN)
                 .build().create()
 
         then: "Flow is built through vxlan-enabled path, even though it is not the shortest"
-        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() != noVxlanPathIsls
+        def flowPath = flow.retrieveAllEntityPaths()
+        flowPath.getInvolvedIsls() != noVxlanPathIsls
+        !flowPath.getInvolvedSwitches().contains(noVxlanSwId)
     }
 
     @Tags([LOW_PRIORITY, TOPOLOGY_DEPENDENT])
     def "Unable to create a vxlan flow when dst switch does not support it"() {
         given: "VXLAN supported and not supported switches"
         def switchPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().random()
-        def originDstSwProps = switchHelper.getCachedSwProps(switchPair.dst.dpId)
-        switchHelper.updateSwitchProperties(switchPair.dst, originDstSwProps.jacksonCopy().tap {
-            it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
+        def originDstSwProps = switchPair.dst.getCachedProps()
+        switchPair.dst.updateProperties(originDstSwProps.jacksonCopy().tap {
+            it.supportedTransitEncapsulation = [TRANSIT_VLAN.toString()]
         })
-        def dstSupportedEncapsulationTypes = northbound.getSwitchProperties(switchPair.dst.dpId)
+        def dstSupportedEncapsulationTypes = switchPair.dst.getProps()
                 .supportedTransitEncapsulation.collect { it.toUpperCase() }
 
         when: "Try to create a flow"
         def flowEntity = flowFactory.getBuilder(switchPair)
-                .withEncapsulationType(FlowEncapsulationType.VXLAN)
+                .withEncapsulationType(VXLAN)
                 .build()
         flowEntity.create()
 
         then: "Human readable error is returned"
         def err = thrown(HttpClientErrorException)
-        def actualErrDesc= getUnsupportedVxlanErrorDescription("destination", switchPair.dst.dpId,
+        def actualErrDesc= getUnsupportedVxlanErrorDescription("destination", switchPair.dst.switchId,
                 dstSupportedEncapsulationTypes)
         new FlowNotCreatedExpectedError(~/$actualErrDesc/).matches(err)
     }
@@ -491,9 +441,9 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     def "System allows to create/update encapsulation type for a one-switch flow\
 (#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
         when: "Try to create a one-switch flow"
-        def sw = topology.activeSwitches.find { switchHelper.isVxlanEnabled(it.dpId) }
+        def sw = switches.all().withVxlanEnabled().random()
         assumeTrue(sw as boolean, "Require at least 1 VXLAN supported switch")
-        def flow = flowFactory.getBuilder(sw, sw)
+        def flow = flowFactory.getSingleSwBuilder(sw)
                 .withEncapsulationType(encapsulationCreate)
                 .build().create()
 
@@ -505,14 +455,9 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def flowInfoFromDb = flow.retrieveDetailsFromDB()
         // vxlan rules are not creating for a one-switch flow
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            verifyAll(switchRulesFactory.get(sw.dpId).getRules()) { rules ->
-                !rules.find {
-                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
-                }.instructions.applyActions.pushVxlan
-                !rules.find {
-                    it.cookie == flowInfoFromDb.reversePath.cookie.value
-                }.match.tunnelId
-            }
+            def rules = sw.rulesManager.getRules()
+            assert !rules.find { it.cookie == flowInfoFromDb.forwardPath.cookie.value }.instructions.applyActions.pushVxlan
+            assert !rules.find { it.cookie == flowInfoFromDb.reversePath.cookie.value }.match.tunnelId
         }
 
         and: "Flow is valid"
@@ -547,20 +492,16 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         and: "New rules are installed correctly"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            verifyAll(switchRulesFactory.get(sw.dpId).getRules()) { rules ->
-                !rules.find {
-                    it.cookie == flowInfoFromDb2.forwardPath.cookie.value
-                }.instructions.applyActions.pushVxlan
-                !rules.find {
-                    it.cookie == flowInfoFromDb2.reversePath.cookie.value
-                }.match.tunnelId
-            }
+            def rules = sw.rulesManager.getRules()
+            assert !rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }.instructions.applyActions.pushVxlan
+            assert !rules.find { it.cookie == flowInfoFromDb2.reversePath.cookie.value }.match.tunnelId
+
         }
 
         where:
-        encapsulationCreate                | encapsulationUpdate
-        FlowEncapsulationType.TRANSIT_VLAN | FlowEncapsulationType.VXLAN
-        FlowEncapsulationType.VXLAN        | FlowEncapsulationType.TRANSIT_VLAN
+        encapsulationCreate | encapsulationUpdate
+        TRANSIT_VLAN        | VXLAN
+        VXLAN               | TRANSIT_VLAN
 
     }
 
@@ -569,8 +510,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
      */
     List<SwitchPair> getUniqueVxlanSwitchPairs() {
         def vxlanSwitchPairs = switchPairs.all().withBothSwitchesVxLanEnabled().getSwitchPairs()
-        def switchesToPick = vxlanSwitchPairs.collectMany { [it.src, it.dst] }
-                                             .unique { it.nbFormat().hardware + it.nbFormat().software }
+        def switchesToPick = vxlanSwitchPairs.collectMany { [it.src, it.dst] }.unique { it.hwSwString() }
         return vxlanSwitchPairs.inject([]) { r, switchPair ->
             if (switchPair.src in switchesToPick || switchPair.dst in switchesToPick ) {
                 r << switchPair
@@ -584,7 +524,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     def getUnsupportedVxlanErrorDescription(endpointName, dpId, supportedEncapsulationTypes) {
         String supportedEncTypes = supportedEncapsulationTypes.collect { it.toString().toUpperCase() }
                 .toString().replace('[', '\\[').replace(']', '\\]')
-        String vxlan = FlowEncapsulationType.VXLAN.toString().toUpperCase()
+        String vxlan = VXLAN.toString().toUpperCase()
         return "Flow's $endpointName endpoint $dpId doesn't support requested encapsulation type " +
                 "$vxlan. Choose one of the supported encapsulation types " +
                 "$supportedEncTypes or update switch properties and add needed encapsulation type."

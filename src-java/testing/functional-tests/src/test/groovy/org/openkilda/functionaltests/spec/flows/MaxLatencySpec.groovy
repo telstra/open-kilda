@@ -13,8 +13,6 @@ import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
-import org.openkilda.functionaltests.model.stats.Direction
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.StatusInfo
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -76,7 +74,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 15)
 
         when: "Create a flow with protected path, max_latency 16 and max_latency_tier_2 18"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(true)
                 .withMaxLatency(16)
                 .withMaxLatencyTier2(18)
@@ -85,8 +83,8 @@ class MaxLatencySpec extends HealthCheckSpecification {
 
         then: "Flow is created, main path is the 15 latency path, protected is 10 latency"
         def flowPath = flow.retrieveAllEntityPaths()
-        flowPath.flowPath.getMainPathInvolvedIsls() == alternativeIsls
-        flowPath.flowPath.getProtectedPathInvolvedIsls() == mainIsls
+        flowPath.getMainPathInvolvedIsls() == alternativeIsls
+        flowPath.getProtectedPathInvolvedIsls() == mainIsls
     }
 
     @Tags([LOW_PRIORITY])
@@ -95,7 +93,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 9)
 
         when: "Create a flow with protected path and max_latency #testMaxLatency"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(true)
                 .withMaxLatency(testMaxLatency)
                 .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
@@ -116,7 +114,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 15)
 
         when: "Create a flow with protected path, maxLatency 11 and maxLatencyTier2 16"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(true)
                 .withMaxLatency(11)
                 .withMaxLatencyTier2(16) // maxLatency < pathLatency < maxLatencyTier2
@@ -126,8 +124,8 @@ class MaxLatencySpec extends HealthCheckSpecification {
         then: "Flow is created, main path is the 10 latency path, protected is 15 latency"
         and: "Flow goes to DEGRADED state"
         def flowPath = flow.retrieveAllEntityPaths()
-        flowPath.flowPath.getMainPathInvolvedIsls() == mainIsls
-        flowPath.flowPath.getProtectedPathInvolvedIsls() == alternativeIsls
+        flowPath.getMainPathInvolvedIsls() == mainIsls
+        flowPath.getProtectedPathInvolvedIsls() == alternativeIsls
     }
 
     @Tags([LOW_PRIORITY])
@@ -136,7 +134,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(11, 15)
 
         when: "Create a flow with max_latency 11 and max_latency_tier2 16"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(11)
                 .withMaxLatencyTier2(16)
@@ -144,7 +142,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
                 .build().create(DEGRADED)
 
         then: "Flow is created, flow path is the 15 latency path"
-        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == alternativeIsls
+        flow.retrieveAllEntityPaths().getInvolvedIsls() == alternativeIsls
     }
 
     @Tags([LOW_PRIORITY])
@@ -153,14 +151,14 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 15)
 
         when: "Create a flow with max_latency 11 and max_latency_tier2 16"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(11)
                 .withMaxLatencyTier2(16)
                 .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
                 .build().create()
         //flow path is the 10 latency path
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
 
         and: "Update the flow(maxLatency: 10)"
         def newMaxLatency = 10
@@ -177,7 +175,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
             for example: reroute can be triggered by blinking/activating any isl (not involved in flow path)*/
             assert northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome[0..1] == ["UP", "DEGRADED"]
         }
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == alternativeIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == alternativeIsls
     }
 
     def "Able to reroute a MAX_LATENCY flow if maxLatencyTier2 > pathLatency > maxLatency"() {
@@ -185,13 +183,13 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 15)
 
         when: "Create a flow with max_latency 11 and max_latency_tier2 16"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(11)
                 .withMaxLatencyTier2(16)
                 .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
                 .build().create()
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
 
         and: "Init auto reroute (bring port down on the src switch)"
         setLatencyForPaths(10, 15)
@@ -209,7 +207,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
             assert flowInfo.status == DEGRADED
             assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
         }
-        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == alternativeIsls
+        flow.retrieveAllEntityPaths().getInvolvedIsls() == alternativeIsls
     }
 
     def "Able to create DEGRADED flow with LATENCY strategy if max_latency_tier_2 > flowPath > max_latency"() {
@@ -217,7 +215,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(11, 15)
 
         when: "Create a flow, maxLatency 10 and maxLatencyTier2 12"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(10)
                 .withMaxLatencyTier2(12)
@@ -226,7 +224,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
 
         then: "Flow is created in DEGRADED state because flowPath doesn't satisfy max_latency value \
 but satisfies max_latency_tier2"
-        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainIsls
+        flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
     }
 
     @Tags([LOW_PRIORITY])
@@ -235,7 +233,7 @@ but satisfies max_latency_tier2"
         setLatencyForPaths(9, 15)
 
         when: "Create a flow, maxLatency 9 and maxLatencyTier2 12"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(9)
                 .withMaxLatencyTier2(12)
@@ -243,7 +241,7 @@ but satisfies max_latency_tier2"
                 .build().create()
 
         then: "Flow is created in UP"
-        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainIsls
+        flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
     }
 
     @Tags([LOW_PRIORITY])
@@ -252,7 +250,7 @@ but satisfies max_latency_tier2"
         setLatencyForPaths(12, 13)
 
         when: "Create a flow, maxLatency 10 and maxLatencyTier2 11"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(10)
                 .withMaxLatencyTier2(11)
@@ -270,14 +268,14 @@ but satisfies max_latency_tier2"
         setLatencyForPaths(11, 15)
 
         and: "A flow with maxLatency 11 and maxLatencyTier2 14 on the path with 11 latency"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(11)
                 .withMaxLatencyTier2(14)
                 .withPathComputationStrategy(PathComputationStrategy.LATENCY)
                 .build().create()
 
-        assert flow.retrieveAllEntityPaths().getFlowPath().getInvolvedIsls() == mainIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
 
         when: "Break the flow path to init autoReroute"
         def islToBreak = mainIsls.first()
@@ -290,20 +288,20 @@ but satisfies max_latency_tier2"
                 it.statusInfo.contains("No path found.")
             }
         }
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
     }
 
     def setLatencyForPaths(int mainPathLatency, int alternativePathLatency) {
         def nanoMultiplier = 1000000
         def mainIslCost = mainPathLatency.intdiv(mainIsls.size()) * nanoMultiplier
         def alternativeIslCost = alternativePathLatency.intdiv(alternativeIsls.size()) * nanoMultiplier
-        [mainIsls[0], mainIsls[0].reversed].each {
-            database.updateIslLatency(it, mainIslCost + (mainPathLatency % mainIsls.size()) * nanoMultiplier)
-        }
-        mainIsls.tail().each { [it, it.reversed].each { database.updateIslLatency(it, mainIslCost) } }
-        [alternativeIsls[0], alternativeIsls[0].reversed].each {
-            database.updateIslLatency(it, alternativeIslCost + (alternativePathLatency % alternativeIsls.size()) * nanoMultiplier)
-        }
-        alternativeIsls.tail().each { [it, it.reversed].each { database.updateIslLatency(it, alternativeIslCost) } }
+
+        database.updateIslsLatency([mainIsls[0], mainIsls[0].reversed],
+                mainIslCost + (mainPathLatency % mainIsls.size()) * nanoMultiplier)
+        mainIsls.size() > 1 && database.updateIslsLatency(mainIsls.tail().collectMany { [it, it.reversed] }, mainIslCost)
+
+        database.updateIslsLatency([alternativeIsls[0], alternativeIsls[0].reversed],
+                alternativeIslCost + (alternativePathLatency % alternativeIsls.size()) * nanoMultiplier)
+        alternativeIsls.size() > 1 && database.updateIslsLatency(alternativeIsls.tail().collectMany { [it, it.reversed] }, alternativeIslCost)
     }
 }

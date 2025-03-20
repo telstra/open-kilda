@@ -5,11 +5,13 @@ import org.openkilda.functionaltests.helpers.PortAntiflapHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
+import org.openkilda.functionaltests.helpers.model.Switches
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.performancetests.helpers.TopologyHelper
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.labservice.LabService
@@ -64,6 +66,9 @@ class BaseSpecification extends Specification {
     @Autowired
     @Shared
     PortAntiflapHelper antiflap
+    @Autowired
+    @Shared
+    Switches switches
 
     @Value('${discovery.generic.interval}')
     int discoveryInterval
@@ -128,7 +133,7 @@ class BaseSpecification extends Specification {
         //this can have implementation if required
     }
 
-    Switch pickRandom(List<Switch> switches) {
+    SwitchExtended pickRandom(List<SwitchExtended> switches) {
         switches[new Random().nextInt(switches.size())]
     }
 
@@ -141,5 +146,11 @@ class BaseSpecification extends Specification {
         Wrappers.wait(waitTime) {
             northbound.getAllFlows().isEmpty()
         }
+    }
+
+    void setTopologyInContext(TopologyDefinition topology){
+        flowFactory.setTopology(topology)
+        switches.setTopology(topology)
+        switches.switchFactory.setTopology(topology)
     }
 }
