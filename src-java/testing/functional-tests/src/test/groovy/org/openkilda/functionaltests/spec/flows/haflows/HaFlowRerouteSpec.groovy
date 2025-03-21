@@ -28,7 +28,7 @@ import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @Slf4j
 @Narrative("Verify reroute operations on HA-flows.")
