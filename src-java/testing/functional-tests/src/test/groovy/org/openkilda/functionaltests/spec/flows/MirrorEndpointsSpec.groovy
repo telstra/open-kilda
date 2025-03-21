@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -53,13 +52,13 @@ import org.openkilda.testing.tools.TraffgenStats
 import groovy.transform.AutoClone
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
+import jakarta.inject.Provider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.See
 import spock.lang.Shared
 
 import java.util.regex.Pattern
-import javax.inject.Provider
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-traffic-mirroring")
@@ -151,7 +150,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorPointPayload.sinkEndpoint.vlanId]) : null
         if (mirrorPortStats) {
-            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+            cleanupManager.addAction(OTHER, { mirrorPortStats.close() })
         }
         def rxPacketsBefore = mirrorPortStats?.get()?.rxPackets
         if (!trafficDisclaimer) {
@@ -259,7 +258,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorPointPayload.sinkEndpoint.vlanId])
         if (mirrorPortStats) {
-            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+            cleanupManager.addAction(OTHER, { mirrorPortStats.close() })
         }
         def rxPacketsBefore = mirrorPortStats.get().rxPackets
         sendTrafficAndVerifyOnMainFlow(traffExam, flow, mirrorDirection)
@@ -297,7 +296,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorEpVlan]) : null
         if (mirrorPortStats) {
-            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+            cleanupManager.addAction(OTHER, { mirrorPortStats.close() })
         }
         def rxPacketsBefore = mirrorPortStats?.get()?.rxPackets
         sendTrafficAndVerifyOnMainFlow(traffExam, flow, mirrorDirection)
@@ -414,7 +413,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                  [FORWARD, REVERSE]].combinations()
                         .collect { it << VXLAN; it })
 
-                        //https://github.com/telstra/open-kilda/issues/4374
+                //https://github.com/telstra/open-kilda/issues/4374
                         .findAll { SwitchPair swPair, m, e ->
                             !swPair.dst.isWb5164()
                         }
@@ -525,7 +524,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorVlanId])
         if (mirrorPortStats) {
-            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+            cleanupManager.addAction(OTHER, { mirrorPortStats.close() })
         }
         def rxPacketsBefore = mirrorPortStats.get().rxPackets
         sendTrafficAndVerifyOnMainFlow(traffExam, flow, mirrorDirection)
@@ -562,7 +561,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorVlanId])
         if (mirrorPortStats) {
-            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+            cleanupManager.addAction(OTHER, { mirrorPortStats.close() })
         }
         def rxPacketsBefore = mirrorPortStats.get().rxPackets
         sendTrafficAndVerifyOnMainFlow(traffExam, flow, mirrorDirection)

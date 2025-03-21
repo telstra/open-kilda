@@ -40,7 +40,7 @@ public class OAuthService extends IAuthService {
 
     @Autowired
     private RestClientManager restClientManager;
-    
+
     @Autowired
     private PrepareRequest prepareRequest;
 
@@ -118,7 +118,7 @@ public class OAuthService extends IAuthService {
     }
 
     private Token generateToken(final String correlationId, final String url, final String userName,
-            final String password) throws AuthenticationException, RestCallFailedException {
+                                final String password) throws AuthenticationException, RestCallFailedException {
         String headers = HttpHeaders.CONTENT_TYPE + ":application/x-www-form-urlencoded";
         String payload = "grant_type=password&username=" + userName + "&password=" + password;
 

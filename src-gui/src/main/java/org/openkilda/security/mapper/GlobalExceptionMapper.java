@@ -24,14 +24,12 @@ import org.openkilda.model.response.ErrorMessage;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonMappingException.Reference;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.ConversionNotSupportedException;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -52,7 +50,6 @@ import org.springframework.web.context.request.async.AsyncRequestTimeoutExceptio
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-
 import org.usermanagement.exception.RequestValidationException;
 
 import java.nio.file.AccessDeniedException;
@@ -60,88 +57,86 @@ import java.nio.file.AccessDeniedException;
 /**
  * The Class GlobalExceptionMapper.
  */
+@Slf4j
 public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
-
-    /** The Constant _log. */
-    private static final Logger _log = LoggerFactory.getLogger(GlobalExceptionMapper.class);
 
     /**
      * Instantiates a new global exception mapper.
      */
     public GlobalExceptionMapper() {
-        _log.info("Global exception mapper. Initializing {}...", GlobalExceptionMapper.class.getName());
+        log.info("Global exception mapper. Initializing {}...", GlobalExceptionMapper.class.getName());
     }
 
     @Override
     protected ResponseEntity<Object> handleHttpRequestMethodNotSupported(
-            final HttpRequestMethodNotSupportedException ex, final HttpHeaders headers, final HttpStatus status,
+            final HttpRequestMethodNotSupportedException ex, final HttpHeaders headers, final HttpStatusCode status,
             final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+        log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.METHOD_NOT_ALLOWED.getHttpStatus(), HttpError.METHOD_NOT_ALLOWED.getCode(),
                 HttpError.METHOD_NOT_ALLOWED.getAuxilaryMessage(), ex.toString());
     }
 
     @Override
     protected ResponseEntity<Object> handleHttpMediaTypeNotSupported(final HttpMediaTypeNotSupportedException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
+        log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.UNPROCESSABLE_ENTITY.getHttpStatus(), HttpError.UNPROCESSABLE_ENTITY.getCode(),
                 HttpError.UNPROCESSABLE_ENTITY.getAuxilaryMessage(), ex.toString());
     }
 
     @Override
     protected ResponseEntity<Object> handleHttpMediaTypeNotAcceptable(final HttpMediaTypeNotAcceptableException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
+        log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.UNPROCESSABLE_ENTITY.getHttpStatus(), HttpError.UNPROCESSABLE_ENTITY.getCode(),
                 HttpError.UNPROCESSABLE_ENTITY.getAuxilaryMessage(), ex.toString());
     }
 
     @Override
     protected ResponseEntity<Object> handleMissingPathVariable(final MissingPathVariableException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
+        log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.BAD_REQUEST.getHttpStatus(), HttpError.BAD_REQUEST.getCode(),
                 HttpError.BAD_REQUEST.getAuxilaryMessage(), ex.toString());
     }
 
     @Override
     protected ResponseEntity<Object> handleMissingServletRequestParameter(
-            final MissingServletRequestParameterException ex, final HttpHeaders headers, final HttpStatus status,
+            final MissingServletRequestParameterException ex, final HttpHeaders headers, final HttpStatusCode status,
             final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+        log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.BAD_REQUEST.getHttpStatus(), HttpError.BAD_REQUEST.getCode(),
                 HttpError.BAD_REQUEST.getAuxilaryMessage(), ex.toString());
     }
 
     @Override
     protected ResponseEntity<Object> handleServletRequestBindingException(final ServletRequestBindingException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
+        log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.METHOD_NOT_FOUND.getHttpStatus(), HttpError.METHOD_NOT_FOUND.getCode(),
                 HttpError.METHOD_NOT_FOUND.getAuxilaryMessage(), ex.toString());
     }
 
     @Override
     protected ResponseEntity<Object> handleConversionNotSupported(final ConversionNotSupportedException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
+        log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.UNPROCESSABLE_ENTITY.getHttpStatus(), HttpError.UNPROCESSABLE_ENTITY.getCode(),
                 HttpError.UNPROCESSABLE_ENTITY.getAuxilaryMessage(), ex.toString());
     }
 
     @Override
     protected ResponseEntity<Object> handleTypeMismatch(final TypeMismatchException ex, final HttpHeaders headers,
-            final HttpStatus status, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+            final HttpStatusCode status, final WebRequest request) {
+        log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.METHOD_NOT_ALLOWED.getHttpStatus(), HttpError.METHOD_NOT_ALLOWED.getCode(),
                 HttpError.METHOD_NOT_ALLOWED.getAuxilaryMessage(), ex.toString());
     }
 
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(final HttpMessageNotReadableException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
+        log.error("Exception: " + ex.getMessage(), ex);
         String message = new String();
         if (ex.getCause() instanceof JsonMappingException) {
             StringBuilder msg = new StringBuilder();
@@ -163,16 +158,16 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotWritable(final HttpMessageNotWritableException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
+        log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.UNPROCESSABLE_ENTITY.getHttpStatus(), HttpError.UNPROCESSABLE_ENTITY.getCode(),
                 HttpError.UNPROCESSABLE_ENTITY.getAuxilaryMessage(), ex.toString());
     }
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(final MethodArgumentNotValidException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
+        log.error("Exception: " + ex.getMessage(), ex);
         String message = ex.getBindingResult().getFieldErrors().stream().map(FieldError::getDefaultMessage)
                 .collect(joining(", "));
         return response(HttpError.BAD_REQUEST.getHttpStatus(), HttpError.BAD_REQUEST.getCode(),
@@ -181,16 +176,16 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleMissingServletRequestPart(final MissingServletRequestPartException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
+        log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.BAD_REQUEST.getHttpStatus(), HttpError.BAD_REQUEST.getCode(),
                 HttpError.BAD_REQUEST.getAuxilaryMessage(), ex.toString());
     }
 
     @Override
-    protected ResponseEntity<Object> handleBindException(final BindException ex, final HttpHeaders headers,
-            final HttpStatus status, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+    protected ResponseEntity<Object> handleBindException(
+            BindException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        log.error("Exception: " + ex.getMessage(), ex);
         String message = ex.getFieldErrors().stream().map(FieldError::getDefaultMessage).collect(joining(", "));
         return response(HttpError.BAD_REQUEST.getHttpStatus(), HttpError.BAD_REQUEST.getCode(),
                 HttpError.BAD_REQUEST.getAuxilaryMessage(), message);
@@ -198,66 +193,66 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleNoHandlerFoundException(final NoHandlerFoundException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
+        log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.METHOD_NOT_FOUND.getHttpStatus(), HttpError.METHOD_NOT_FOUND.getCode(),
                 HttpError.METHOD_NOT_FOUND.getAuxilaryMessage(), ex.getMessage());
     }
 
     @Override
     protected ResponseEntity<Object> handleAsyncRequestTimeoutException(final AsyncRequestTimeoutException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest webRequest) {
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest webRequest) {
         return super.handleAsyncRequestTimeoutException(ex, headers, status, webRequest);
     }
 
     /**
      * Response.
      *
-     * @param status the status
-     * @param code the code
+     * @param status          the status
+     * @param code            the code
      * @param auxilaryMessage the auxilary message
-     * @param message the message
+     * @param message         the message
      * @return the response entity
      */
     protected ResponseEntity<Object> response(final HttpStatus status, final Integer code, final String auxilaryMessage,
-            final String message) {
+                                              final String message) {
         MultiValueMap<String, String> headers = new HttpHeaders();
         headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
         return new ResponseEntity<Object>(new ErrorMessage(code, message, auxilaryMessage), headers, status);
     }
-    
+
     /**
      * Response.
      *
-     * @param status the status
-     * @param code the code
-     * @param auxilaryMessage the auxilary message
+     * @param status           the status
+     * @param code             the code
+     * @param auxilaryMessage  the auxilary message
      * @param errorDescription the error description
-     * @param correlationId the correlation id
-     * @param message the message
+     * @param correlationId    the correlation id
+     * @param message          the message
      * @return the response entity
      */
     protected ResponseEntity<Object> response(final HttpStatus status, final Integer code, final String auxilaryMessage,
-            final String message, String correlationId, String errorDescription) {
+                                              final String message, String correlationId, String errorDescription) {
         MultiValueMap<String, String> headers = new HttpHeaders();
         headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-        return new ResponseEntity<Object>(new ErrorMessage(code, message, auxilaryMessage, 
-                correlationId, errorDescription), 
+        return new ResponseEntity<Object>(new ErrorMessage(code, message, auxilaryMessage,
+                correlationId, errorDescription),
                 headers, status);
     }
 
     /**
      * Response.
      *
-     * @param status the status
-     * @param code the code
+     * @param status          the status
+     * @param code            the code
      * @param auxilaryMessage the auxilary message
-     * @param message the message
-     * @param correlationId the correlation id
+     * @param message         the message
+     * @param correlationId   the correlation id
      * @return the response entity
      */
     protected ResponseEntity<Object> response(final HttpStatus status, final Integer code, final String auxilaryMessage,
-            final String message, final String correlationId) {
+                                              final String message, final String correlationId) {
         MultiValueMap<String, String> headers = new HttpHeaders();
         headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
         return new ResponseEntity<Object>(new ErrorMessage(code, message, auxilaryMessage, correlationId), headers,

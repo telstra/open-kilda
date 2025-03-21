@@ -32,7 +32,6 @@ import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowmonitoring.FlowMonitoringTopology.ComponentId;
-import org.openkilda.wfm.topology.flowmonitoring.bolt.TickBolt.TickId;
 import org.openkilda.wfm.topology.flowmonitoring.service.FlowStateCacheService;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;

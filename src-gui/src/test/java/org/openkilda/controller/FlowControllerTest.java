@@ -16,6 +16,7 @@
 package org.openkilda.controller;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -24,16 +25,15 @@ import org.openkilda.integration.model.response.FlowPayload;
 import org.openkilda.model.FlowHistory;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.service.FlowService;
-import org.openkilda.test.MockitoExtension;
+import org.openkilda.test.CustomMockitoExtension;
 import org.openkilda.util.TestFlowMock;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -41,186 +41,185 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.ArrayList;
 import java.util.List;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(CustomMockitoExtension.class)
 public class FlowControllerTest {
-    
+
     @SuppressWarnings("unused")
     private MockMvc mockMvc;
 
     @InjectMocks
     private FlowController flowController;
-    
+
     @Mock
     private FlowService flowService;
 
-    @Before
+    @BeforeEach
     public void init() {
-        MockitoAnnotations.initMocks(this);
         mockMvc = MockMvcBuilders.standaloneSetup(flowController).build();
     }
-        
+
     @Test
-        public void testGetFlowList() {
+    public void testGetFlowList() {
         try {
             mockMvc.perform(get("/api/flows/list").contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception exception) {
-            assertTrue(false);
+            fail();
         }
-    } 
-        
+    }
+
     @Test
-        public void testGetFlowListWithRequestParams() {
+    public void testGetFlowListWithRequestParams() {
         List<String> statuses = new ArrayList<>();
         List<FlowInfo> flowInfos = new ArrayList<>();
         try {
             Mockito.when(flowService.getAllFlows(Mockito.anyList(), Mockito.anyBoolean())).thenReturn(flowInfos);
             mockMvc.perform(get("/api/flows/list", statuses, TestFlowMock.CONTROLLER_FLAG)
-                    .contentType(MediaType.APPLICATION_JSON))
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception exception) {
-            assertTrue(false);
+            fail();
         }
     }
-             
+
     @Test
-        public void testGetFlowHistory() throws Exception {
+    public void testGetFlowHistory() throws Exception {
         try {
             mockMvc.perform(get("/api/flows/all/history/{flowId}", TestFlowMock.FLOW_ID)
-                        .contentType(MediaType.APPLICATION_JSON))
-                        .andExpect(status().isOk());
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception exception) {
-            assertTrue(false);
+            fail();
         }
     }
-        
+
     @Test
-        public void testGetFlowHistoryIfRequestParamsPassed() throws Exception {
+    public void testGetFlowHistoryIfRequestParamsPassed() throws Exception {
         List<FlowHistory> flowHistories = new ArrayList<FlowHistory>();
         try {
             when(flowController.getFlowHistory(TestFlowMock.FLOW_ID, TestFlowMock.TIME_FROM, TestFlowMock.TIME_TO))
-                .thenReturn(flowHistories);
+                    .thenReturn(flowHistories);
             mockMvc.perform(get("/api/flows/all/history/{flowId}", TestFlowMock.FLOW_ID)
-            .param("timeFrom", TestFlowMock.TIME_TO)
-                                .param("timeTo", TestFlowMock.TIME_TO)
-                                .contentType(MediaType.APPLICATION_JSON))
-                                .andExpect(status().isOk());
-                                
+                            .param("timeFrom", TestFlowMock.TIME_TO)
+                            .param("timeTo", TestFlowMock.TIME_TO)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk());
+
             assertTrue(true);
         } catch (Exception exception) {
-            assertTrue(false);
+            fail();
         }
     }
-        
+
     @Test
-        public void testGetFlowsHistoryIfFlowIdNotPassed() throws Exception {
+    public void testGetFlowsHistoryIfFlowIdNotPassed() throws Exception {
         List<FlowHistory> flowHistories = new ArrayList<FlowHistory>();
         try {
             when(flowController.getFlowHistory(TestFlowMock.FLOW_ID_NULL, TestFlowMock.TIME_FROM, TestFlowMock.TIME_TO))
-                .thenReturn(flowHistories);
+                    .thenReturn(flowHistories);
             mockMvc.perform(get("/api/flows/all/history/{flowId}", TestFlowMock.FLOW_ID_NULL)
-                    .param("timeFrom", TestFlowMock.TIME_FROM)
-                    .param("timeTo", TestFlowMock.TIME_TO)
-                    .contentType(MediaType.APPLICATION_JSON))
+                            .param("timeFrom", TestFlowMock.TIME_FROM)
+                            .param("timeTo", TestFlowMock.TIME_TO)
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound());
             assertTrue(true);
         } catch (Exception exception) {
-            assertTrue(false);
+            fail();
         }
     }
-        
+
     @Test
-        public void testGetFlowById() throws Exception {
+    public void testGetFlowById() throws Exception {
         FlowInfo flowInfo = new FlowInfo();
         try {
             when(flowService.getFlowById(TestFlowMock.FLOW_ID, TestFlowMock.CONTROLLER_FLAG)).thenReturn(flowInfo);
             mockMvc.perform(get("/api/flows/{flowId}", TestFlowMock.FLOW_ID).contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+                    .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
     }
-        
+
     @Test
-        public void testGetFlowByIdWhenFlowIdNotPassed() throws Exception {
+    public void testGetFlowByIdWhenFlowIdNotPassed() throws Exception {
         FlowInfo flowInfo = new FlowInfo();
         try {
             when(flowService.getFlowById(TestFlowMock.FLOW_ID_NULL, TestFlowMock.CONTROLLER_FLAG)).thenReturn(flowInfo);
             mockMvc.perform(get("/api/flows/{flowId}", TestFlowMock.FLOW_ID_NULL, true)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isMethodNotAllowed());
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isMethodNotAllowed());
             assertTrue(true);
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
     }
-        
+
     @Test
-        public void testGetFlowPath() throws Exception {
+    public void testGetFlowPath() throws Exception {
         FlowPayload flowPayload = new FlowPayload();
         try {
             when(flowService.getFlowPath(Mockito.anyString())).thenReturn(flowPayload);
             mockMvc.perform(get("/api/flows/path/{flowId}", TestFlowMock.FLOW_ID)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
     }
-        
+
     @Test
-        public void testGetFlowPathWhenFlowIdNotPassed() throws Exception {
+    public void testGetFlowPathWhenFlowIdNotPassed() throws Exception {
         FlowPayload flowPayload = new FlowPayload();
         try {
             when(flowService.getFlowPath(Mockito.anyString())).thenReturn(flowPayload);
             mockMvc.perform(get("/api/flows/get/path/{flowId}", TestFlowMock.FLOW_ID_NULL)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound());
             assertTrue(true);
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
     }
-    
+
     @Test
     public void testGetFlowConnectedDevices() throws Exception {
         try {
             mockMvc.perform(get("/api/flows/connected/devices/{flowId}", TestFlowMock.FLOW_ID)
-                    .contentType(MediaType.APPLICATION_JSON))
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception exception) {
-            assertTrue(false);
+            fail();
         }
     }
-    
+
     @Test
     public void testGetFlowConnectedDevicesIfReqParamsPassed() throws Exception {
         try {
             mockMvc.perform(get("/api/flows/connected/devices/{flowId}", TestFlowMock.FLOW_ID)
-                    .param("since", TestFlowMock.TIME_LAST_SEEN)
-                    .contentType(MediaType.APPLICATION_JSON))
+                            .param("since", TestFlowMock.TIME_LAST_SEEN)
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception exception) {
-            assertTrue(false);
+            fail();
         }
     }
-    
+
     @Test
     public void testGetFlowConnectedDevicesIfFlowIdNotPassed() throws Exception {
         try {
             mockMvc.perform(get("/api/flows/connected/devices/{flowId}", TestFlowMock.FLOW_ID_NULL)
-                    .contentType(MediaType.APPLICATION_JSON))
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound());
             assertTrue(true);
         } catch (Exception exception) {
-            assertTrue(false);
+            fail();
         }
     }
 }

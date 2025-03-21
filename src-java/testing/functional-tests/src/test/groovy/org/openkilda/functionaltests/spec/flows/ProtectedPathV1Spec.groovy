@@ -36,7 +36,27 @@ import spock.lang.See
 import spock.lang.Shared
 
 import java.time.Instant
-import javax.inject.Provider
+
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.tools.FlowTrafficExamBuilder
+
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
+import spock.lang.See
+import spock.lang.Shared
+
+import java.time.Instant
+import jakarta.inject.Provider
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/protected-paths")
 @Narrative("""Protected path - it is pre-calculated, reserved, and deployed (except ingress rule),

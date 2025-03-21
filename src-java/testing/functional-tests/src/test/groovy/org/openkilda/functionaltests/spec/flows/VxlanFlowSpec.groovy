@@ -31,7 +31,7 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 import java.time.Instant
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @Narrative("""This spec checks basic functionality(simple flow(rules, ping, traffic, validate), pinned flow,
 flow with protected path, default flow) for a flow with VXLAN encapsulation.

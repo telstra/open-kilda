@@ -35,7 +35,6 @@ import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Autowired
-
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.See
@@ -289,7 +288,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        new MissingServletRequestParameterException("Required $itemType parameter \'$item\' is not present").matches(exc)
+        new MissingServletRequestParameterException("Required request parameter \'$item\' for method parameter type $itemType is not present").matches(exc)
 
         where:
         srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item         | itemType
@@ -435,7 +434,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        new MissingServletRequestParameterException("Required $itemType parameter \'$item\' is not present").matches(exc)
+        new MissingServletRequestParameterException("Required request parameter \'$item\' for method parameter type $itemType is not present").matches(exc)
 
         where:
         srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item         | itemType
@@ -450,7 +449,7 @@ class LinkSpec extends HealthCheckSpecification {
         def links = northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
 
         then: "The corresponding list of links is returned"
-        links.each {actualLink ->
+        links.each { actualLink ->
             assert filterLinks(northbound.getAllLinks(), srcSwId, srcSwPort, dstSwId, dstSwPort).find { IslInfoData expectedLink ->
                 actualLink.source.switchId == expectedLink.source.switchId &&
                         actualLink.source.portNo == expectedLink.source.portNo &&
@@ -626,7 +625,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        new MissingServletRequestParameterException("Required $itemType parameter \'$item\' is not present").matches(exc)
+        new MissingServletRequestParameterException("Required request parameter \'$item\' for method parameter type $itemType is not present").matches(exc)
 
         where:
         srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item         | itemType
@@ -685,7 +684,7 @@ class LinkSpec extends HealthCheckSpecification {
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "The link is rediscovered in both directions"
-        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET*2) {
+        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET * 2) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED

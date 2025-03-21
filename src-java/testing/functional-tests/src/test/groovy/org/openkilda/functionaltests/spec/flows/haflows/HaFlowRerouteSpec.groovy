@@ -1,8 +1,17 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
+import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
+import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
+import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_RAW_BITS
+import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
@@ -12,23 +21,14 @@ import org.openkilda.model.FlowStatus
 import org.openkilda.model.history.DumpType
 import org.openkilda.testing.service.northbound.model.HaFlowActionType
 import org.openkilda.testing.service.traffexam.TraffExamService
+
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.Shared
 
-import javax.inject.Provider
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
-import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
-import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_RAW_BITS
-import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
-import static org.openkilda.testing.Constants.WAIT_OFFSET
+import jakarta.inject.Provider
 
 @Slf4j
 @Narrative("Verify reroute operations on HA-flows.")

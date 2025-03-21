@@ -19,7 +19,7 @@ import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPER
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
-import static org.openkilda.northbound.config.KafkaNorthboundConfig.NORTHBOUND_COMPONENT_NAME;
+import static org.openkilda.northbound.config.KafkaNorthboundGroupConfig.NORTHBOUND_COMPONENT_NAME;
 
 import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
 import org.openkilda.messaging.Message;
@@ -28,9 +28,9 @@ import org.openkilda.northbound.messaging.kafka.KafkaMessageListener;
 import org.openkilda.northbound.messaging.kafka.KafkaMessagingChannel;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableMap;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,7 +39,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import java.util.Map;
@@ -75,12 +75,6 @@ public class MessageConsumerConfig {
     private long zookeeperReconnectDelayMs;
 
     /**
-     * Kafka group id.
-     */
-    @Value("#{kafkaGroupConfig.getGroupId()}")
-    private String groupId;
-
-    /**
      * Kilda blue green-mode.
      */
     @Value("${BLUE_GREEN_MODE:blue}")
@@ -98,23 +92,30 @@ public class MessageConsumerConfig {
     @Value("${northbound.kafka.session.timeout}")
     private int kafkaSessionTimeout;
 
+    private final KafkaNorthboundGroupConfig kafkaNorthboundGroupConfig;
+
+    @Autowired
+    public MessageConsumerConfig(KafkaNorthboundGroupConfig kafkaNorthboundGroupConfig) {
+        this.kafkaNorthboundGroupConfig = kafkaNorthboundGroupConfig;
+    }
+
     /**
      * Kafka consumer configuration bean. This {@link Map} is used by {@link MessageConsumerConfig#consumerFactory}.
      *
      * @return kafka properties
      */
     private Map<String, Object> consumerConfigs() {
-        return ImmutableMap.<String, Object>builder()
-                .put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts)
-                .put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
-                .put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
-                .put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, kafkaSessionTimeout)
-                .put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName())
-                .put(CONSUMER_COMPONENT_NAME_PROPERTY, NORTHBOUND_COMPONENT_NAME)
-                .put(CONSUMER_RUN_ID_PROPERTY, blueGreenMode)
-                .put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zookeeperConnectString)
-                .put(CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY, Long.toString(zookeeperReconnectDelayMs))
-                .build();
+        return Map.of(
+                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts,
+                ConsumerConfig.GROUP_ID_CONFIG, kafkaNorthboundGroupConfig.getGroupId(),
+                ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true,
+                ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, kafkaSessionTimeout,
+                ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName(),
+                CONSUMER_COMPONENT_NAME_PROPERTY, NORTHBOUND_COMPONENT_NAME,
+                CONSUMER_RUN_ID_PROPERTY, blueGreenMode,
+                CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, zookeeperConnectString,
+                CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY, Long.toString(zookeeperReconnectDelayMs));
+
     }
 
     /**
@@ -128,8 +129,8 @@ public class MessageConsumerConfig {
     @Bean
     public ConsumerFactory<String, Message> consumerFactory(ObjectMapper objectMapper) {
         return new DefaultKafkaConsumerFactory<>(consumerConfigs(),
-                new StringDeserializer(), new ErrorHandlingDeserializer2(
-                        new JsonDeserializer<>(Message.class, objectMapper)));
+                new StringDeserializer(),
+                new ErrorHandlingDeserializer<>(new JsonDeserializer<>(Message.class, objectMapper)));
     }
 
     /**

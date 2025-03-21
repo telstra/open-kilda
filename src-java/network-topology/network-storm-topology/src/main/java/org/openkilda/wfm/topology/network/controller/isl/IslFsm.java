@@ -54,10 +54,10 @@ import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 import org.openkilda.wfm.topology.network.service.IIslCarrier;
 
 import com.google.common.collect.ImmutableList;
+import dev.failsafe.RetryPolicy;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.RetryPolicy;
 import org.squirrelframework.foundation.fsm.Condition;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
@@ -124,7 +124,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
         transactionManager = persistenceManager.getTransactionManager();
         transactionRetryPolicy = transactionManager.getDefaultRetryPolicy()
-                .withMaxDuration(Duration.ofSeconds(options.getDbRepeatMaxDurationSeconds()));
+                .withMaxDuration(Duration.ofSeconds(options.getDbRepeatMaxDurationSeconds()))
+                .build();
     }
 
     // -- FSM actions --

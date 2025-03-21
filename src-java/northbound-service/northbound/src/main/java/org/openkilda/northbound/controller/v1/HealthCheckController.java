@@ -19,7 +19,8 @@ import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.service.HealthCheckService;
 
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/v1")
 @PropertySource("classpath:northbound.properties")
+@Tag(name = "Health Check Controller", description = "shows services status")
 public class HealthCheckController extends BaseController {
     /**
      * The logger.
@@ -54,7 +56,7 @@ public class HealthCheckController extends BaseController {
      *
      * @return health-check model entity
      */
-    @ApiOperation(value = "Gets health-check status", response = HealthCheck.class)
+    @Operation(summary = "Gets health-check status")
     @GetMapping(value = "/health-check")
     public ResponseEntity<HealthCheck> getHealthCheck() {
         logger.debug("getHealthCheck");

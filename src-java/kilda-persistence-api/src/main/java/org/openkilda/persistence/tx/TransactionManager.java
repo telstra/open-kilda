@@ -22,11 +22,12 @@ import org.openkilda.persistence.context.PersistenceContextRequired;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 
+import dev.failsafe.Failsafe;
+import dev.failsafe.FailsafeException;
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.RetryPolicyBuilder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.FailsafeException;
-import net.jodah.failsafe.RetryPolicy;
 
 import java.io.Serializable;
 import java.time.temporal.ChronoUnit;
@@ -64,7 +65,7 @@ public class TransactionManager implements Serializable {
         if (isTxOpen()) {
             return execute(callableOf(action));
         } else {
-            return execute(getDefaultRetryPolicy(), callableOf(action));
+            return execute(this.<T>getDefaultRetryPolicy().build(), callableOf(action));
         }
     }
 
@@ -93,7 +94,7 @@ public class TransactionManager implements Serializable {
         if (isTxOpen()) {
             execute(callableOf(action));
         } else {
-            execute(getDefaultRetryPolicy(), callableOf(action));
+            execute(this.<E>getDefaultRetryPolicy().build(), callableOf(action));
         }
     }
 
@@ -112,13 +113,13 @@ public class TransactionManager implements Serializable {
     /**
      * Create retry policy using knowledge about possible transient exceptions produced by specific persistence layer.
      */
-    public <T> RetryPolicy<T> getDefaultRetryPolicy() {
-        RetryPolicy<T> retryPolicy = new RetryPolicy<T>()
+    public <T> RetryPolicyBuilder<T> getDefaultRetryPolicy() {
+        RetryPolicyBuilder<T> retryPolicy = RetryPolicy.<T>builder()
                 .handle(RecoverablePersistenceException.class)
                 .withMaxRetries(transactionRetriesLimit)
                 .onRetry(e -> log.debug("Failure in transaction. Retrying #{}...", e.getAttemptCount(),
-                        e.getLastFailure()))
-                .onRetriesExceeded(e -> log.error("Failure in transaction. No more retries", e.getFailure()));
+                        e.getLastException()))
+                .onRetriesExceeded(e -> log.error("Failure in transaction. No more retries", e.getException()));
         if (transactionRetriesMaxDelay > 0) {
             retryPolicy.withBackoff(1, transactionRetriesMaxDelay, ChronoUnit.MILLIS);
         }

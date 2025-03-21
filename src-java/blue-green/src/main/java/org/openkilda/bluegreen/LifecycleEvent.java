@@ -13,18 +13,23 @@
  *   limitations under the License.
  */
 
-
-
 package org.openkilda.bluegreen;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.FieldSerializer;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.UUID;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder(toBuilder = true)
+@DefaultSerializer(FieldSerializer.class)
 public class LifecycleEvent implements Serializable {
     private Signal signal;
     private UUID uuid;

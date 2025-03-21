@@ -22,7 +22,8 @@ import org.openkilda.northbound.dto.v2.links.BfdProperties;
 import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
 import org.openkilda.northbound.service.LinkService;
 
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,6 +41,7 @@ import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/v2/links")
+@Tag(name = "Link Controller", description = "performs operations on switches' links")
 public class LinkControllerV2 extends BaseLinkController {
     private static final int BFD_INTERVAL_MIN = 100;
     private static final short BFD_MULTIPLIER_MIN = 1;
@@ -53,7 +55,7 @@ public class LinkControllerV2 extends BaseLinkController {
     /**
      * Write/update/enable BFD properties for specific ISL.
      */
-    @ApiOperation(value = "Set/update BFD properties", response = BfdPropertiesPayload.class)
+    @Operation(summary = "Set/update BFD properties")
     @PutMapping(value = "/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<BfdPropertiesPayload> bfdPropertiesWrite(
@@ -71,7 +73,7 @@ public class LinkControllerV2 extends BaseLinkController {
     /**
      * Read BFD properties for specific ISL.
      */
-    @ApiOperation(value = "Read BFD properties", response = BfdPropertiesPayload.class)
+    @Operation(summary = "Read BFD properties")
     @GetMapping(value = "/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<BfdPropertiesPayload> bfdPropertiesRead(
@@ -87,7 +89,7 @@ public class LinkControllerV2 extends BaseLinkController {
     /**
      * Disable BFD for specific ISL.
      */
-    @ApiOperation(value = "Delete/disable BFD")
+    @Operation(summary = "Delete/disable BFD")
     @DeleteMapping(value = "/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public CompletableFuture<BfdPropertiesPayload> bfdPropertiesDelete(

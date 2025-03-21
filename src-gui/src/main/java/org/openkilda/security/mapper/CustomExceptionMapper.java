@@ -24,12 +24,12 @@ import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.exception.StoreIntegrationException;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -39,34 +39,28 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import java.util.Collections;
 
-import javax.validation.ConstraintViolation;
-import javax.validation.ConstraintViolationException;
-
 /**
  * The Class CustomExceptionMapper.
  */
-
+@Slf4j
 @ControllerAdvice
 public class CustomExceptionMapper extends GlobalExceptionMapper {
-
-    /** The Constant _log. */
-    private static final Logger _log = LoggerFactory.getLogger(CustomExceptionMapper.class);
 
     /**
      * Instantiates a new custom exception mapper.
      */
     public CustomExceptionMapper() {
-        _log.info("Custom exception mapper. Initializing {}...", CustomExceptionMapper.class.getName());
+        log.info("Custom exception mapper. Initializing {}...", CustomExceptionMapper.class.getName());
     }
 
     /**
      * Default exception handler.
      *
-     * @param ex the ex
+     * @param ex      the ex
      * @param request the request
      * @return the response entity
      */
-    @ExceptionHandler(value = { Exception.class })
+    @ExceptionHandler(value = {Exception.class})
     protected ResponseEntity<Object> defaultExceptionHandler(final Exception ex, final WebRequest request) {
         return response(HttpError.INTERNAL_ERROR.getHttpStatus(), HttpError.INTERNAL_ERROR.getCode(),
                 HttpError.INTERNAL_ERROR.getAuxilaryMessage(), HttpError.INTERNAL_ERROR.getMessage(), "");
@@ -75,13 +69,13 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
     /**
      * Constraint violation exception handler.
      *
-     * @param ex the ex
+     * @param ex      the ex
      * @param request the request
      * @return the response entity
      */
-    @ExceptionHandler(value = { ConstraintViolationException.class })
+    @ExceptionHandler(value = {ConstraintViolationException.class})
     protected ResponseEntity<Object> constraintViolationExceptionHandler(final ConstraintViolationException ex,
-            final WebRequest request) {
+                                                                         final WebRequest request) {
         String message = ex.getConstraintViolations().stream().map(ConstraintViolation::getMessage)
                 .sorted(Collections.reverseOrder()).collect(joining(", "));
         return response(HttpError.BAD_REQUEST.getHttpStatus(), HttpError.BAD_REQUEST.getCode(),
@@ -91,27 +85,27 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
     /**
      * Integration exception handler.
      *
-     * @param ex the ex
+     * @param ex      the ex
      * @param request the request
      * @return the response entity
      */
-    @ExceptionHandler(value = { IntegrationException.class })
+    @ExceptionHandler(value = {IntegrationException.class})
     protected ResponseEntity<Object> integrationExceptionHandler(final IntegrationException ex,
-            final WebRequest request) {
+                                                                 final WebRequest request) {
         return response(HttpError.INTERNAL_ERROR.getHttpStatus(), HttpError.INTERNAL_ERROR.getCode(),
                 HttpError.INTERNAL_ERROR.getAuxilaryMessage(), ex.toString());
     }
-    
+
     /**
      * StoreIntegrationException exception handler.
      *
-     * @param ex the ex
+     * @param ex      the ex
      * @param request the request
      * @return the response entity
      */
-    @ExceptionHandler(value = { StoreIntegrationException.class })
+    @ExceptionHandler(value = {StoreIntegrationException.class})
     protected ResponseEntity<Object> storeIntegrationExceptionHandler(final StoreIntegrationException ex,
-            final WebRequest request) {
+                                                                      final WebRequest request) {
         return response(HttpError.STORE_INTEGRATION_ERROR.getHttpStatus(), HttpError.STORE_INTEGRATION_ERROR.getCode(),
                 HttpError.STORE_INTEGRATION_ERROR.getAuxilaryMessage(), HttpError.STORE_INTEGRATION_ERROR.getMessage());
     }
@@ -119,13 +113,13 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
     /**
      * Invalid response exception handler.
      *
-     * @param ex the ex
+     * @param ex      the ex
      * @param request the request
      * @return the response entity
      */
-    @ExceptionHandler(value = { InvalidResponseException.class, NoDataFoundException.class })
+    @ExceptionHandler(value = {InvalidResponseException.class, NoDataFoundException.class})
     protected ResponseEntity<Object> invalidResponseExceptionHandler(final InvalidResponseException ex,
-            final WebRequest request) {
+                                                                     final WebRequest request) {
         if (ex.getResponse() != null) {
             JSONParser jsonParser = new JSONParser();
             try {
@@ -142,7 +136,7 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
                 if (jsonObject.get("error-description") != null) {
                     errorDescription = jsonObject.get("error-description").toString();
                 }
-                
+
                 return response(HttpError.PRECONDITION_FAILED.getHttpStatus(), HttpError.PRECONDITION_FAILED.getCode(),
                         errorMessage, errorType, "", errorDescription);
             } catch (ParseException e) {
@@ -156,25 +150,25 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
     /**
      * Content not found exception handler.
      *
-     * @param ex the ex
+     * @param ex      the ex
      * @param request the request
      * @return the response entity
      */
-    @ExceptionHandler(value = { ContentNotFoundException.class })
+    @ExceptionHandler(value = {ContentNotFoundException.class})
     protected ResponseEntity<Object> contentNotFoundExceptionHandler(final ContentNotFoundException ex,
-            final WebRequest request) {
+                                                                     final WebRequest request) {
         return response(HttpStatus.NO_CONTENT, HttpError.NO_CONTENT.getCode(),
                 HttpError.NO_CONTENT.getAuxilaryMessage(), ex.toString());
     }
-    
+
     /**
      * Method argument type mismatch exception handler.
      *
-     * @param ex the ex
+     * @param ex      the ex
      * @param request the request
      * @return the response entity
      */
-    @ExceptionHandler(value = { MethodArgumentTypeMismatchException.class })
+    @ExceptionHandler(value = {MethodArgumentTypeMismatchException.class})
     protected ResponseEntity<Object> methodArgumentTypeMismatchExceptionHandler(
             final MethodArgumentTypeMismatchException ex, final WebRequest request) {
         String errorMessage = "Invalid method argument type. Required Type: " + ex.getRequiredType();

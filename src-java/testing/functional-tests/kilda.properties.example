@@ -49,7 +49,7 @@ discovery.exhausted.interval=60
 discovery.auxiliary.interval=30
 
 antiflap.min=1
-antiflap.warmup=3
+antiflap.warmup=5
 antiflap.cooldown=7
 
 pce.isl.cost.when.unstable=10000

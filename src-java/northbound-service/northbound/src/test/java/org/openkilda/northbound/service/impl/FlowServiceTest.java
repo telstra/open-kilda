@@ -24,7 +24,9 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
-import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.config.KafkaNorthboundGroupConfig;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
+import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
@@ -132,7 +134,7 @@ public class FlowServiceTest {
     }
 
     @TestConfiguration
-    @Import(KafkaConfig.class)
+    @Import({KafkaTopicsNorthboundConfig.class, KafkaNorthboundGroupConfig.class})
     @ComponentScan({
             "org.openkilda.northbound.converter",
             "org.openkilda.northbound.utils"})
@@ -154,13 +156,18 @@ public class FlowServiceTest {
         }
 
         @Bean
-        public FlowServiceImpl flowService() {
-            return new FlowServiceImpl();
+        public FlowServiceImpl flowService(KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig,
+                                           MessagingChannel messagingChannel, CorrelationIdFactory idFactory,
+                                           FlowMapper flowMapper) {
+            return new FlowServiceImpl(kafkaTopicsNorthboundConfig, flowMapper,
+                    null, null, idFactory, null, messagingChannel);
         }
 
         @Bean
-        public SwitchService switchService(MessagingChannel messagingChannel) {
-            return new SwitchServiceImpl(messagingChannel);
+        public SwitchService switchService(MessagingChannel messagingChannel,
+                                           KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig) {
+            return new SwitchServiceImpl(kafkaTopicsNorthboundConfig, messagingChannel, null, null,
+                    null, null, null);
         }
     }
 }

@@ -15,8 +15,6 @@
 
 package org.openkilda.grpc.speaker;
 
-import org.openkilda.grpc.speaker.config.AppConfig;
-
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -24,6 +22,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class GrpcSpeaker {
 
     public static void main(String[] args) {
-        SpringApplication.run(AppConfig.class, args);
+        SpringApplication.run(GrpcSpeaker.class, args);
     }
 }

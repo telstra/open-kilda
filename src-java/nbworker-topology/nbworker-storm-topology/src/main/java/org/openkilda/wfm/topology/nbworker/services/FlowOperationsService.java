@@ -80,10 +80,10 @@ import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsCarrier;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import dev.failsafe.RetryPolicy;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.lang3.StringUtils;
 
 import java.time.Duration;
@@ -131,13 +131,14 @@ public class FlowOperationsService {
     }
 
     private <T> RetryPolicy<T> getReadOperationRetryPolicy() {
-        return new RetryPolicy<T>()
+        return RetryPolicy.<T>builder()
                 .handle(PersistenceException.class)
                 .withDelay(Duration.ofMillis(RETRY_DELAY))
                 .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT)
                 .onRetry(e -> log.debug("Failure in transaction. Retrying #{}...", e.getAttemptCount(),
-                        e.getLastFailure()))
-                .onRetriesExceeded(e -> log.error("Failure in transaction. No more retries", e.getFailure()));
+                        e.getLastException()))
+                .onRetriesExceeded(e -> log.error("Failure in transaction. No more retries", e.getException()))
+                .build();
     }
 
     /**

@@ -19,7 +19,8 @@ import org.openkilda.messaging.model.system.KildaConfigurationDto;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.service.KildaConfigurationService;
 
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -38,20 +39,21 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequestMapping("/v1/config")
 @PropertySource("classpath:northbound.properties")
+@Tag(name = "Configuration Controller", description = "modifies OpenKilda configuration")
 public class KildaConfigurationController extends BaseController {
 
     @Autowired
     private KildaConfigurationService kildaConfigurationService;
 
     @GetMapping
-    @ApiOperation(value = "Get kilda configuration", response = KildaConfigurationDto.class)
+    @Operation(summary = "Get kilda configuration")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<KildaConfigurationDto> getKildaConfiguration() {
         return kildaConfigurationService.getKildaConfiguration();
     }
 
     @PatchMapping
-    @ApiOperation(value = "Update kilda configuration", response = KildaConfigurationDto.class)
+    @Operation(summary = "Update kilda configuration")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<KildaConfigurationDto> updateKildaConfiguration(@RequestBody KildaConfigurationDto dto) {
         return kildaConfigurationService.updateKildaConfiguration(dto);

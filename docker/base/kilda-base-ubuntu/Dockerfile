@@ -19,12 +19,12 @@ FROM ${base_image}
 ENV DEBIAN_FRONTEND noninteractive
 
 ###############################################
-# Install pip and Java8 in base container     #
+# Install pip and Java in the base container  #
 ###############################################
 
-ENV JAVA_VER 8
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
-ENV JAVA_MEM_CONFIG "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+ENV JAVA_VER 17
+ENV JAVA_HOME /usr/lib/jvm/java-17-openjdk-amd64
+ENV JAVA_MEM_CONFIG ""
 ENV DEBIAN_FRONTEND noninteractive
 
 COPY app /app
@@ -44,11 +44,11 @@ RUN chmod 777 /app/* \
         python3-pip \
         make \
         apt-transport-https \
-        openjdk-8-jdk \
+        openjdk-17-jdk \
         iptables \
         iproute2 \
         rsync \
     && pip3 install --upgrade pip \
     && python3 -m pip install setuptools \
-    && echo "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> ~/.bashrc \
+    && echo "export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> ~/.bashrc \
     && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*

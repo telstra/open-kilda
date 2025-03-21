@@ -22,9 +22,9 @@ import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
-import net.jodah.failsafe.function.CheckedSupplier;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.function.CheckedSupplier;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -128,8 +128,10 @@ public class TimeModifyPropertyOnFramesTest extends InMemoryGraphBasedTest {
     }
 
     private void waitUntilNowIsAfter(Instant before) {
-        Failsafe.with(new RetryPolicy<Instant>().withDelay(Duration.ofMillis(1))
-                        .handleResultIf(result -> !before.isBefore(result)))
+        Failsafe.with(RetryPolicy.<Instant>builder()
+                        .withDelay(Duration.ofMillis(1))
+                        .handleResultIf(result -> !before.isBefore(result))
+                        .build())
                 .get((CheckedSupplier<Instant>) Instant::now);
     }
 }

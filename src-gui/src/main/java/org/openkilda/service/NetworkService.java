@@ -18,7 +18,6 @@ package org.openkilda.service;
 import org.openkilda.integration.service.NetworkIntegrationService;
 import org.openkilda.model.NetworkPathInfo;
 
-import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -30,17 +29,15 @@ import org.springframework.stereotype.Service;
 @Service
 public class NetworkService {
 
-    private static final Logger LOGGER = Logger.getLogger(NetworkService.class);
-
     @Autowired
     private NetworkIntegrationService networkIntegrationService;
 
     /**
      * Gets the network paths.
      *
-     * @param srcSwitch the src switch
-     * @param dstSwitch the dst switch
-     * @param strategy to use by path computer
+     * @param srcSwitch  the src switch
+     * @param dstSwitch  the dst switch
+     * @param strategy   to use by path computer
      * @param maxLatency to be used by strategy
      * @return the network paths
      */

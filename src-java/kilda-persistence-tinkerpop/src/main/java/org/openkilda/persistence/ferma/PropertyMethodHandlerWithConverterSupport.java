@@ -42,9 +42,22 @@ import java.lang.reflect.Method;
  */
 final class PropertyMethodHandlerWithConverterSupport extends PropertyMethodHandler {
 
+    private static final LoadingCache<
+            Class<? extends AttributeConverter<?, ?>>,
+            AttributeConverter<?, ?>> converterCache =
+            CacheBuilder.newBuilder()
+                    .build(new CacheLoader<>() {
+                        @Override
+                        public AttributeConverter<?, ?> load(
+                                Class<? extends AttributeConverter<?, ?>> converterType)
+                                throws ReflectiveOperationException {
+                            return converterType.getConstructor().newInstance();
+                        }
+                    });
+
     @Override
-    public <E> DynamicType.Builder<E> processMethod(DynamicType.Builder<E> builder, Method method,
-                                                    Annotation annotation) {
+    public <E> DynamicType.Builder<E> processMethod(
+            DynamicType.Builder<E> builder, Method method, Annotation annotation) {
         java.lang.reflect.Parameter[] arguments = method.getParameters();
 
         if (ReflectionUtility.isSetMethod(method)
@@ -69,72 +82,44 @@ final class PropertyMethodHandlerWithConverterSupport extends PropertyMethodHand
          * The interceptor implementation.
          */
         @RuntimeType
-        public static Object getProperty(@This final ElementFrame thiz, @Origin final Method method) {
+        public static Object getProperty(
+                @This final ElementFrame thiz, @Origin final Method method) {
             final Property propertyAnnotation
                     = ((CachesReflection) thiz).getReflectionCache().getAnnotation(method, Property.class);
-            final String value = propertyAnnotation.value();
-            Object obj = thiz.getProperty(value);
-            Convert convertAnnotation
+            final Convert convertAnnotation
                     = ((CachesReflection) thiz).getReflectionCache().getAnnotation(method, Convert.class);
-            if (convertAnnotation != null) {
-                AttributeConverter converter = converterCache.getUnchecked(convertAnnotation.value());
-                obj = converter.toEntityAttribute(obj);
-            }
-            Class<?> returnType = method.getReturnType();
+
+            Object graphObj = thiz.getProperty(propertyAnnotation.value());
+            Object obj = convertAnnotation == null ? graphObj :
+                    ((AttributeConverter) converterCache.getUnchecked(convertAnnotation.value()))
+                            .toEntityAttribute(graphObj);
             // Some implementation doesn't support Integer as a property type
-            if (returnType.isEnum()) {
-                return getValueAsEnum(method, obj);
+            if (obj == null) {
+                return null;
+            } else if (method.getReturnType().isEnum()) {
+                return Enum.valueOf((Class<Enum>) method.getReturnType(), obj.toString());
             } else {
                 return obj;
             }
         }
-
-        private static Enum getValueAsEnum(final Method method, final Object value) {
-            final Class<Enum> en = (Class<Enum>) method.getReturnType();
-            if (value != null) {
-                return Enum.valueOf(en, value.toString());
-            }
-
-            return null;
-        }
     }
 
-    /**
-     * A method interceptor for setters.
-     */
     public static final class SetPropertyInterceptor {
-        /**
-         * The interceptor implementation.
-         */
         @RuntimeType
         public static void setProperty(@This final ElementFrame thiz, @Origin final Method method,
                                        @RuntimeType @Argument(0) final Object obj) {
             final Property propertyAnnotation
                     = ((CachesReflection) thiz).getReflectionCache().getAnnotation(method, Property.class);
-            final String value = propertyAnnotation.value();
-            Object graphObj;
-            Convert convertAnnotation
+            final Convert convertAnnotation
                     = ((CachesReflection) thiz).getReflectionCache().getAnnotation(method, Convert.class);
-            if (convertAnnotation != null) {
-                AttributeConverter converter = converterCache.getUnchecked(convertAnnotation.value());
-                graphObj = converter.toGraphProperty(obj);
+            Object graphObj = convertAnnotation == null ? obj :
+                    ((AttributeConverter) converterCache.getUnchecked(convertAnnotation.value()))
+                            .toGraphProperty(obj);
+            if (graphObj != null && graphObj.getClass().isEnum()) {
+                thiz.setProperty(propertyAnnotation.value(), ((Enum<?>) graphObj).name());
             } else {
-                graphObj = obj;
-            }
-            if ((graphObj != null) && (graphObj.getClass().isEnum())) {
-                thiz.setProperty(value, ((Enum<?>) graphObj).name());
-            } else {
-                thiz.setProperty(value, graphObj);
+                thiz.setProperty(propertyAnnotation.value(), graphObj);
             }
         }
     }
-
-    private static LoadingCache<Class<? extends AttributeConverter>, AttributeConverter> converterCache =
-            CacheBuilder.newBuilder()
-                    .build(new CacheLoader<Class<? extends AttributeConverter>, AttributeConverter>() {
-                        public AttributeConverter load(Class<? extends AttributeConverter> converterType)
-                                throws IllegalAccessException, InstantiationException {
-                            return converterType.newInstance();
-                        }
-                    });
 }

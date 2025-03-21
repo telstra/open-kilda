@@ -29,9 +29,9 @@ import org.openkilda.wfm.topology.utils.InfoDataTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
+import org.apache.storm.kafka.spout.FirstPollOffsetStrategy;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
-import org.apache.storm.kafka.spout.KafkaSpoutConfig.FirstPollOffsetStrategy;
 import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
 import org.apache.storm.opentsdb.client.OpenTsdbClient;
 import org.apache.storm.topology.BoltDeclarer;

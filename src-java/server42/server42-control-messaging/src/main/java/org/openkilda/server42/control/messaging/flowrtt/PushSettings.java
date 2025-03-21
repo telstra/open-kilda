@@ -15,9 +15,10 @@
 
 package org.openkilda.server42.control.messaging.flowrtt;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
@@ -25,9 +26,10 @@ import lombok.Value;
 // TODO: move to org.openkilda.server42.control.messaging package as it's shared with islrtt.
 @Value
 @Builder
-@AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
 @EqualsAndHashCode(callSuper = true)
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
+@JsonDeserialize(builder = PushSettings.PushSettingsBuilder.class)
 public class PushSettings extends Message {
+    @JsonProperty("packet_generation_interval_in_ms")
     Integer packetGenerationIntervalInMs;
 }

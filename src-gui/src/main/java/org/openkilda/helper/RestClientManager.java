@@ -31,7 +31,7 @@ import org.openkilda.utility.StringUtil;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpDelete;
@@ -52,9 +52,6 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.ssl.SSLContextBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -66,40 +63,40 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
 import javax.net.ssl.SSLContext;
 
 /**
  * The Class RestClientManager.
  */
+@Slf4j
 @Component
 public class RestClientManager {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(RestClientManager.class);
-
-    @Autowired
-    private AuthPropertyService authPropertyService;
-
-    @Autowired
-    private ObjectMapper mapper;
     
-    @Autowired
-    private ServerContext serverContext;
+    private final AuthPropertyService authPropertyService;
+    private final ObjectMapper mapper;
+    private final ServerContext serverContext;
+
+    public RestClientManager(AuthPropertyService authPropertyService,
+                             ObjectMapper mapper, ServerContext serverContext) {
+        this.authPropertyService = authPropertyService;
+        this.mapper = mapper;
+        this.serverContext = serverContext;
+    }
 
     /**
      * Invoke.
      *
-     * @param apiUrl the api url
-     * @param httpMethod the http method
-     * @param payload the payload
+     * @param apiUrl      the api url
+     * @param httpMethod  the http method
+     * @param payload     the payload
      * @param contentType the content type
-     * @param basicAuth the basic auth
+     * @param basicAuth   the basic auth
      * @return the http response
      */
     public HttpResponse invoke(final String apiUrl, final HttpMethod httpMethod, final String payload,
-            final String contentType, final String basicAuth) {
+                               final String contentType, final String basicAuth) {
         HttpResponse httpResponse = null;
-        try { 
+        try {
             RequestContext requestContext = serverContext.getRequestContext();
 
             HttpClient client = HttpClients.createDefault();
@@ -123,19 +120,19 @@ public class RestClientManager {
                 httpUriRequest = new HttpGet(apiUrl);
             }
 
-            if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod) 
-                    &&  !HttpMethod.PATCH.equals(httpMethod)  && !HttpMethod.DELETE.equals(httpMethod)) {
+            if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod)
+                    && !HttpMethod.PATCH.equals(httpMethod) && !HttpMethod.DELETE.equals(httpMethod)) {
                 // Setting Required Headers
                 if (!StringUtil.isNullOrEmpty(basicAuth)) {
-                    LOGGER.debug("[invoke] Setting authorization in header as " + IAuthConstants.Header.AUTHORIZATION);
+                    log.debug("[invoke] Setting authorization in header as " + IAuthConstants.Header.AUTHORIZATION);
                     httpUriRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
                     httpUriRequest.setHeader(IAuthConstants.Header.CORRELATION_ID, requestContext.getCorrelationId());
                 }
             }
-            if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod) 
-                     || HttpMethod.PATCH.equals(httpMethod)) {
-                LOGGER.info("[invoke] Executing POST/ PUT request : httpEntityEnclosingRequest : "
-                         + httpEntityEnclosingRequest + " : payload : " + payload);
+            if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod)
+                    || HttpMethod.PATCH.equals(httpMethod)) {
+                log.info("[invoke] Executing POST/ PUT request : httpEntityEnclosingRequest : "
+                        + httpEntityEnclosingRequest + " : payload : " + payload);
                 // Setting POST/PUT related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
@@ -144,42 +141,43 @@ public class RestClientManager {
                 // Setting request payload
                 httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
                 httpResponse = client.execute(httpEntityEnclosingRequest);
-                LOGGER.debug("[invoke] Call executed successfully");
+                log.debug("[invoke] Call executed successfully");
             } else if (HttpMethod.DELETE.equals(httpMethod)) {
                 httpEntityEnclosingRequest.setURI(URI.create(apiUrl));
-                LOGGER.info("[invoke] Executing DELETE request : httpDeleteRequest : "
+                log.info("[invoke] Executing DELETE request : httpDeleteRequest : "
                         + httpEntityEnclosingRequest + " : payload : " + payload);
                 // Setting DELETE related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
-                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.EXTRA_AUTH, 
+                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.EXTRA_AUTH,
                         String.valueOf(System.currentTimeMillis()));
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.CORRELATION_ID,
                         requestContext.getCorrelationId());
                 // Setting request payload
-                
+
                 httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
                 httpResponse = client.execute(httpEntityEnclosingRequest);
-                LOGGER.debug("[invoke] Call executed successfully");
+                log.debug("[invoke] Call executed successfully");
             } else {
-                LOGGER.info("[invoke] Executing : httpUriRequest : " + httpUriRequest);
+                log.info("[invoke] Executing : httpUriRequest : " + httpUriRequest);
                 httpResponse = client.execute(httpUriRequest);
-                LOGGER.info("[invoke] Call executed successfully");
+                log.info("[invoke] Call executed successfully");
             }
 
         } catch (Exception e) {
-            LOGGER.error("Error occurred while trying to communicate third party service provider", e);
+            log.error("Error occurred while trying to communicate third party service provider", e);
             throw new RestCallFailedException(e);
         }
         return httpResponse;
     }
+
     /**
      * Invoke.
      *
      * @param apiRequestDto the api request dto
      * @return the http response
      */
-    
+
     public HttpResponse invoke(final ApiRequestDto apiRequestDto) {
         HttpResponse httpResponse = null;
 
@@ -227,7 +225,7 @@ public class RestClientManager {
             }
 
             if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod)) {
-                LOGGER.info("[invoke] Executing POST/ PUT request : httpEntityEnclosingRequest : "
+                log.info("[invoke] Executing POST/ PUT request : httpEntityEnclosingRequest : "
                         + httpEntityEnclosingRequest);
                 if (!StringUtil.isNullOrEmpty(headers)) {
                     for (String header : headers.split("\n")) {
@@ -240,15 +238,15 @@ public class RestClientManager {
                 // Setting request payload
                 httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
                 httpResponse = client.execute(httpEntityEnclosingRequest);
-                LOGGER.debug("[invoke] Call executed successfully");
+                log.debug("[invoke] Call executed successfully");
             } else {
-                LOGGER.info("[invoke] Executing : httpUriRequest : " + httpUriRequest);
+                log.info("[invoke] Executing : httpUriRequest : " + httpUriRequest);
                 httpResponse = client.execute(httpUriRequest);
-                LOGGER.info("[invoke] Call executed successfully");
+                log.info("[invoke] Call executed successfully");
             }
 
         } catch (Exception e) {
-            LOGGER.error("Error occurred while trying to communicate third party service provider", e);
+            log.error("Error occurred while trying to communicate third party service provider", e);
             throw new RestCallFailedException(e);
         }
         return httpResponse;
@@ -276,12 +274,12 @@ public class RestClientManager {
         }
         return headersMap;
     }
-    
+
     /**
      * Gets the response list.
      *
-     * @param <T> the generic type
-     * @param response the response
+     * @param <T>           the generic type
+     * @param response      the response
      * @param responseClass the response class
      * @return the response list
      */
@@ -293,8 +291,8 @@ public class RestClientManager {
     /**
      * Gets the response.
      *
-     * @param <T> the generic type
-     * @param response the response
+     * @param <T>           the generic type
+     * @param response      the response
      * @param responseClass the response class
      * @return the response
      */
@@ -305,23 +303,23 @@ public class RestClientManager {
     /**
      * Gets the response.
      *
-     * @param <T> the generic type
-     * @param <E> the element type
-     * @param response the response
-     * @param responseClass the response class
+     * @param <T>            the generic type
+     * @param <E>            the element type
+     * @param response       the response
+     * @param responseClass  the response class
      * @param dependentClass the dependent class
      * @return the response
      */
     private <T, E> T getResponse(final HttpResponse response, final Class<T> responseClass,
-            final Class<E> dependentClass) {
+                                 final Class<E> dependentClass) {
         T obj = null;
         try {
-            LOGGER.info("[getResponse]  : StatusCode " + response.getStatusLine().getStatusCode());
+            log.info("[getResponse]  : StatusCode " + response.getStatusLine().getStatusCode());
 
             if (response.getStatusLine().getStatusCode() != HttpStatus.NO_CONTENT.value()) {
                 String responseEntity = IoUtil.toString(response.getEntity().getContent());
 
-                LOGGER.debug("[getResponse]  : response object " + responseEntity);
+                log.debug("[getResponse]  : response object " + responseEntity);
                 if (!(HttpStatus.valueOf(response.getStatusLine().getStatusCode()).is2xxSuccessful()
                         && response.getEntity() != null)) {
                     String errorMessage = null;
@@ -340,13 +338,13 @@ public class RestClientManager {
                             throw new UnauthorizedException(HttpError.UNAUTHORIZED.getMessage());
                         }
 
-                        LOGGER.error("Error occurred while retriving response from third party service provider", e);
+                        log.error("Error occurred while retriving response from third party service provider", e);
                         errorMessage = authPropertyService.getError(IAuthConstants.Code.RESPONSE_PARSING_FAIL_ERROR)
                                 .getMessage();
                         throw new RestCallFailedException(errorMessage);
                     }
 
-                    LOGGER.error("Error occurred while retriving response from third party service provider:"
+                    log.error("Error occurred while retriving response from third party service provider:"
                             + responseEntity);
                     throw new ExternalSystemException(response.getStatusLine().getStatusCode(), errorMessage);
 
@@ -374,7 +372,7 @@ public class RestClientManager {
      * @return true, if is valid response
      */
     public static boolean isValidResponse(final HttpResponse response) {
-        LOGGER.debug("[isValidResponse] Response Code " + response.getStatusLine().getStatusCode());
+        log.debug("[isValidResponse] Response Code " + response.getStatusLine().getStatusCode());
         boolean isValid = response.getStatusLine().getStatusCode() >= HttpStatus.OK.value()
                 && response.getStatusLine().getStatusCode() < HttpStatus.MULTIPLE_CHOICES.value()
                 && response.getEntity() != null;
@@ -383,11 +381,11 @@ public class RestClientManager {
         } else {
             try {
                 String content = IoUtil.toString(response.getEntity().getContent());
-                LOGGER.warn("Found invalid Response. Status Code: " + response.getStatusLine().getStatusCode()
+                log.warn("Found invalid Response. Status Code: " + response.getStatusLine().getStatusCode()
                         + ", content: " + content);
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             } catch (IOException exception) {
-                LOGGER.warn("Error occurred while vaildating response", exception);
+                log.warn("Error occurred while vaildating response", exception);
                 throw new InvalidResponseException(HttpError.INTERNAL_ERROR.getCode(),
                         HttpError.INTERNAL_ERROR.getMessage());
             }
@@ -401,7 +399,7 @@ public class RestClientManager {
      * @return true, if is valid response
      */
     public static boolean isDeleteBfdValidResponse(final HttpResponse response) {
-        LOGGER.debug("[isValidResponse] Response Code " + response.getStatusLine().getStatusCode());
+        log.debug("[isValidResponse] Response Code " + response.getStatusLine().getStatusCode());
         boolean isValid = response.getStatusLine().getStatusCode() >= HttpStatus.OK.value()
                 && response.getStatusLine().getStatusCode() < HttpStatus.MULTIPLE_CHOICES.value();
         if (isValid) {
@@ -409,11 +407,11 @@ public class RestClientManager {
         } else {
             try {
                 String content = IoUtil.toString(response.getEntity().getContent());
-                LOGGER.warn("Found invalid Response. Status Code: " + response.getStatusLine().getStatusCode()
+                log.warn("Found invalid Response. Status Code: " + response.getStatusLine().getStatusCode()
                         + ", content: " + content);
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             } catch (IOException exception) {
-                LOGGER.warn("Error occurred while vaildating response", exception);
+                log.warn("Error occurred while vaildating response", exception);
                 throw new InvalidResponseException(HttpError.INTERNAL_ERROR.getCode(),
                         HttpError.INTERNAL_ERROR.getMessage());
             }

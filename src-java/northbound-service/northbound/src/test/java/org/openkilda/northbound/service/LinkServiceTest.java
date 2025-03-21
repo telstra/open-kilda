@@ -37,8 +37,11 @@ import org.openkilda.model.EffectiveBfdProperties;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
-import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.config.KafkaNorthboundGroupConfig;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
+import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.LinkMapper;
+import org.openkilda.northbound.converter.LinkPropsMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.links.LinkDto;
 import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthDto;
@@ -76,8 +79,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -339,7 +342,7 @@ public class LinkServiceTest {
         Assertions.assertFalse(future.isDone());
 
         ArgumentCaptor<Runnable> monitorTaskCaptor = ArgumentCaptor.forClass(Runnable.class);
-        verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Date.class));
+        verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Instant.class));
 
         messageExchanger.mockChunkedResponse(
                 makeBfdMonitorCorrelationId(correlationId, 0),
@@ -390,7 +393,7 @@ public class LinkServiceTest {
         Assertions.assertFalse(future.isDone());
 
         ArgumentCaptor<Runnable> monitorTaskCaptor = ArgumentCaptor.forClass(Runnable.class);
-        verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Date.class));
+        verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Instant.class));
         Mockito.reset(taskScheduler);
 
         clock.adjust(Duration.ofSeconds(1));
@@ -404,7 +407,7 @@ public class LinkServiceTest {
 
         // make read request and schedule one more read
         monitorTaskCaptor.getValue().run();
-        verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Date.class));
+        verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Instant.class));
         Assertions.assertFalse(future.isDone());
 
         clock.adjust(Duration.ofSeconds(bfdPropertiesApplyPeriod));
@@ -436,7 +439,7 @@ public class LinkServiceTest {
     }
 
     @TestConfiguration
-    @Import(KafkaConfig.class)
+    @Import({KafkaTopicsNorthboundConfig.class, KafkaNorthboundGroupConfig.class})
     @ComponentScan({
             "org.openkilda.northbound.converter",
             "org.openkilda.northbound.utils"})
@@ -463,8 +466,12 @@ public class LinkServiceTest {
         }
 
         @Bean
-        public LinkService linkService(MessagingChannel messagingChannel) {
-            return new LinkServiceImpl(messagingChannel);
+        public LinkService linkService(MessagingChannel messagingChannel, Clock clock, TaskScheduler taskScheduler,
+                                       CorrelationIdFactory idFactory, LinkMapper linkMapper, FlowMapper flowMapper,
+                                       LinkPropsMapper linkPropsMapper,
+                                       KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig) {
+            return new LinkServiceImpl(messagingChannel, clock, taskScheduler, idFactory, linkMapper, flowMapper,
+                    linkPropsMapper, kafkaTopicsNorthboundConfig);
         }
 
         @Bean

@@ -32,11 +32,10 @@ import org.openkilda.testing.service.traffexam.model.FlowBidirectionalExam
 
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
+import jakarta.inject.Provider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
-
-import javax.inject.Provider
 
 @Slf4j
 

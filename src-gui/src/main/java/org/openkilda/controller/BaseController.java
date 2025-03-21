@@ -19,21 +19,20 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.constants.Status;
 import org.openkilda.saml.service.SamlService;
 
-import org.opensaml.saml2.core.NameID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import jakarta.annotation.security.PermitAll;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import lombok.extern.slf4j.Slf4j;
+import org.opensaml.saml.saml2.core.NameID;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.web.ErrorController;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.saml.SAMLCredential;
+import org.springframework.security.saml2.core.Saml2X509Credential;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.ModelAndView;
-
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
 import org.usermanagement.model.UserInfo;
@@ -41,13 +40,8 @@ import org.usermanagement.util.MessageUtils;
 
 import java.nio.file.AccessDeniedException;
 
-import javax.annotation.security.PermitAll;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
-
-public abstract class BaseController implements ErrorController {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(BaseController.class);
+@Slf4j
+public abstract class BaseController {
 
     @Autowired
     private UserRepository userRepository;
@@ -67,7 +61,7 @@ public abstract class BaseController implements ErrorController {
      * <li>If user is not logged in then redirected to login page.</li>
      * </ul>
      *
-     * @param request HttpServletRequest to check user log in status.
+     * @param request  HttpServletRequest to check user log in status.
      * @param viewName on which user has to redirect if logged in and not of type user.
      * @return ModelAndView information containing view name on which user is going to be redirected.
      */
@@ -75,12 +69,12 @@ public abstract class BaseController implements ErrorController {
         ModelAndView modelAndView;
         if (isUserLoggedIn()) {
             UserInfo userInfo = getLoggedInUser(request);
-            LOGGER.info("Logged in user. view name: " + viewName + ", User name: "
+            log.info("Logged in user. view name: " + viewName + ", User name: "
                     + userInfo.getName());
 
             modelAndView = new ModelAndView(IConstants.View.REDIRECT_HOME);
         } else {
-            LOGGER.warn("User is not logged in, redirected to login page. Requested view name: "
+            log.warn("User is not logged in, redirected to login page. Requested view name: "
                     + viewName);
             modelAndView = new ModelAndView("login");
             modelAndView.addObject("idps", samlService.getAllActiveIdp());
@@ -106,19 +100,6 @@ public abstract class BaseController implements ErrorController {
         throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see
-     * org.springframework.boot.autoconfigure.web.ErrorController#getErrorPath()
-     */
-    @Override
-    @PermitAll
-    @RequestMapping("/error")
-    public String getErrorPath() {
-        return IConstants.View.ERROR;
-    }
-
     /**
      * Return logged in user information.
      *
@@ -131,7 +112,7 @@ public abstract class BaseController implements ErrorController {
         try {
             userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
         } catch (IllegalStateException ex) {
-            LOGGER.warn("Exception while retrieving user information from session. Exception: "
+            log.warn("Exception while retrieving user information from session. Exception: "
                     + ex.getLocalizedMessage(), ex);
         } finally {
             if (userInfo == null) {
@@ -155,7 +136,7 @@ public abstract class BaseController implements ErrorController {
                     && !(authentication instanceof AnonymousAuthenticationToken));
             if (isValid) {
                 UserEntity userEntity = null;
-                if (authentication.getCredentials() instanceof SAMLCredential) {
+                if (authentication.getCredentials() instanceof Saml2X509Credential) {
                     NameID nameId = (NameID) authentication.getPrincipal();
                     userEntity = userRepository.findByUsernameIgnoreCase(nameId.getValue());
                 } else {

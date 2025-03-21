@@ -105,7 +105,7 @@ import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtende
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.ConnectedDevice
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -982,7 +982,7 @@ class SwitchExtended {
      */
     static void verifyRuleSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
                                            List<String> sections = ["missing", "proper", "excess", "misconfigured"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         sections.each { String section ->
             if (section == "proper") {
                 assertions.checkSucceeds {
@@ -1000,7 +1000,7 @@ class SwitchExtended {
 
     static void verifyRuleSectionsAreEmpty(SwitchValidationV2ExtendedResult switchValidateInfo,
                                            List<String> sections = ["missing", "proper", "excess", "misconfigured"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         sections.each { String section ->
             if (section == "proper") {
                 assertions.checkSucceeds {
@@ -1023,7 +1023,7 @@ class SwitchExtended {
      */
     static void verifyMeterSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
                                             List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         if (switchValidateInfo.meters) {
             sections.each { section ->
                 if (section == "proper") {
@@ -1040,7 +1040,7 @@ class SwitchExtended {
 
     static void verifyMeterSectionsAreEmpty(SwitchValidationV2ExtendedResult switchValidateInfo,
                                             List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         if (switchValidateInfo.meters) {
             sections.each { section ->
                 if (section == "proper") {
@@ -1064,7 +1064,7 @@ class SwitchExtended {
     static void verifyHexRuleSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
                                               List<String> sections = ["properHex", "excessHex", "missingHex",
                                                                        "misconfiguredHex"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         sections.each { String section ->
             if (section == "properHex") {
                 def defaultCookies = switchValidateInfo.rules.proper.findAll {

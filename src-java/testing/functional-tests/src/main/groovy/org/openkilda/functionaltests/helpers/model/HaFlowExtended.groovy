@@ -42,7 +42,15 @@ import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.Host
 import org.openkilda.testing.service.traffexam.model.TimeLimit
 import org.openkilda.testing.service.traffexam.model.Vlan
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
+
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.google.common.collect.ImmutableList
+import groovy.transform.AutoClone
+import groovy.transform.EqualsAndHashCode
+import groovy.transform.ToString
+import groovy.transform.builder.Builder
+import groovy.util.logging.Slf4j
 
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_HAFLOW
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
@@ -404,7 +412,7 @@ class HaFlowExtended {
      * @param expectedHaFlowExtended
      */
     void hasTheSamePropertiesAs(HaFlowExtended expectedHaFlowExtended) {
-        SoftAssertions assertions = new SoftAssertions()
+        SoftAssertionsWrapper assertions = new SoftAssertionsWrapper()
         assertions.checkSucceeds { assert this.haFlowId == expectedHaFlowExtended.haFlowId }
         assertions.checkSucceeds { assert this.maximumBandwidth == expectedHaFlowExtended.maximumBandwidth }
         assertions.checkSucceeds { assert this.pathComputationStrategy == expectedHaFlowExtended.pathComputationStrategy }

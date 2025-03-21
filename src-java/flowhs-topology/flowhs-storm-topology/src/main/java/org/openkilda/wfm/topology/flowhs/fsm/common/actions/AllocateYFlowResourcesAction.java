@@ -37,9 +37,9 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources;
 import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowResources.EndpointResources;
 
+import dev.failsafe.RetryPolicy;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.RetryPolicy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,10 +63,11 @@ public class AllocateYFlowResourcesAction<T extends YFlowProcessingFsm<T, S, E, 
                         .handle(ResourceAllocationException.class)
                         .handle(ConstraintViolationException.class)
                         .onRetry(e -> log.warn("Failure in resource allocation. Retrying #{}...", e.getAttemptCount(),
-                                e.getLastFailure()))
+                                e.getLastException()))
                         .onRetriesExceeded(e -> log.warn("Failure in resource allocation. No more retries",
-                                e.getFailure()))
-                        .withMaxRetries(resourceAllocationRetriesLimit);
+                                e.getException()))
+                        .withMaxRetries(resourceAllocationRetriesLimit)
+                        .build();
     }
 
     @Override

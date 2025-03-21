@@ -36,11 +36,11 @@ import org.openkilda.model.victoria.VictoriaData;
 import org.openkilda.model.victoria.dbdto.VictoriaDbData;
 import org.openkilda.model.victoria.dbdto.VictoriaDbRes;
 import org.openkilda.store.service.StoreService;
-import org.openkilda.test.MockitoExtension;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.HashMap;

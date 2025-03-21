@@ -5,11 +5,22 @@ set -m
 /opt/zookeeper/bin/zkServer.sh start-foreground &
 
 # ensure health-checks were passed
-for attemp in $(seq 1 3); do
+for attemp in $(seq 1 5); do
   if jps | grep -q QuorumPeer; then
-    sleep 3
+    break
   else
     echo "Zookeeper hasn't been started yet"
+    sleep 3
+  fi
+done
+
+# ensure zK cluster is ready for requests
+for attemp in $(seq 1 5); do
+  if /opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 ls / | grep 'zookeeper\]'; then
+    break
+  else
+    echo "/zookeeper node has not been created yet"
+    sleep 3
   fi
 done
 

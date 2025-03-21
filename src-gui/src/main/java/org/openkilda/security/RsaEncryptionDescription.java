@@ -15,9 +15,10 @@
 
 package org.openkilda.security;
 
-import org.apache.log4j.Logger;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedInputStream;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -26,20 +27,16 @@ import java.security.Key;
 import java.security.KeyFactory;
 import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
-
 import javax.crypto.Cipher;
 
 /**
  * The Class RsaEncryptionDescription.
  */
-
+@Slf4j
 public final class RsaEncryptionDescription {
-
-    /** The Constant _log. */
-    private static final Logger _log = Logger.getLogger(RsaEncryptionDescription.class);
     
     private RsaEncryptionDescription() {
-        
+
     }
 
     /**
@@ -51,7 +48,7 @@ public final class RsaEncryptionDescription {
      */
     // Return the saved key
     public static Key readKeyFromFile(final String keyFileName) throws IOException {
-        _log.info("ReadKeyFromFile called with keyFileName : " + keyFileName);
+        log.info("ReadKeyFromFile called with keyFileName : " + keyFileName);
         InputStream in = null;
         ObjectInputStream oin = null;
         try {
@@ -70,7 +67,7 @@ public final class RsaEncryptionDescription {
                 return null;
             }
         } catch (Exception e) {
-            _log.fatal("Exception in readKeyFromFile : " + e.getMessage());
+            log.error("Exception in readKeyFromFile : " + e.getMessage());
             throw new RuntimeException("Spurious serialisation error", e);
         } finally {
             if (oin != null) {
@@ -85,7 +82,7 @@ public final class RsaEncryptionDescription {
     /**
      * Rsa decrypt.
      *
-     * @param text the text
+     * @param text    the text
      * @param fileDes the fileDes
      * @return the string
      * @throws Exception the exception
@@ -107,7 +104,7 @@ public final class RsaEncryptionDescription {
     /**
      * Rsa decrypt.
      *
-     * @param text the text
+     * @param text    the text
      * @param fileDes the file_des
      * @return the string
      * @throws Exception the exception

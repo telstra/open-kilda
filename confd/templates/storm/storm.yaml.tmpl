@@ -68,9 +68,43 @@ supervisor.slots.ports:
 #     argument:
 #       - endpoint: "metrics-collector.mycompany.org"
 
-nimbus.childopts: "-Xmx128m"
-ui.childopts: "-Xmx128m"
-supervisor.childopts: "-Xmx128m"
-worker.childopts: "-Xmx280m"
+## Memory settings
+nimbus.childopts: "-Xmx2g -Djava.net.preferIPv4Stack=true"
 
-topology.testing.always.try.serialize: True
+worker.childopts: "-Xmx512m -Djava.net.preferIPv4Stack=true"
+
+supervisor.childopts: "-Xmx512m -Djava.net.preferIPv4Stack=true"
+
+ui.childopts: "-Xmx512m"
+
+nimbus.task.timeout.secs: 30
+nimbus.thrift.max_buffer_size: 2097152
+
+
+#Topologies settings
+topology.testing.always.try.serialize: true
+topology.skip.missing.kryo.registrations: true
+topology.fall.back.on.java.serialization: true
+
+topology.max.spout.pending: 1000
+topology.message.timeout.secs: 30
+
+topology.executor.receive.buffer.size: 1024 # the queue size that needs to be processed bolts/spouts, can not be too small
+topology.transfer.buffer.size: 1024
+
+topology.spout.wait.strategy: org.apache.storm.policy.WaitStrategyProgressive
+topology.spout.wait.progressive.level1.count: 1
+topology.spout.wait.progressive.level2.count: 1
+topology.spout.wait.progressive.level3.sleep.millis: 15
+
+topology.bolt.wait.strategy: org.apache.storm.policy.WaitStrategyProgressive
+topology.bolt.wait.progressive.level1.count: 1
+topology.bolt.wait.progressive.level2.count: 1
+topology.bolt.wait.progressive.level3.sleep.millis: 15
+
+topology.backpressure.wait.strategy: org.apache.storm.policy.WaitStrategyProgressive
+topology.backpressure.wait.progressive.level1.count: 1
+topology.backpressure.wait.progressive.level2.count: 1
+topology.backpressure.wait.progressive.level3.sleep.millis: 15
+
+topology.stats.sample.rate: 0.05

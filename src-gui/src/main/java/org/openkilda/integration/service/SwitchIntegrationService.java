@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,11 @@
 
 package org.openkilda.integration.service;
 
+import static org.openkilda.integration.converter.FlowConverter.toFlowV2InfosPerPorts;
+import static org.openkilda.integration.converter.FlowConverter.toFlowsInfo;
+import static org.openkilda.integration.converter.IslLinkConverter.toIslLinksInfo;
+import static org.openkilda.utility.SwitchUtil.customSwitchName;
+
 import org.openkilda.config.ApplicationProperties;
 import org.openkilda.constants.IConstants;
 import org.openkilda.constants.IConstants.ApplicationSetting;
@@ -22,8 +27,6 @@ import org.openkilda.constants.IConstants.StorageType;
 import org.openkilda.dao.entity.SwitchNameEntity;
 import org.openkilda.dao.repository.SwitchNameRepository;
 import org.openkilda.helper.RestClientManager;
-import org.openkilda.integration.converter.FlowConverter;
-import org.openkilda.integration.converter.IslLinkConverter;
 import org.openkilda.integration.exception.ContentNotFoundException;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
@@ -54,10 +57,9 @@ import org.openkilda.utility.JsonUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.http.HttpResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -80,10 +82,9 @@ import java.util.Map;
  *
  * @author Gaurav Chugh
  */
+@Slf4j
 @Service
 public class SwitchIntegrationService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchIntegrationService.class);
 
     @Autowired
     private RestClientManager restClientManager;
@@ -95,13 +96,7 @@ public class SwitchIntegrationService {
     private ApplicationService applicationService;
 
     @Autowired
-    private IslLinkConverter islLinkConverter;
-
-    @Autowired
     private ObjectMapper objectMapper;
-
-    @Autowired
-    private FlowConverter flowConverter;
 
     @Autowired
     private ApplicationSettingService applicationSettingService;
@@ -148,7 +143,7 @@ public class SwitchIntegrationService {
                 }
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while getting switch by id:" + switchId, e);
+            log.error("Error occurred while getting switch by id:" + switchId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
         return null;
@@ -161,8 +156,7 @@ public class SwitchIntegrationService {
      * @return the switch info set name
      */
     private List<SwitchInfo> getSwitchInfoSetName(final List<SwitchInfo> switches) {
-
-        if (switches != null && !StringUtils.isEmpty(switches)) {
+        if (CollectionUtils.isNotEmpty(switches)) {
             Map<String, String> csNames = getSwitchNames();
             for (SwitchInfo switchInfo : switches) {
                 switchInfo.setName(customSwitchName(csNames, switchInfo.getSwitchId()));
@@ -193,29 +187,6 @@ public class SwitchIntegrationService {
     }
 
     /**
-     * Custom switch name.
-     *
-     * @param csNames  the cs names
-     * @param switchId the switch id
-     * @return the string
-     */
-    public String customSwitchName(final Map<String, String> csNames, final String switchId) {
-        if (csNames != null && !StringUtils.isEmpty(csNames) && csNames.size() > 0) {
-            if (csNames.containsKey(switchId.toLowerCase()) || csNames.containsKey(switchId.toUpperCase())) {
-                if (!IoUtil.chkStringIsNotEmpty(csNames.get(switchId))) {
-                    return switchId;
-                } else {
-                    return csNames.get(switchId);
-                }
-            } else {
-                return switchId;
-            }
-        } else {
-            return switchId;
-        }
-    }
-
-    /**
      * Gets the isl links.
      *
      * @return the isl links
@@ -225,7 +196,8 @@ public class SwitchIntegrationService {
         if (CollectionUtil.isEmpty(links)) {
             throw new ContentNotFoundException();
         }
-        return islLinkConverter.toIslLinksInfo(links, islCostMap(null));
+
+        return toIslLinksInfo(links, islCostMap(null), getSwitchNames());
     }
 
     /**
@@ -236,13 +208,12 @@ public class SwitchIntegrationService {
     public List<IslLink> getIslLinkPortsInfo(final LinkProps keys) {
         UriComponentsBuilder builder = UriComponentsBuilder
                 .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINKS);
-        builder = setLinkProps(keys, builder);
+        setLinkProps(keys, builder);
         String fullUri = builder.build().toUriString();
         HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
                 applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
-            List<IslLink> links = restClientManager.getResponseList(response, IslLink.class);
-            return links;
+            return restClientManager.getResponseList(response, IslLink.class);
         }
         return null;
     }
@@ -272,7 +243,7 @@ public class SwitchIntegrationService {
     public List<LinkProps> getIslLinkProps(final LinkProps keys) {
         UriComponentsBuilder builder = UriComponentsBuilder
                 .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINK_PROPS);
-        builder = setLinkProps(keys, builder);
+        setLinkProps(keys, builder);
         String fullUri = builder.build().toUriString();
         HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
                 applicationService.getAuthHeader());
@@ -284,7 +255,7 @@ public class SwitchIntegrationService {
                 }
             }
         } catch (InvalidResponseException e) {
-            LOGGER.warn("Error occurred while getting isl link props ", e);
+            log.warn("Error occurred while getting isl link props ", e);
             return null;
         }
         return null;
@@ -311,7 +282,7 @@ public class SwitchIntegrationService {
                 }
             }
         } catch (IOException e) {
-            LOGGER.warn("Error occurred while getting switch name from file", e);
+            log.warn("Error occurred while getting switch name from file", e);
         }
         return csNames;
 
@@ -344,7 +315,7 @@ public class SwitchIntegrationService {
                     objectMapper.writeValueAsString(keys), "application/json", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
         } catch (IOException e) {
-            LOGGER.warn("Error occurred while updating isl link props", e);
+            log.warn("Error occurred while updating isl link props", e);
             throw new IntegrationException(e);
         }
     }
@@ -393,7 +364,7 @@ public class SwitchIntegrationService {
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
         } catch (IOException e) {
-            LOGGER.error("Error occurred while retrivig switch rules by switch id:" + switchId, e);
+            log.error("Error occurred while retrivig switch rules by switch id:" + switchId, e);
             throw new IntegrationException(e);
         }
     }
@@ -418,10 +389,10 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, ConfiguredPort.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while configuring port. Switch Id:" + switchId, e);
+            log.error("Error occurred while configuring port. Switch Id:" + switchId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
-            LOGGER.error("Error occurred while converting configration to string. Switch Id:" + switchId, e);
+            log.error("Error occurred while converting configration to string. Switch Id:" + switchId, e);
             throw new IntegrationException(e);
         }
         return null;
@@ -440,9 +411,9 @@ public class SwitchIntegrationService {
                                       final String dstPort) {
         List<Flow> flowList = getIslFlowList(srcSwitch, srcPort, dstSwitch, dstPort);
         if (flowList != null) {
-            return flowConverter.toFlowsInfo(flowList);
+            return toFlowsInfo(flowList, getSwitchNames());
         }
-        return new ArrayList<FlowInfo>();
+        return new ArrayList<>();
     }
 
     /**
@@ -466,7 +437,7 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponseList(response, Flow.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while getting isl flow list", e);
+            log.error("Error occurred while getting isl flow list", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
         return null;
@@ -505,10 +476,10 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, SwitchInfo.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while updating switch:" + switchId, e);
+            log.error("Error occurred while updating switch:" + switchId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
-            LOGGER.warn("Error occurred while updating switch:" + switchId, e);
+            log.warn("Error occurred while updating switch:" + switchId, e);
             throw new IntegrationException(e.getMessage(), e);
         }
         return null;
@@ -524,7 +495,7 @@ public class SwitchIntegrationService {
         if (CollectionUtil.isEmpty(links)) {
             throw new ContentNotFoundException();
         }
-        return islLinkConverter.toIslLinksInfo(links, islCostMap(null));
+        return toIslLinksInfo(links, islCostMap(null), getSwitchNames());
     }
 
     /**
@@ -543,7 +514,7 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponseList(response, IslLink.class);
             }
         } catch (JsonProcessingException e) {
-            LOGGER.error("Error occurred while updating link", e);
+            log.error("Error occurred while updating link", e);
         }
         return null;
     }
@@ -563,10 +534,10 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponseList(response, IslLinkInfo.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while deleting link", e);
+            log.error("Error occurred while deleting link", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
-            LOGGER.error("Error occurred while deleting link", e);
+            log.error("Error occurred while deleting link", e);
             throw new IntegrationException(e);
         }
         return null;
@@ -590,10 +561,10 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, LinkMaxBandwidth.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while updating link bandwidth", e);
+            log.error("Error occurred while updating link bandwidth", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
-            LOGGER.error("Error occurred while updating link bandwidth", e);
+            log.error("Error occurred while updating link bandwidth", e);
             throw new IntegrationException(e);
         }
         return null;
@@ -607,7 +578,7 @@ public class SwitchIntegrationService {
     public List<FlowInfo> getSwitchFlows(String switchId, String port) {
         List<Flow> flowList = getSwitchPortFlows(switchId, port);
         if (flowList != null) {
-            return flowConverter.toFlowsInfo(flowList);
+            return toFlowsInfo(flowList, getSwitchNames());
         }
         return null;
     }
@@ -637,10 +608,10 @@ public class SwitchIntegrationService {
             RestClientManager.isValidResponse(response);
             switchFlowsPerPort = restClientManager.getResponse(response, SwitchFlowsPerPort.class);
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while getting switch flows", e);
+            log.error("Error occurred while getting switch flows", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
-        return flowConverter.toFlowV2InfosPerPorts(switchFlowsPerPort);
+        return toFlowV2InfosPerPorts(switchFlowsPerPort, getSwitchNames());
     }
 
     /**
@@ -666,7 +637,7 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponseList(response, Flow.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while getting switch flows", e);
+            log.error("Error occurred while getting switch flows", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
         return null;
@@ -688,7 +659,7 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, SwitchInfo.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while deleting switch:" + switchId, e);
+            log.error("Error occurred while deleting switch:" + switchId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
         return null;
@@ -704,7 +675,7 @@ public class SwitchIntegrationService {
         if (CollectionUtil.isEmpty(links)) {
             throw new ContentNotFoundException();
         }
-        return islLinkConverter.toIslLinksInfo(links, islCostMap(null));
+        return toIslLinksInfo(links, islCostMap(null), getSwitchNames());
     }
 
     /**
@@ -722,10 +693,10 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponseList(response, IslLink.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while updating isl bfd-flag", e);
+            log.error("Error occurred while updating isl bfd-flag", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
-            LOGGER.error("Error occurred while updating isl bfd-flag", e);
+            log.error("Error occurred while updating isl bfd-flag", e);
             throw new IntegrationException(e);
         }
         return null;
@@ -747,10 +718,10 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, SwitchProperty.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while updating switch port property", e);
+            log.error("Error occurred while updating switch port property", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
-            LOGGER.error("Error occurred while updating switch port property", e);
+            log.error("Error occurred while updating switch port property", e);
             throw new IntegrationException(e);
         }
         return null;
@@ -771,7 +742,7 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, SwitchProperty.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while getting switch port property", e);
+            log.error("Error occurred while getting switch port property", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
         return null;
@@ -793,10 +764,10 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, SwitchInfo.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while updating switch location:" + switchId, e);
+            log.error("Error occurred while updating switch location:" + switchId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
-            LOGGER.warn("Error occurred while updating switch location:" + switchId, e);
+            log.warn("Error occurred while updating switch location:" + switchId, e);
             throw new IntegrationException(e.getMessage(), e);
         }
         return null;
@@ -823,7 +794,7 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, LinkBfdProperties.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while reading link bfd properties", e);
+            log.error("Error occurred while reading link bfd properties", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
         return null;
@@ -847,7 +818,7 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, LinkBfdProperties.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while updating link bfd properties", e);
+            log.error("Error occurred while updating link bfd properties", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
             e.printStackTrace();
@@ -876,7 +847,7 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, String.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occured while deleting link bfd", e);
+            log.error("Error occured while deleting link bfd", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (UnsupportedOperationException e) {
             e.printStackTrace();
@@ -902,10 +873,10 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, SwitchLogicalPort.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while creating switch logical port:" + switchId, e);
+            log.error("Error occurred while creating switch logical port:" + switchId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
-            LOGGER.warn("Error occurred while creating switch logical port:" + switchId, e);
+            log.warn("Error occurred while creating switch logical port:" + switchId, e);
             throw new IntegrationException(e.getMessage(), e);
         }
         return null;
@@ -930,7 +901,7 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, SwitchLogicalPort.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while deleting switch logical port:" + switchId, e);
+            log.error("Error occurred while deleting switch logical port:" + switchId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
         return null;
@@ -953,7 +924,7 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponseList(response, SwitchLogicalPort.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while getting switch logical port:" + switchId, e);
+            log.error("Error occurred while getting switch logical port:" + switchId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
         return null;

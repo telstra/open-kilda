@@ -42,6 +42,7 @@ import com.github.javafaker.Faker
 import groovy.transform.AutoClone
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
+import jakarta.inject.Provider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -49,11 +50,10 @@ import spock.lang.See
 import spock.lang.Shared
 
 import java.time.Instant
-import javax.inject.Provider
 
 @Slf4j
 @Narrative("""
-Verify ability to detect connected devices per flow endpoint (src/dst). 
+Verify ability to detect connected devices per flow endpoint (src/dst).
 Verify allocated Connected Devices resources and installed rules.""")
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/connected-devices-lldp")
 
@@ -72,9 +72,9 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
     ])
     def "Able to create a #flowDescr flow with lldp and arp enabled on #devicesDescr, encapsulation #data.encapsulation, swPair: #hw"() {
         assumeTrue(data.encapsulation != FlowEncapsulationType.VXLAN,
-"Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
+                "Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
         assumeTrue(data.switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2,
- "Unable to find swPair with protected path")
+                "Unable to find swPair with protected path")
 
         given: "A flow with enabled or disabled connected devices"
         def swPair = !data.oneSwitch ? data.switchPair : switchPairs.singleSwitch()
@@ -864,7 +864,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     @IterationTag(tags = [HARDWARE], iterationNameRegex = /VXLAN/)
     def "System detects devices for a qinq(iVlan=#vlanId oVlan=#innerVlanId) flow with lldp and arp enabled on the src switch"() {
         assumeTrue(encapsulationType != FlowEncapsulationType.VXLAN,
-"Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
+                "Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
 
         given: "Two switches connected to traffgen"
         def swPairs = switchPairs.all().neighbouring().withTraffgensOnBothEnds()
@@ -1152,7 +1152,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         and: "Flow has been updated successfully"
-        flow.update(flow.tap { it.maximumBandwidth = flow.maximumBandwidth + 1})
+        flow.update(flow.tap { it.maximumBandwidth = flow.maximumBandwidth + 1 })
 
         then: "Check excess rules are not registered on device"
         !swPair.src.synchronizeAndCollectFixedDiscrepancies().isPresent()
@@ -1204,8 +1204,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         def tgService = traffExamProvider.get()
         //retrieving devices for both src/dst endpoints, but only specifying flow vlan(outerVlan) without inner_vlan
-        def sourceConnectedDevice = flow.sourceConnectedDeviceExam(tgService,  [outerVlan])
-        def destinationConnectedDevice = flow.destinationConnectedDeviceExam(tgService,  [outerVlan])
+        def sourceConnectedDevice = flow.sourceConnectedDeviceExam(tgService, [outerVlan])
+        def destinationConnectedDevice = flow.destinationConnectedDeviceExam(tgService, [outerVlan])
         sourceConnectedDevice.sendLldp()
         destinationConnectedDevice.sendLldp()
         sourceConnectedDevice.sendArp()

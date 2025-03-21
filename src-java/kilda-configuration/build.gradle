@@ -1,20 +1,21 @@
 plugins {
-    id 'java-library'
+    id "java-library"
 }
 
-description = 'Kilda Configuration'
+description = "Kilda Configuration"
 dependencies {
-    api 'com.sabre.oss.conf4j:conf4j-api'
-    api 'com.sabre.oss.conf4j:conf4j-core'
+    api("com.sabre.oss.conf4j:conf4j-api")
+    api("com.sabre.oss.conf4j:conf4j-core")
 
-    implementation 'com.google.guava:guava'
-    implementation 'javax.validation:validation-api'
+    implementation("com.google.guava:guava")
+    implementation("jakarta.validation:jakarta.validation-api")
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
-    testImplementation 'org.mockito:mockito-junit-jupiter'
-    testRuntimeOnly 'org.hibernate.validator:hibernate-validator'
-    testRuntimeOnly 'org.glassfish:javax.el'
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
+    testImplementation("org.mockito:mockito-junit-jupiter")
+    testImplementation("org.glassfish:jakarta.el:4.0.2")
+
+    testRuntimeOnly("org.hibernate.validator:hibernate-validator")
 }
 
 test {

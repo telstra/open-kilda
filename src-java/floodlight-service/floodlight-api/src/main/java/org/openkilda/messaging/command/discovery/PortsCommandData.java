@@ -25,15 +25,12 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
+/**
+ *  Command to request a list of all ports including port state.
+ */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-        "command",
-        "requester"})
-
-/*
- *  Command to request a list of all ports including port state
- */
+@JsonPropertyOrder({"command", "requester"})
 @EqualsAndHashCode(callSuper = false)
 @ToString(callSuper = true)
 public class PortsCommandData extends CommandData {

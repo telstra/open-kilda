@@ -19,7 +19,8 @@ import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.service.FeatureTogglesService;
 
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -38,20 +39,21 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequestMapping("/v1/features")
 @PropertySource("classpath:northbound.properties")
+@Tag(name = "Feature toggles controller", description = "enables or disables OpenKilda features")
 public class FeatureTogglesController extends BaseController {
 
     @Autowired
     private FeatureTogglesService featureTogglesService;
 
     @PatchMapping
-    @ApiOperation(value = "Toggle kilda features", response = FeatureTogglesDto.class)
+    @Operation(summary = "Toggle kilda features")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FeatureTogglesDto> toggleFeatures(@RequestBody FeatureTogglesDto request) {
         return featureTogglesService.toggleFeatures(request);
     }
 
     @GetMapping
-    @ApiOperation(value = "Get states of feature toggles", response = FeatureTogglesDto.class)
+    @Operation(summary = "Get states of feature toggles")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FeatureTogglesDto> getFeatureTogglesState() {
         return featureTogglesService.getFeatureTogglesState();

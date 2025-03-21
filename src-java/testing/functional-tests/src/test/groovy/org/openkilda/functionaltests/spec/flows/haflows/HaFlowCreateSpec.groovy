@@ -16,7 +16,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
@@ -27,11 +27,11 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 @Tags([HA_FLOW])
 class HaFlowCreateSpec extends HealthCheckSpecification {
 
-    @Shared
-    @Autowired
+
+    @Autowired @Shared
     HaFlowFactory haFlowFactory
 
-    @Autowired
+    @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
     @Tags([TOPOLOGY_DEPENDENT])

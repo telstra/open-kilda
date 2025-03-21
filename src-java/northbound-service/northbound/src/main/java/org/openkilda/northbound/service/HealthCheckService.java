@@ -33,4 +33,6 @@ public interface HealthCheckService {
      * Update kafka health-check.
      */
     void updateKafkaStatus(String status);
+
+    void updateZookeeperStatus(String status);
 }

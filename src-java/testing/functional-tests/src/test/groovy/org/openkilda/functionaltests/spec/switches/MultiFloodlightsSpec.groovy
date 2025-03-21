@@ -5,7 +5,7 @@ import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.LoopTask
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Isolated
 import spock.lang.Narrative
@@ -45,7 +45,7 @@ class MultiFloodlightsSpec extends HealthCheckSpecification {
         def relatedIsls = topology.getRelatedIsls(sw.switchId).collectMany { [it, it.reversed] }
 
         def islObserver = new LoopTask({
-            def soft = new SoftAssertions()
+            def soft = new SoftAssertionsWrapper()
             relatedIsls.each { isl -> soft.checkSucceeds { assert northbound.getLink(isl).state == DISCOVERED } }
             soft.verify()
         })

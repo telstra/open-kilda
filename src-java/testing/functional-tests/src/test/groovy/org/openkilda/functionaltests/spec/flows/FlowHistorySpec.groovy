@@ -5,7 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.model.FlowStatusHistoryEvent.DELETED
 import static org.openkilda.functionaltests.helpers.model.FlowStatusHistoryEvent.UP
-import static org.openkilda.model.SwitchFeature.*
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
@@ -23,7 +23,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.history.FlowHistoryEntry
 import org.openkilda.model.history.FlowEvent
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import com.github.javafaker.Faker
 import groovy.util.logging.Slf4j
@@ -404,7 +404,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
     }
 
     void checkHistoryCommonStuff(FlowHistory flowHistory, String flowId, FlowActionType actionType) {
-        SoftAssertions softAssertions = new SoftAssertions()
+        SoftAssertionsWrapper softAssertions = new SoftAssertionsWrapper()
         def historyEvent = flowHistory.getEntriesByType(actionType).first()
         softAssertions.checkSucceeds { assert historyEvent.payload.action[-1] == actionType.payloadLastAction }
         softAssertions.checkSucceeds { assert historyEvent.flowId == flowId }

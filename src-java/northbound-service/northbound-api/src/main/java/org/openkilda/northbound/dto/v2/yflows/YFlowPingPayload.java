@@ -16,11 +16,10 @@
 package org.openkilda.northbound.dto.v2.yflows;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-
-import javax.validation.constraints.PositiveOrZero;
 
 @Data
 @Builder

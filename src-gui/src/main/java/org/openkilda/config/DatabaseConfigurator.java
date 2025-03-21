@@ -19,15 +19,15 @@ import org.openkilda.dao.entity.VersionEntity;
 import org.openkilda.dao.repository.VersionRepository;
 
 import com.ibatis.common.jdbc.ScriptRunner;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,17 +40,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import javax.sql.DataSource;
 
+@Slf4j
 @Repository("databaseConfigurator")
 public class DatabaseConfigurator {
 
     @PersistenceContext
     private EntityManager entityManager;
-
-    private static final Logger LOGGER = Logger.getLogger(DatabaseConfigurator.class);
 
     private static final String SCRIPT_FILE_PREFIX = "import-script_";
     private static final String SCRIPT_FILE_SUFFIX = ".sql";
@@ -68,11 +65,6 @@ public class DatabaseConfigurator {
         this.dataSource = dataSource;
         this.resourceLoader = resourceLoader;
         this.entityManager = em;
-        init();
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
-    public void init() {
         loadInitialData();
     }
 
@@ -82,25 +74,25 @@ public class DatabaseConfigurator {
         if (CollectionUtils.isEmpty(versionNumberList)) {
             try {
 
-                List<VersionEntity> list = new ArrayList<VersionEntity>();
-                List<Long> newVersionList = new ArrayList<Long>();
+                List<VersionEntity> list = new ArrayList<>();
+                List<Long> newVersionList = new ArrayList<>();
                 List<Object[]> results = entityManager.createNativeQuery("SELECT v.version_id ,"
                         + "v.version_deployment_date, v.version_number FROM version v").getResultList();
 
                 for (Object[] perTestEntity : results) {
                     VersionEntity versionEntity = new VersionEntity();
-                    versionEntity.setVersionId(BigInteger.valueOf(Long.valueOf(
+                    versionEntity.setVersionId(BigInteger.valueOf(Long.parseLong(
                             (perTestEntity[0].toString()))).longValue());
                     versionEntity.setDeploymentDate(Timestamp.valueOf(perTestEntity[1].toString()));
-                    versionEntity.setVersionNumber(BigInteger.valueOf(Long.valueOf(
+                    versionEntity.setVersionNumber(BigInteger.valueOf(Long.parseLong(
                             perTestEntity[2].toString())).longValue());
                     list.add(versionEntity);
                     newVersionList.add(versionEntity.getVersionNumber());
                 }
-                versionEntityRepository.save(list);
+                versionEntityRepository.saveAll(list);
                 versionNumberList = newVersionList;
             } catch (Exception e) {
-                LOGGER.warn("Failed to load version list", e);
+                log.warn("Failed to load version list", e);
             }
         }
         InputStream inputStream = null;
@@ -141,7 +133,7 @@ public class DatabaseConfigurator {
                 }
             }
         } catch (IOException ex) {
-            LOGGER.error("Failed to load db scripts", ex);
+            log.error("Failed to load db scripts", ex);
         }
     }
 
@@ -150,7 +142,7 @@ public class DatabaseConfigurator {
             ScriptRunner sr = new ScriptRunner(con, false, false);
             sr.runScript(new InputStreamReader(inputStream));
         } catch (Exception e) {
-            LOGGER.error("Error occurred while executing script", e);
+            log.error("Error occurred while executing script", e);
         }
     }
 }

@@ -1,94 +1,90 @@
 plugins {
-    id 'org.springframework.boot' version '2.2.13.RELEASE'
+    id("org.springframework.boot") version "3.2.3"
 }
 
 configurations {
     // This conflicts with spring-boot-starter-log4j2
-    implementation.exclude module: 'spring-boot-starter-logging'
+    implementation.exclude module: "spring-boot-starter-logging"
 }
 
-description = 'Northbound Service'
+compileJava.options.compilerArgs += "-Amapstruct.unmappedTargetPolicy=ERROR"
+
+description = "Northbound Service"
+
+configurations.configureEach {
+    //LoggerFactory is not a Logback LoggerContext but Logback is on the classpath. Either remove Logback or the competing implementation
+    exclude group: "ch.qos.logback", module: "logback-classic"
+    exclude group: "ch.qos.logback", module: "logback-core"
+}
+
 dependencies {
-    implementation(platform('org.springframework:spring-framework-bom:5.2.19.RELEASE'))
-    implementation(platform('org.springframework.boot:spring-boot-dependencies:2.2.13.RELEASE'))
+    implementation(platform("org.springframework:spring-framework-bom:6.0.6"))
+    implementation(platform("org.springframework.boot:spring-boot-dependencies:3.2.2"))
 
-    implementation project(':northbound-api')
-    implementation project(':flowhs-messaging')
-    implementation project(':reroute-messaging')
-    implementation project(':nbworker-messaging')
-    implementation project(':swmanager-messaging')
-    implementation project(':ping-messaging')
-    implementation project(':floodlight-api')
-    implementation project(':kilda-persistence-api')
-    implementation project(':blue-green')
-    runtimeOnly project(':kilda-persistence-orientdb')
-    runtimeOnly project(':kilda-persistence-hibernate')
-    implementation project(':kilda-configuration')
-    testImplementation project(':kilda-utils:stubs')
+    implementation(project(":northbound-api")) { transitive(false) }
+    implementation(project(":kilda-model")) { transitive(false) }
+    implementation(project(":base-messaging")) { transitive(false) }
+    implementation(project(":flowhs-messaging")) { transitive(false) }
+    implementation(project(":reroute-messaging")) {transitive(false) }
+    implementation(project(":nbworker-messaging")) { transitive(false) }
+    implementation(project(":swmanager-messaging")) { transitive(false) }
+    implementation(project(":ping-messaging"))  { transitive(false) }
+    implementation(project(":floodlight-api")) { transitive(false) }
+    implementation(project(":kilda-persistence-api")) { transitive(false) }
+    implementation(project(":blue-green")) { transitive(true) }
 
-    implementation('org.springframework.boot:spring-boot-starter-web')
-    implementation('org.springframework.boot:spring-boot-starter')
-    implementation 'org.springframework.boot:spring-boot-starter-log4j2'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.security:spring-security-config'
-    implementation 'org.springframework.security:spring-security-web'
-    implementation 'org.springframework.boot:spring-boot-starter-tomcat'
-    implementation ('org.springframework.kafka:spring-kafka') {
-        version {
-            strictly '2.3.13.RELEASE'
-        }
-        // This conflicts with kafka_2.11
-        exclude module:'kafka_2.12'
-        exclude group: 'org.apache.kafka', module: 'kafka-clients'
-    }
-    implementation 'org.springframework:spring-webmvc'
-    implementation('org.apache.kafka:kafka-clients') {
-        version {
-            strictly '2.3.1'
-        }
-    }
-    implementation('org.apache.kafka:kafka_2.11') {
-        version {
-            strictly '2.3.1'
-        }
-        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-        exclude group: 'log4j', module: 'log4j'
-    }
-    implementation 'org.apache.logging.log4j:log4j-api'
-    implementation 'org.apache.logging.log4j:log4j-core'
-    implementation 'org.apache.commons:commons-lang3'
-    implementation 'io.springfox:springfox-swagger2'
-    implementation 'io.springfox:springfox-swagger-ui'
+    implementation("org.springframework:spring-context:6.1.4")
+    implementation("org.springframework.boot:spring-boot-starter-log4j2")
+    implementation("org.springframework.security:spring-security-config")
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.springframework.security:spring-security-web")
+    implementation("org.springframework.kafka:spring-kafka:3.1.1")
+    implementation("org.springframework:spring-webmvc")
 
-    implementation('com.fasterxml.jackson.core:jackson-databind')
-    implementation('com.fasterxml.jackson.datatype:jackson-datatype-jsr310')
+    implementation("org.apache.kafka:kafka-clients:3.6.1")
+    implementation("org.apache.kafka:kafka_2.12:3.6.1")
 
-    implementation 'com.google.guava:guava'
-    implementation 'org.apache.commons:commons-collections4'
-    implementation 'com.sabre.oss.conf4j:conf4j-spring-boot'
+    implementation("org.apache.commons:commons-lang3")
+    implementation("org.apache.commons:commons-collections4")
 
-    implementation 'javax.validation:validation-api'
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0")
+    implementation("io.swagger.core.v3:swagger-core-jakarta:2.2.20")
 
-    implementation 'org.mapstruct:mapstruct'
-    implementation 'org.mapstruct:mapstruct-processor'
-    annotationProcessor 'org.mapstruct:mapstruct-processor'
+    implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    implementation("jakarta.validation:jakarta.validation-api")
 
-    testImplementation('org.springframework.boot:spring-boot-starter-test') {
-        exclude module: 'commons-logging'
-    }
-    testImplementation 'org.springframework.security:spring-security-test'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
-    testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
+    runtimeOnly(project(":kilda-persistence-orientdb"))
+    runtimeOnly(project(":kilda-persistence-hibernate"))
+
+    implementation("org.mapstruct:mapstruct")
+    implementation("org.mapstruct:mapstruct-processor")
+    annotationProcessor("org.mapstruct:mapstruct-processor")
+
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding")
+
+    testImplementation(project(":kilda-utils:stubs"))
+    testImplementation(project(path: ":kilda-persistence-tinkerpop", configuration: "testArtifacts"))
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.security:spring-security-test:6.2.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
 }
 
 bootJar {
-    mainClassName = 'org.openkilda.northbound.Application'
+    setDuplicatesStrategy(DuplicatesStrategy.EXCLUDE)
+    mainClass = "org.openkilda.northbound.Application"
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
+}
+
+springBoot {
+    buildInfo()
 }
 
 bootJar.dependsOn generateVersionTxt
@@ -96,3 +92,4 @@ bootJar.dependsOn generateVersionTxt
 test {
     useJUnitPlatform()
 }
+

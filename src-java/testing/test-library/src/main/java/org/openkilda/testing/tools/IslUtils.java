@@ -34,8 +34,9 @@ import org.openkilda.testing.service.lockkeeper.LockKeeperService;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.service.northbound.NorthboundService;
 
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.RetryPolicyBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Scope;
@@ -68,11 +69,12 @@ public class IslUtils {
      * @param expectedStatus which status to wait for specified ISLs
      */
     public void waitForIslStatus(List<Isl> isls, IslChangeType expectedStatus,
-                                 RetryPolicy<List<IslInfoData>> retryPolicy) {
+                                 RetryPolicyBuilder<List<IslInfoData>> retryPolicy) {
         List<IslInfoData> actualIsl = Failsafe.with(retryPolicy
                 .handleResultIf(states -> states != null && states.stream()
                         .map(IslInfoData::getState)
-                        .anyMatch(state -> !expectedStatus.equals(state))))
+                        .anyMatch(state -> !expectedStatus.equals(state)))
+                        .build())
                 .get(() -> {
                     List<IslInfoData> allLinks = northbound.getAllLinks();
                     return isls.stream().map(isl -> getIslInfo(allLinks, isl).get()).collect(Collectors.toList());
@@ -214,8 +216,8 @@ public class IslUtils {
                 0, plugIntoSource ? aswFlowForward.getReversed() : aswFlowForward);
     }
 
-    private <T> RetryPolicy<T> retryPolicy() {
-        return new RetryPolicy<T>()
+    private <T> RetryPolicyBuilder<T> retryPolicy() {
+        return RetryPolicy.<T>builder()
                 .withDelay(Duration.ofSeconds(3))
                 .withMaxRetries(20);
     }

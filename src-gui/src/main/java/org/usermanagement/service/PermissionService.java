@@ -18,9 +18,7 @@ package org.usermanagement.service;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -44,13 +42,11 @@ import java.util.stream.Collectors;
 /**
  * The Class PermissionService.
  */
-
+@Slf4j
 @Service
 @Transactional(propagation = Propagation.REQUIRED, readOnly = true)
 public class PermissionService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(PermissionService.class);
-
+    
     @Autowired
     private PermissionRepository permissionRepository;
 
@@ -80,7 +76,7 @@ public class PermissionService {
         permissionRepository.save(permissionEntity);
 
         activityLogger.log(ActivityType.CREATE_PERMISSION, permission.getName());
-        LOGGER.info("Permission with name '" + permission.getName() + "' created successfully.");
+        log.info("Permission with name '" + permission.getName() + "' created successfully.");
         return PermissionConversionUtil.toPermission(permissionEntity, null);
     }
 
@@ -112,7 +108,7 @@ public class PermissionService {
         PermissionEntity permissionEntity = permissionRepository.findByPermissionId(permissionId);
 
         if (ValidatorUtil.isNull(permissionEntity)) {
-            LOGGER.warn("Permission with permissionId '" + permissionId + "' not found. Error: "
+            log.warn("Permission with permissionId '" + permissionId + "' not found. Error: "
                     + messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
             throw new RequestValidationException(messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
         }
@@ -138,13 +134,13 @@ public class PermissionService {
             for (RoleEntity roleEntity : roleEntityList) {
                 roles += !"".equals(roles) ? "," + roleEntity.getName() : roleEntity.getName();
             }
-            LOGGER.warn("Permission with permissionId '" + permissionId + "' not allowed to delete. Error: "
+            log.warn("Permission with permissionId '" + permissionId + "' not allowed to delete. Error: "
                     + messageUtil.getAttributeDeletionNotAllowed(permissionEntity.getName(), roles));
             throw new RequestValidationException(
                     messageUtil.getAttributeDeletionNotAllowed(permissionEntity.getName(), roles));
         }
         permissionRepository.delete(permissionEntity);
-        LOGGER.info("Permission(permissionId: " + permissionId + ") deleted successfully.");
+        log.info("Permission(permissionId: " + permissionId + ") deleted successfully.");
         activityLogger.log(ActivityType.DELETE_PERMISSION, permissionEntity.getName());
     }
 
@@ -162,7 +158,7 @@ public class PermissionService {
 
         PermissionEntity permissionEntity = permissionRepository.findByPermissionId(permissionId);
         if (ValidatorUtil.isNull(permissionEntity)) {
-            LOGGER.warn("Permission with permissionId '" + permissionId + "' not found. Error: "
+            log.warn("Permission with permissionId '" + permissionId + "' not found. Error: "
                     + messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
             throw new RequestValidationException(messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
         }
@@ -170,7 +166,7 @@ public class PermissionService {
         permissionEntity = PermissionConversionUtil.toUpatePermissionEntity(permission, permissionEntity);
         permissionRepository.save(permissionEntity);
         activityLogger.log(ActivityType.UPDATE_PERMISSION, permissionEntity.getName());
-        LOGGER.info("Permission(permissionId: " + permissionId + ") updated successfully.");
+        log.info("Permission(permissionId: " + permissionId + ") updated successfully.");
         return PermissionConversionUtil.toPermission(permissionEntity, null);
 
     }

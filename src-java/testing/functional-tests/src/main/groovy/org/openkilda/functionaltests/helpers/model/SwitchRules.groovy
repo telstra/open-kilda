@@ -85,7 +85,7 @@ class SwitchRules {
     }
 
     static Set<Long> missingRuleCookieIds(Collection<PathDiscrepancyDto> missingRules) {
-        return missingRules.collect {new Long((it.getRule() =~ COOKIE_ID_IN_RULE_DISCREPANCY_STRING_REGEX)[0])}
+        return missingRules.collect {Long.valueOf((it.getRule() =~ COOKIE_ID_IN_RULE_DISCREPANCY_STRING_REGEX)[0])}
     }
 
     FlowRuleEntity pingRule(String encapsulationType) {

@@ -17,9 +17,10 @@ package org.openkilda.server42.control.messaging.flowrtt;
 
 import org.openkilda.server42.messaging.FlowDirection;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
@@ -27,11 +28,14 @@ import lombok.Value;
 
 @Value
 @Builder
-@AllArgsConstructor
-@JsonNaming(value = SnakeCaseStrategy.class)
 @EqualsAndHashCode(callSuper = true)
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
+@JsonDeserialize(builder = RemoveFlow.RemoveFlowBuilder.class)
 public class RemoveFlow extends Message {
+    @JsonProperty("headers")
     Headers headers;
+    @JsonProperty("flow_id")
     String flowId;
+    @JsonProperty("direction")
     FlowDirection direction;
 }

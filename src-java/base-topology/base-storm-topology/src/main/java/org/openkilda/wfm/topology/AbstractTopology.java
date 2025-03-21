@@ -38,7 +38,6 @@ import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.kafka.AbstractMessageDeserializer;
-import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.kafka.MessageDeserializer;
 import org.openkilda.wfm.kafka.MessageSerializer;
 import org.openkilda.wfm.kafka.ObjectSerializer;
@@ -46,6 +45,7 @@ import org.openkilda.wfm.topology.utils.AbstractMessageTranslator;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -63,9 +63,9 @@ import org.apache.storm.flux.parser.FluxParser;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
+import org.apache.storm.kafka.spout.FirstPollOffsetStrategy;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
-import org.apache.storm.spout.SleepSpoutWaitStrategy;
 import org.apache.storm.thrift.TException;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.IRichBolt;
@@ -161,7 +161,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return Optional.empty();
     }
 
-    protected void setup() throws TException, NameCollisionException {
+    protected void setup() throws Exception {
         if (topologyConfig.getUseLocalCluster()) {
             setupLocal();
         } else {
@@ -177,17 +177,16 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         StormSubmitter.submitTopology(topologyName, config, createTopology());
     }
 
-    private void setupLocal() throws NameCollisionException {
+    private void setupLocal() throws Exception {
         Config config = makeStormConfig();
         config.setDebug(true);
 
-        LocalCluster cluster = new LocalCluster();
-        cluster.submitTopology(topologyName, config, createTopology());
+        try (LocalCluster cluster = new LocalCluster()) {
+            cluster.submitTopology(topologyName, config, createTopology());
 
-        logger.info("Start Topology: {} (local)", topologyName);
-        localExecutionMainLoop();
-
-        cluster.shutdown();
+            logger.info("Start Topology: {} (local)", topologyName);
+            localExecutionMainLoop();
+        }
     }
 
     protected static int handleLaunchException(Exception error) {
@@ -236,14 +235,8 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         Config stormConfig = new Config();
 
         getTopologyWorkers().ifPresent(stormConfig::setNumWorkers);
-        if (topologyConfig.getDisruptorWaitTimeout() != null) {
-            stormConfig.put(Config.TOPOLOGY_DISRUPTOR_WAIT_TIMEOUT_MILLIS, topologyConfig.getDisruptorWaitTimeout());
-        }
-        if (topologyConfig.getDisruptorBatchTimeout() != null) {
-            stormConfig.put(Config.TOPOLOGY_DISRUPTOR_BATCH_TIMEOUT_MILLIS, topologyConfig.getDisruptorBatchTimeout());
-        }
+
         if (topologyConfig.getSpoutWaitSleepTime() != null) {
-            stormConfig.put(Config.TOPOLOGY_SPOUT_WAIT_STRATEGY, SleepSpoutWaitStrategy.class.getName());
             stormConfig.put(Config.TOPOLOGY_SLEEP_SPOUT_WAIT_STRATEGY_TIME_MS, topologyConfig.getSpoutWaitSleepTime());
         }
         if (topologyConfig.getUseLocalCluster()) {
@@ -288,7 +281,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     protected <V> SpoutDeclarer declareKafkaSpout(
             TopologyBuilder builder, KafkaSpoutConfig<String, V> config, String spoutId) {
         logger.info("Setup kafka spout: id={}, group={}, subscriptions={}",
-                spoutId, config.getConsumerGroupId(), config.getSubscription().getTopicsString());
+                spoutId, config.getConsumerGroupId(), config.getTopicFilter().getTopicsString());
         return declareSpout(builder, new KafkaSpout<>(config), spoutId);
     }
 
@@ -406,11 +399,11 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     protected <V> KafkaSpoutConfig.Builder<String, V> makeKafkaSpoutConfig(
             List<String> topics, String spoutId, Class<? extends Deserializer<V>> valueDecoder) {
         KafkaSpoutConfig.Builder<String, V> config = new KafkaSpoutConfig.Builder<>(
-                kafkaConfig.getHosts(), new CustomNamedSubscription(topics));
-
+                kafkaConfig.getHosts(), Sets.newHashSet(topics));
+        // we already used no guarantee by default, since ENABLE_AUTO_COMMIT_CONFIG is not supported
+        config.setProcessingGuarantee(KafkaSpoutConfig.ProcessingGuarantee.NO_GUARANTEE);
         config.setProp(ConsumerConfig.GROUP_ID_CONFIG, makeKafkaGroupName(spoutId))
-                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST)
-                .setProp(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
+                .setFirstPollOffsetStrategy(FirstPollOffsetStrategy.LATEST)
                 .setProp(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
                 .setProp(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDecoder)
                 .setProp(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName())

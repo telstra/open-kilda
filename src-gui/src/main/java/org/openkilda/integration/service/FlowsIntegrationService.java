@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -36,10 +36,9 @@ import org.openkilda.utility.IoUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.constraints.NotNull;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -47,37 +46,34 @@ import org.springframework.web.util.UriUtils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.List;
-import javax.validation.constraints.NotNull;
+
 
 /**
  * The Class FlowsIntegrationService.
  *
  * @author Gaurav Chugh
  */
-
+@Slf4j
 @Service
 public class FlowsIntegrationService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(FlowsIntegrationService.class);
+    private final SwitchIntegrationService switchIntegrationService;
+    private final RestClientManager restClientManager;
+    private final ApplicationProperties applicationProperties;
+    private final ApplicationService applicationService;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private RestClientManager restClientManager;
-
-    @Autowired
-    private FlowPathConverter flowPathConverter;
-
-    @Autowired
-    private FlowConverter flowConverter;
-
-    @Autowired
-    private ApplicationProperties applicationProperties;
-
-    @Autowired
-    private ApplicationService applicationService;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    public FlowsIntegrationService(SwitchIntegrationService switchIntegrationService,
+                                   RestClientManager restClientManager, ApplicationProperties applicationProperties,
+                                   ApplicationService applicationService, ObjectMapper objectMapper) {
+        this.switchIntegrationService = switchIntegrationService;
+        this.restClientManager = restClientManager;
+        this.applicationProperties = applicationProperties;
+        this.applicationService = applicationService;
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * Gets the flows.
@@ -88,9 +84,9 @@ public class FlowsIntegrationService {
 
         List<FlowV2> flowList = getAllFlowList();
         if (flowList != null) {
-            return flowConverter.toFlowV2sInfo(flowList);
+            return FlowConverter.toFlowV2sInfo(flowList, switchIntegrationService.getSwitchNames());
         }
-        return null;
+        return new ArrayList<>();
     }
 
     /**
@@ -111,10 +107,10 @@ public class FlowsIntegrationService {
             }
             return null;
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while retriving flow status with id: " + flowId, e);
+            log.error("Error occurred while retriving flow status with id: " + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while retriving flow status with id:" + flowId, e);
+        } catch (Exception e) {
+            log.warn("Error occurred while retriving flow status with id:" + flowId, e);
             throw new IntegrationException(e);
         }
     }
@@ -133,20 +129,20 @@ public class FlowsIntegrationService {
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 FlowPayload flowPayload = restClientManager.getResponse(response, FlowPayload.class);
-                return flowPathConverter.getFlowPath(flowId, flowPayload);
+                return FlowPathConverter.getFlowPath(flowPayload, switchIntegrationService.getSwitchNames());
             } else {
                 String content = IoUtil.toString(response.getEntity().getContent());
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             }
 
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while getting flow path by id:" + flowId, e);
+            log.error("Error occurred while getting flow path by id:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while getting flow path by id:" + flowId, e);
+            log.warn("Error occurred while getting flow path by id:" + flowId, e);
             throw new IntegrationException(e);
         } catch (IOException e) {
-            LOGGER.warn("Error occurred while getting flow path by id:" + flowId, e);
+            log.warn("Error occurred while getting flow path by id:" + flowId, e);
             throw new IntegrationException(e);
         }
     }
@@ -165,7 +161,7 @@ public class FlowsIntegrationService {
                 return restClientManager.getResponseList(response, FlowV2.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while getting all flow list", e);
+            log.error("Error occurred while getting all flow list", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
         return null;
@@ -191,13 +187,13 @@ public class FlowsIntegrationService {
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while rerouting flow by id:" + flowId, e);
+            log.error("Error occurred while rerouting flow by id:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while rerouting flow by id:" + flowId, e);
+            log.warn("Error occurred while rerouting flow by id:" + flowId, e);
             throw new IntegrationException(e);
         } catch (IOException e) {
-            LOGGER.warn("Error occurred while rerouting flow by id:" + flowId, e);
+            log.warn("Error occurred while rerouting flow by id:" + flowId, e);
             throw new IntegrationException(e);
         }
     }
@@ -221,10 +217,10 @@ public class FlowsIntegrationService {
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while rerouting flow by id:" + yFlowId, e);
+            log.error("Error occurred while rerouting flow by id:" + yFlowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (IOException e) {
-            LOGGER.warn("Error occurred while rerouting flow by id:" + yFlowId, e);
+            log.warn("Error occurred while rerouting flow by id:" + yFlowId, e);
             throw new IntegrationException(e);
         }
     }
@@ -243,10 +239,10 @@ public class FlowsIntegrationService {
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
         } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while validating flow by id:" + flowId, e);
+            log.warn("Error occurred while validating flow by id:" + flowId, e);
             throw new IntegrationException(e);
         } catch (IOException e) {
-            LOGGER.warn("Error occurred while validating flow by id:" + flowId, e);
+            log.warn("Error occurred while validating flow by id:" + flowId, e);
             throw new IntegrationException(e);
         }
     }
@@ -264,14 +260,13 @@ public class FlowsIntegrationService {
                             + UriUtils.encodePath(flowId, "UTF-8"),
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
-                FlowV2 flow = restClientManager.getResponse(response, FlowV2.class);
-                return flow;
+                return restClientManager.getResponse(response, FlowV2.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while getting flow by id:" + flowId, e);
+            log.error("Error occurred while getting flow by id:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while getting flow by id:" + flowId, e);
+        } catch (Exception e) {
+            log.warn("Error occurred while getting flow by id:" + flowId, e);
             throw new IntegrationException(e);
         }
         return null;
@@ -292,10 +287,10 @@ public class FlowsIntegrationService {
                 return restClientManager.getResponse(response, FlowV2.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while creating flow", e);
+            log.error("Error occurred while creating flow", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
-            LOGGER.error("Error occurred while creating flow", e);
+            log.error("Error occurred while creating flow", e);
             throw new IntegrationException(e);
         }
         return null;
@@ -319,10 +314,10 @@ public class FlowsIntegrationService {
                 return restClientManager.getResponse(response, FlowV2.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while updating flow:" + flowId, e);
+            log.error("Error occurred while updating flow:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (JsonProcessingException | UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while updating flow:" + flowId, e);
+        } catch (Exception e) {
+            log.warn("Error occurred while updating flow:" + flowId, e);
             throw new IntegrationException(e.getMessage(), e);
         }
         return null;
@@ -345,10 +340,10 @@ public class FlowsIntegrationService {
             }
             return null;
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while deleting flow:" + flowId, e);
+            log.error("Error occurred while deleting flow:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while deleting flow:" + flowId, e);
+        } catch (Exception e) {
+            log.warn("Error occurred while deleting flow:" + flowId, e);
             throw new IntegrationException(e);
         }
     }
@@ -367,13 +362,13 @@ public class FlowsIntegrationService {
                     HttpMethod.PATCH, "", "application/json", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while resync flow by id:" + flowId, e);
+            log.error("Error occurred while resync flow by id:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while resync flow by id:" + flowId, e);
+            log.warn("Error occurred while resync flow by id:" + flowId, e);
             throw new IntegrationException(e);
         } catch (IOException e) {
-            LOGGER.warn("Error occurred while resync flow by id:" + flowId, e);
+            log.warn("Error occurred while resync flow by id:" + flowId, e);
             throw new IntegrationException(e);
         }
     }
@@ -394,13 +389,13 @@ public class FlowsIntegrationService {
                     applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while ping flow by id:" + flowId, e);
+            log.error("Error occurred while ping flow by id:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while ping flow by id:" + flowId, e);
+            log.warn("Error occurred while ping flow by id:" + flowId, e);
             throw new IntegrationException(e);
         } catch (IOException e) {
-            LOGGER.warn("Error occurred while ping flow by id:" + flowId, e);
+            log.warn("Error occurred while ping flow by id:" + flowId, e);
             throw new IntegrationException(e);
         }
     }
@@ -427,10 +422,10 @@ public class FlowsIntegrationService {
             }
             return null;
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while retriving flow history with id: " + flowId, e);
+            log.error("Error occurred while retriving flow history with id: " + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.error("Error occurred while retriving flow history with id: " + flowId, e);
+        } catch (Exception e) {
+            log.error("Error occurred while retriving flow history with id: " + flowId, e);
             e.printStackTrace();
         }
         return null;
@@ -458,7 +453,7 @@ public class FlowsIntegrationService {
             }
             return null;
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while getting flow connected device: " + flowId, e);
+            log.error("Error occurred while getting flow connected device: " + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
     }

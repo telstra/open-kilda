@@ -36,6 +36,7 @@ import org.openkilda.messaging.command.yflow.YFlowsDumpRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.flow.YFlowPingResponse;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.converter.YFlowMapper;
 import org.openkilda.northbound.dto.v2.yflows.SubFlowsDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlow;
@@ -54,8 +55,6 @@ import org.openkilda.northbound.service.YFlowService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CompletableFuture;
@@ -67,20 +66,21 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class YFlowServiceImpl implements YFlowService {
-    @Value("#{kafkaTopicsConfig.getFlowHsTopic()}")
-    private String flowHsTopic;
 
-    @Value("#{kafkaTopicsConfig.getTopoRerouteTopic()}")
-    private String rerouteTopic;
+    private final String flowHsTopic;
+    private final String rerouteTopic;
+    private final String pingTopic;
+    private final MessagingChannel messagingChannel;
+    private final YFlowMapper flowMapper;
 
-    @Value("#{kafkaTopicsConfig.getPingTopic()}")
-    private String pingTopic;
-
-    @Autowired
-    private MessagingChannel messagingChannel;
-
-    @Autowired
-    private YFlowMapper flowMapper;
+    public YFlowServiceImpl(KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig,
+                            MessagingChannel messagingChannel, YFlowMapper flowMapper) {
+        this.messagingChannel = messagingChannel;
+        this.flowMapper = flowMapper;
+        this.flowHsTopic = kafkaTopicsNorthboundConfig.getFlowHsTopic();
+        this.rerouteTopic = kafkaTopicsNorthboundConfig.getTopoRerouteTopic();
+        this.pingTopic = kafkaTopicsNorthboundConfig.getPingTopic();
+    }
 
     @Override
     public CompletableFuture<YFlow> createYFlow(YFlowCreatePayload createPayload) {

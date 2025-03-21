@@ -1,25 +1,25 @@
 plugins {
-    id 'java-library'
+    id "java-library"
 }
 
-description = 'Northbound Service API'
+description = "Northbound Service API"
 dependencies {
 
-    implementation project(':base-messaging')
-    implementation project(':kilda-model')
+    implementation(project(":base-messaging"))
+    implementation(project(":kilda-model"))
 
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
 
-    implementation 'javax.validation:validation-api'
+    implementation("jakarta.validation:jakarta.validation-api")
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
 
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding")
 }
 
 test {

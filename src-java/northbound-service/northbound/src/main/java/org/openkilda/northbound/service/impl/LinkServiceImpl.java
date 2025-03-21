@@ -45,6 +45,7 @@ import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.converter.LinkPropsMapper;
@@ -65,7 +66,6 @@ import org.openkilda.northbound.service.impl.link.BfdPropertiesMonitor;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
-import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -78,6 +78,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
@@ -86,41 +87,39 @@ import java.util.stream.Collectors;
 @Service
 public class LinkServiceImpl extends BaseService implements LinkService {
 
-    @Autowired
-    private Clock clock;
+    private final Clock clock;
 
-    @Autowired
-    private TaskScheduler taskScheduler;
+    private final TaskScheduler taskScheduler;
 
-    @Autowired
-    private CorrelationIdFactory idFactory;
+    private final CorrelationIdFactory idFactory;
 
-    @Autowired
-    private LinkMapper linkMapper;
+    private final LinkMapper linkMapper;
 
-    @Autowired
-    private FlowMapper flowMapper;
+    private final FlowMapper flowMapper;
 
-    @Autowired
-    private LinkPropsMapper linkPropsMapper;
+    private final LinkPropsMapper linkPropsMapper;
 
-    /**
-     * The kafka topic for the nb topology.
-     */
-    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
-    private String nbworkerTopic;
+    private final String nbworkerTopic;
 
-    @Autowired
-    private MessagingChannel messagingChannel;
+    private final MessagingChannel messagingChannel;
 
     private BfdProperties bfdPropertiesDefault;
 
     private Duration bfdPropertiesApplyPeriod;
 
-    @Autowired
-    public LinkServiceImpl(MessagingChannel messagingChannel) {
+    public LinkServiceImpl(MessagingChannel messagingChannel, Clock clock, TaskScheduler taskScheduler,
+                           CorrelationIdFactory idFactory, LinkMapper linkMapper,
+                           FlowMapper flowMapper, LinkPropsMapper linkPropsMapper,
+                           KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig) {
         super(messagingChannel);
         this.messagingChannel = messagingChannel;
+        this.clock = clock;
+        this.taskScheduler = taskScheduler;
+        this.idFactory = idFactory;
+        this.linkMapper = linkMapper;
+        this.flowMapper = flowMapper;
+        this.linkPropsMapper = linkPropsMapper;
+        this.nbworkerTopic = kafkaTopicsNorthboundConfig.getTopoNbTopic();
     }
 
     @Override
@@ -215,8 +214,7 @@ public class LinkServiceImpl extends BaseService implements LinkService {
         org.openkilda.messaging.model.LinkPropsDto linkProps = org.openkilda.messaging.model.LinkPropsDto.builder()
                 .source(new NetworkEndpoint(srcSwitch, srcPort))
                 .dest(new NetworkEndpoint(dstSwitch, dstPort))
-                .props(ImmutableMap.of(LinkProps.MAX_BANDWIDTH_PROP_NAME,
-                        input.getMaxBandwidth().toString()))
+                .props(Map.of(LinkProps.MAX_BANDWIDTH_PROP_NAME, input.getMaxBandwidth().toString()))
                 .build();
         LinkPropsPut request = new LinkPropsPut(linkProps);
         String correlationId = RequestCorrelationId.getId();

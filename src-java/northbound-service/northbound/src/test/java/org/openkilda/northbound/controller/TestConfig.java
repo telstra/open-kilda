@@ -15,7 +15,9 @@
 
 package org.openkilda.northbound.controller;
 
-import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.config.KafkaNorthboundGroupConfig;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
+import org.openkilda.northbound.config.MessageProducerConfig;
 import org.openkilda.northbound.config.SecurityConfig;
 import org.openkilda.northbound.config.WebConfig;
 import org.openkilda.northbound.controller.mock.TestMessageMock;
@@ -23,6 +25,7 @@ import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.TestCorrelationIdFactory;
 
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -32,19 +35,21 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 
+import java.util.Properties;
+
 /**
  * The Test configuration.
  */
 @Configuration
 @EnableWebSecurity
-@Import({WebConfig.class, SecurityConfig.class, KafkaConfig.class})
+@Import({WebConfig.class, SecurityConfig.class, KafkaNorthboundGroupConfig.class, KafkaTopicsNorthboundConfig.class})
 @ComponentScan(
         basePackages = {
                 "org.openkilda.northbound.controller.v1",
                 "org.openkilda.northbound.controller.v2",
                 "org.openkilda.northbound.converter",
                 "org.openkilda.northbound.service",
-                "org.openkilda.northbound.utils"
+                "org.openkilda.northbound.utils",
         },
         excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.ANNOTATION, value = TestConfiguration.class)
@@ -65,4 +70,13 @@ public class TestConfig {
         return new TestCorrelationIdFactory();
     }
 
+    @Bean
+    public BuildProperties buildProperties() {
+        return new BuildProperties(new Properties());
+    }
+
+    @Bean
+    public MessageProducerConfig messageProducerConfig() {
+        return new MessageProducerConfig();
+    }
 }

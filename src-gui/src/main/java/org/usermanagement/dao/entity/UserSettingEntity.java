@@ -17,16 +17,15 @@ package org.usermanagement.dao.entity;
 
 import org.openkilda.entity.BaseEntity;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
+import jakarta.persistence.Table;
 import org.hibernate.annotations.GenericGenerator;
 
 import java.io.Serializable;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Lob;
-import javax.persistence.Table;
 
 /**
  * The Class UserSettingEntity.
@@ -54,7 +53,7 @@ public class UserSettingEntity extends BaseEntity implements Serializable {
     @Column(name = "DATA", nullable = true, columnDefinition = "blob")
     @Lob
     private String data;
-    
+
     /* (non-Javadoc)
      * @see org.openkilda.entity.BaseEntity#id()
      */
@@ -97,7 +96,7 @@ public class UserSettingEntity extends BaseEntity implements Serializable {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see java.lang.Object#toString()
      */
     @Override

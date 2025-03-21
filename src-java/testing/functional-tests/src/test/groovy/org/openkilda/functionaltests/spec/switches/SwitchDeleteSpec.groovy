@@ -28,8 +28,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
 
-import javax.inject.Provider
 import java.util.concurrent.TimeUnit
+import jakarta.inject.Provider
 
 
 class SwitchDeleteSpec extends HealthCheckSpecification {

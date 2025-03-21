@@ -178,7 +178,7 @@ services:
       context: docker/db-mysql-migration
       dockerfile: Dockerfile
       args:
-        base_image: "liquibase/liquibase:${LIQUIBASE_TAG:-4.4}"
+        base_image: "liquibase/liquibase:${LIQUIBASE_TAG:-4.27}"
     command: /kilda/migrate-develop.sh
     volumes:
       - ./docker/db-mysql-migration/migrations:/liquibase/changelog
@@ -245,7 +245,7 @@ services:
         aliases:
          - kafka.pendev
     environment:
-      KAFKA_HEAP_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XshowSettings:all"
+      KAFKA_HEAP_OPTS: "-XshowSettings:all"
     mem_limit: ${KAFKA_MEM_LIMIT:-2g}
 
 
@@ -275,6 +275,9 @@ services:
     container_name: storm-nimbus
     hostname: nimbus.pendev
     image: kilda/storm:latest
+    ports:
+      - "9446:9446"
+      - "9447:9447"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
     depends_on:
       zookeeper:
@@ -284,7 +287,7 @@ services:
         condition: service_started
 {{end}}
     healthcheck:
-      test: ["CMD-SHELL", "jps | grep --silent nimbus"]
+      test: ["CMD-SHELL", "jps | grep --silent Nimbus"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -322,6 +325,8 @@ services:
   storm-supervisor:
     container_name: storm-supervisor
     hostname: storm-supervisor.pendev
+    ports:
+      - "9448:9448"
     image: kilda/storm:latest
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
     depends_on:
@@ -442,6 +447,7 @@ services:
       dockerfile: northbound/Dockerfile
     ports:
       - "8080:8080"
+      - "9445:9445"
     environment:
       REST_USERNAME: 'kilda'
       REST_PASSWORD: 'kilda'
@@ -580,7 +586,7 @@ services:
         aliases:
          - elasticsearch.pendev
     environment:
-      ES_JAVA_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+      ES_JAVA_OPTS: ""
     mem_limit: ${ELASTIC_MEM_LIMIT:-3g}
 {{end}}
 {{if not (exists "/no_kibana")}}
@@ -615,7 +621,7 @@ services:
         aliases:
          - logstash.pendev
     environment:
-      LS_JAVA_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XshowSettings:all"
+      LS_JAVA_OPTS: "-XshowSettings:all"
       LS_OPTS: "--debug-config"
       # remove default 500m heap size in /usr/share/logstash/vendor/jruby/bin/jruby
       JAVA_MEM: " "
@@ -633,7 +639,7 @@ services:
       context: docker
       dockerfile: server42/Dockerfile
     image: kilda/server42
-    command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-control.jar
+    command: java -XX:+UseContainerSupport -jar server42-control.jar
     ports:
       - "9002:9002"
     depends_on:
@@ -655,7 +661,7 @@ services:
       context: docker
       dockerfile: server42/Dockerfile
     image: kilda/server42
-    command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-stats.jar
+    command: java -jar server42-stats.jar
     ports:
       - "9003:9003"
     depends_on:
@@ -677,7 +683,7 @@ services:
       context: docker
       dockerfile: server42/Dockerfile
     image: kilda/server42
-    command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-control-server-stub.jar
+    command: java -jar server42-control-server-stub.jar
     ports:
       - "5555:5555"
       - "5556:5556"
@@ -730,7 +736,7 @@ services:
       context: docker
       dockerfile: server42/Dockerfile
     image: kilda/server42
-    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-control-storm-stub.jar
+    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- java -jar server42-control-storm-stub.jar
     ports:
       - "9001:9001"
     depends_on:

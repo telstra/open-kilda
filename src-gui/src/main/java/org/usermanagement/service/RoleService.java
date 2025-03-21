@@ -19,9 +19,7 @@ import org.openkilda.constants.Status;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -49,12 +47,10 @@ import java.util.Set;
 /**
  * The Class RoleService.
  */
-
+@Slf4j
 @Service
 @Transactional(propagation = Propagation.REQUIRED, readOnly = true)
 public class RoleService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(RoleService.class);
 
     @Autowired
     private RoleRepository roleRepository;
@@ -92,7 +88,7 @@ public class RoleService {
             if (!ValidatorUtil.isNull(permissionEntity)) {
                 permissionEntities.add(permissionEntity);
             } else {
-                LOGGER.warn("Permission with id '" + permissionId + "' not found.");
+                log.warn("Permission with id '" + permissionId + "' not found.");
                 throw new RequestValidationException(messageUtil.getAttributeNotFound("permission"));
             }
         }
@@ -100,7 +96,7 @@ public class RoleService {
         RoleEntity roleEntity = RoleConversionUtil.toRoleEntity(role, permissionEntities);
         roleRepository.save(roleEntity);
         activityLogger.log(ActivityType.CREATE_ROLE, role.getName());
-        LOGGER.info("Role with name '" + roleEntity.getName() + "' created successfully.");
+        log.info("Role with name '" + roleEntity.getName() + "' created successfully.");
         return RoleConversionUtil.toRole(roleEntity, true, false);
     }
 
@@ -133,7 +129,7 @@ public class RoleService {
             if (!ValidatorUtil.isNull(roleEntity)) {
                 roleEntities.add(roleEntity);
             } else {
-                LOGGER.warn("Role with role id '" + roleId + "' not found. Error: "
+                log.warn("Role with role id '" + roleId + "' not found. Error: "
                         + messageUtil.getAttributeNotFound("roles"));
                 throw new RequestValidationException(messageUtil.getAttributeNotFound("roles"));
             }
@@ -151,7 +147,7 @@ public class RoleService {
     public Role getRoleById(final Long roleId) {
         RoleEntity roleEntity = roleRepository.findByRoleId(roleId);
         if (ValidatorUtil.isNull(roleEntity)) {
-            LOGGER.warn("Role with role id '" + roleId + "' not found. Error: "
+            log.warn("Role with role id '" + roleId + "' not found. Error: "
                     + messageUtil.getAttributeInvalid("role_id", roleId + ""));
             throw new RequestValidationException(messageUtil.getAttributeInvalid("role_id", roleId + ""));
         }
@@ -169,7 +165,7 @@ public class RoleService {
 
         RoleEntity roleEntity = roleRepository.findByRoleId(roleId);
         if (ValidatorUtil.isNull(roleEntity)) {
-            LOGGER.warn("Role with role id '" + roleId + "' not found. Error: "
+            log.warn("Role with role id '" + roleId + "' not found. Error: "
                     + messageUtil.getAttributeInvalid("role_id", roleId + ""));
             throw new RequestValidationException(messageUtil.getAttributeInvalid("role_id", roleId + ""));
         }
@@ -180,14 +176,14 @@ public class RoleService {
             for (UserEntity userEntity : userEntityList) {
                 users += !"".equals(users) ? "," + userEntity.getName() : userEntity.getName();
             }
-            LOGGER.warn("Role with role id '" + roleId + "' not allowed to delete. Error: "
+            log.warn("Role with role id '" + roleId + "' not allowed to delete. Error: "
                     + messageUtil.getAttributeDeletionNotAllowed(roleEntity.getName(), users));
             throw new RequestValidationException(
                     messageUtil.getAttributeDeletionNotAllowed(roleEntity.getName(), users));
         }
         roleRepository.delete(roleEntity);
         activityLogger.log(ActivityType.DELETE_ROLE, roleEntity.getName());
-        LOGGER.info("Role(roleId: " + roleId + ") deleted successfully.");
+        log.info("Role(roleId: " + roleId + ") deleted successfully.");
     }
 
     /**
@@ -221,7 +217,7 @@ public class RoleService {
         RoleEntity roleEntity = roleRepository.findByRoleId(roleId);
 
         if (ValidatorUtil.isNull(roleEntity)) {
-            LOGGER.warn("Role with role id '" + roleId + "' not found. Error: "
+            log.warn("Role with role id '" + roleId + "' not found. Error: "
                     + messageUtil.getAttributeInvalid("role_id", roleId + ""));
             throw new RequestValidationException(messageUtil.getAttributeInvalid("role_id", roleId + ""));
         }
@@ -238,7 +234,7 @@ public class RoleService {
         roleEntity = RoleConversionUtil.toUpateRoleEntity(role, roleEntity);
         roleRepository.save(roleEntity);
         activityLogger.log(ActivityType.UPDATE_ROLE, roleEntity.getName());
-        LOGGER.info("Role updated successfully (roleId: " + roleId + ")");
+        log.info("Role updated successfully (roleId: " + roleId + ")");
         return RoleConversionUtil.toRole(roleEntity, true, false);
 
     }
@@ -255,7 +251,7 @@ public class RoleService {
         PermissionEntity permissionEntity = permissionRepository.findByPermissionId(permissionId);
 
         if (ValidatorUtil.isNull(permissionEntity)) {
-            LOGGER.warn("Permission with permissionId '" + permissionId + "' not found. Error: "
+            log.warn("Permission with permissionId '" + permissionId + "' not found. Error: "
                     + messageUtil.getAttributeInvalid("permissionId", permissionId + ""));
             throw new RequestValidationException(messageUtil.getAttributeInvalid("permissionId", permissionId + ""));
         }
@@ -268,7 +264,7 @@ public class RoleService {
         }
         permissionRepository.save(permissionEntity);
         activityLogger.log(ActivityType.ASSIGN_ROLES_TO_PERMISSION, permissionEntity.getName());
-        LOGGER.info("Roles assigned with permission successfully (permissionId: " + permissionId + ")");
+        log.info("Roles assigned with permission successfully (permissionId: " + permissionId + ")");
         return RoleConversionUtil.toPermissionByRole(permissionEntity.getRoles(), permissionEntity);
     }
 
@@ -283,7 +279,7 @@ public class RoleService {
         List<Role> roles = new ArrayList<Role>();
         List<RoleEntity> roleEntities = roleRepository.findByNameIn(role);
         if (ValidatorUtil.isNull(roleEntities)) {
-            LOGGER.warn("Roles with name '" + role + "' not found. Error: "
+            log.warn("Roles with name '" + role + "' not found. Error: "
                     + messageUtil.getAttributeInvalid("role", role + ""));
             throw new RequestValidationException(messageUtil.getAttributeInvalid("role", role + ""));
         }
@@ -311,7 +307,7 @@ public class RoleService {
     public Role getUserByRoleId(final Long roleId) {
         RoleEntity roleEntity = roleRepository.findByRoleId(roleId);
         if (ValidatorUtil.isNull(roleEntity)) {
-            LOGGER.warn("Role with role id '" + roleId + "' not found. Error: "
+            log.warn("Role with role id '" + roleId + "' not found. Error: "
                     + messageUtil.getAttributeInvalid("role_id", roleId + ""));
             throw new RequestValidationException(messageUtil.getAttributeInvalid("role_id", roleId + ""));
         }

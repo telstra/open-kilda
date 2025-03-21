@@ -24,13 +24,12 @@ import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.testing.service.grpc.GrpcService
 import org.openkilda.testing.service.traffexam.TraffExamService
 
+import jakarta.inject.Provider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
-
-import javax.inject.Provider
 
 @See("https://github.com/telstra/open-kilda/blob/develop/docs/design/LAG-for-ports/README.md")
 @Narrative("Verify that flow can be created on a LAG port.")

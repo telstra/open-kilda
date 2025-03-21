@@ -19,7 +19,7 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.Optional.ofNullable;
-import static org.apache.storm.shade.org.apache.commons.collections.ListUtils.union;
+import static org.apache.storm.shade.org.apache.commons.collections4.ListUtils.union;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.COMMANDS_PROCESSED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.LOGICAL_PORT_INSTALLED;
@@ -667,7 +667,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
         ValidateMetersResult validateMetersResult = validationResult.getValidateMetersResult();
         ValidateGroupsResult validateGroupsResult = validationResult.getValidateGroupsResult();
-        ValidateLogicalPortsResult validateLogicalPortsResult =  validationResult.getValidateLogicalPortsResult();
+        ValidateLogicalPortsResult validateLogicalPortsResult = validationResult.getValidateLogicalPortsResult();
 
         RulesSyncEntry rulesEntry = new RulesSyncEntry(
                 new ArrayList<>(validateRulesResult.getMissingRules()),

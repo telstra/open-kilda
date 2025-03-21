@@ -62,7 +62,7 @@ public class FermaPortEventRepository extends FermaGenericRepository<PortEvent, 
                         P.lte(InstantLongConverter.INSTANCE.toGraphProperty(timeTo)));
             }
             return traversal
-                    .order().by(PortEventFrame.TIME_PROPERTY, Order.incr);
+                    .order().by(PortEventFrame.TIME_PROPERTY, Order.asc);
         }).toListExplicit(PortEventFrame.class).stream()
                 .map(PortEvent::new)
                 .collect(Collectors.toList());

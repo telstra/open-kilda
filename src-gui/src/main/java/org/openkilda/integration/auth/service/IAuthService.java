@@ -19,20 +19,20 @@ import org.openkilda.store.auth.constants.AuthType;
 import org.openkilda.store.model.AuthConfigDto;
 import org.openkilda.store.model.UrlDto;
 
+import jakarta.annotation.PostConstruct;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.PostConstruct;
-
 public abstract class IAuthService {
 
-    private static Map<AuthType, IAuthService> serviceByAuthType = new HashMap<AuthType, IAuthService>();
+    private static final Map<AuthType, IAuthService> serviceByAuthType = new HashMap<>();
 
     public IAuthService() {
 
     }
-    
+
     @PostConstruct
     public void init() {
         serviceByAuthType.put(getAuthType(), this);
@@ -41,10 +41,10 @@ public abstract class IAuthService {
     public abstract AuthType getAuthType();
 
     public abstract <T> T getResponse(final UrlDto request, final AuthConfigDto authDto,
-            final Class<T> responseClass);
+                                      final Class<T> responseClass);
 
     public abstract <T> List<T> getResponseList(final UrlDto request, final AuthConfigDto authDto,
-            final Class<T> responseClass);
+                                                final Class<T> responseClass);
 
     public static IAuthService getService(final AuthType authType) {
         return serviceByAuthType.get(authType);

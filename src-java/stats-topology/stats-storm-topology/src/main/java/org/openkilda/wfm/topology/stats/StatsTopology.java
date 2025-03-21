@@ -60,6 +60,7 @@ import org.openkilda.wfm.topology.stats.bolts.metrics.TableStatsMetricGenBolt;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
+import org.apache.storm.kafka.spout.FirstPollOffsetStrategy;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
 import org.apache.storm.topology.TopologyBuilder;
@@ -134,10 +135,10 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         KafkaSpoutConfig<String, Message> config =
                 getKafkaSpoutConfigBuilder(topologyConfig.getServer42StatsFlowRttTopic(),
                         SERVER42_STATS_FLOW_RTT_SPOUT.name())
-                        .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
+                        .setFirstPollOffsetStrategy(FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
                         .build();
         logger.info("Setup kafka spout: id={}, group={}, subscriptions={}",
-                SERVER42_STATS_FLOW_RTT_SPOUT, config.getConsumerGroupId(), config.getSubscription().getTopicsString());
+                SERVER42_STATS_FLOW_RTT_SPOUT, config.getConsumerGroupId(), config.getTopicFilter().getTopicsString());
         declareSpout(topologyBuilder, new KafkaSpout<>(config), SERVER42_STATS_FLOW_RTT_SPOUT.name());
 
         declareBolt(topologyBuilder,

@@ -19,7 +19,7 @@ import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPER
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
-import static org.openkilda.northbound.config.KafkaNorthboundConfig.NORTHBOUND_COMPONENT_NAME;
+import static org.openkilda.northbound.config.KafkaNorthboundGroupConfig.NORTHBOUND_COMPONENT_NAME;
 
 import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
 import org.openkilda.messaging.Message;
@@ -27,6 +27,7 @@ import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageProducer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,6 +45,7 @@ import java.util.Map;
 /**
  * Kafka message producer configuration.
  */
+@Getter
 @Configuration
 @PropertySource("classpath:northbound.properties")
 public class MessageProducerConfig {

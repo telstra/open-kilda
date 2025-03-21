@@ -17,20 +17,20 @@ package org.openkilda.northbound.utils;
 
 import static org.openkilda.messaging.Utils.EXTRA_AUTH;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.web.method.HandlerMethod;
-import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
+import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.util.concurrent.TimeUnit;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 /**
  * Interceptor which enforces extra authentication for methods annotated with {@link ExtraAuthRequired}.
  */
-public class ExtraAuthInterceptor extends HandlerInterceptorAdapter {
+public class ExtraAuthInterceptor implements HandlerInterceptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExtraAuthInterceptor.class);
 

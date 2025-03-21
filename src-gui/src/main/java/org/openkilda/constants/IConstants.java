@@ -16,18 +16,15 @@
 package org.openkilda.constants;
 
 import lombok.Getter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The Interface IConstants.
  *
  * @author Gaurav Chugh
  */
-
+@Slf4j
 public abstract class IConstants {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(IConstants.class);
 
     public static final String SESSION_OBJECT = "sessionObject";
 
@@ -172,15 +169,6 @@ public abstract class IConstants {
         public static final String SWITCH_LOGICAL_PORT = VERSION_TWO + "/switches/{switch_id}/lags";
         public static final String DELETE_SWITCH_LOGICAL_PORT = VERSION_TWO
                 + "/switches/{switch_id}/lags/{logical_port_number}";
-    }
-
-    public static final class OpenTsDbUrl {
-
-        private OpenTsDbUrl() {
-
-        }
-
-        public static final String OPEN_TSDB_QUERY = "/api/query/";
     }
 
 

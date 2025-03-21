@@ -18,10 +18,9 @@ package org.openkilda.saml.validator;
 import org.openkilda.saml.dao.entity.SamlConfigEntity;
 import org.openkilda.saml.repository.SamlRepository;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,11 +37,10 @@ import java.util.List;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+@Slf4j
 @Component
 public class SamlValidator {
-    
-    private static final Logger LOGGER = LoggerFactory.getLogger(SamlValidator.class);
-    
+
     @Autowired
     private SamlRepository samlRepository;
     
@@ -156,7 +154,7 @@ public class SamlValidator {
             }
             return entityId;
         } catch (Exception e) {
-            LOGGER.error("Error occurred while validating entity ID" + e);
+            log.error("Error occurred while validating entity ID" + e);
             throw new RequestValidationException(messageUtil.getAttributeMetadataInvalid("url"));
         }
     }

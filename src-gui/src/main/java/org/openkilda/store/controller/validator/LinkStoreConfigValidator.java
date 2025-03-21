@@ -24,8 +24,7 @@ import org.openkilda.store.model.LinkStoreConfigDto;
 import org.openkilda.store.model.UrlDto;
 import org.openkilda.utility.CollectionUtil;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.usermanagement.exception.RequestValidationException;
@@ -38,12 +37,10 @@ import java.util.Map.Entry;
 /**
  * The Class LinkStoreConfigValidator.
  */
-
+@Slf4j
 @Component
 public class LinkStoreConfigValidator {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(OauthTwoConfigValidator.class);
-    
     @Autowired
     private MessageUtils messageUtil;
     
@@ -60,22 +57,22 @@ public class LinkStoreConfigValidator {
         List<OauthConfigEntity> oauthConfigEntityList = oauthConfigRepository
                 .findByAuthType_authTypeId(AuthType.OAUTH_TWO.getAuthTypeEntity().getAuthTypeId());
         if (CollectionUtil.isEmpty(oauthConfigEntityList)) {
-            LOGGER.warn(messageUtil.getStoreMustConfigured());
+            log.warn(messageUtil.getStoreMustConfigured());
             throw new RequestValidationException(messageUtil.getStoreMustConfigured());
         }
         List<String> urls = StoreUrl.getUrlName(StoreType.LINK_STORE.getCode());
 
         for (Entry<String, UrlDto> urlEntrySet : linkStoreConfigDto.getUrls().entrySet()) {
             if (!urls.contains(urlEntrySet.getKey())) {
-                LOGGER.warn("Validation fail for link store configuration. Error: "
+                log.warn("Validation fail for link store configuration. Error: "
                         + messageUtil.getAttributeNotvalid(urlEntrySet.getKey()));
                 throw new RequestValidationException(messageUtil.getAttributeNotvalid(urlEntrySet.getKey()));
             } else if (ValidatorUtil.isNull(urlEntrySet.getValue().getUrl())) {
-                LOGGER.warn("Validation fail for link store configuration. Error: "
+                log.warn("Validation fail for link store configuration. Error: "
                         + messageUtil.getAttributeNotNull("url of " + urlEntrySet.getKey()));
                 throw new RequestValidationException(messageUtil.getAttributeNotNull(urlEntrySet.getKey()));
             } else if (ValidatorUtil.isNull(urlEntrySet.getValue().getMethodType())) {
-                LOGGER.warn("Validation fail for link store configuration. Error: "
+                log.warn("Validation fail for link store configuration. Error: "
                         + messageUtil.getAttributeNotNull("method-type of " + urlEntrySet.getKey()));
                 throw new RequestValidationException(
                         messageUtil.getAttributeNotNull("method-type of " + urlEntrySet.getKey()));

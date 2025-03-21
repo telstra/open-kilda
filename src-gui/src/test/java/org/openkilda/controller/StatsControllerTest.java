@@ -3,7 +3,7 @@
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
  *   You may obtain a copy of the License at
- *  
+ *
  *       http://www.apache.org/licenses/LICENSE-2.0
  *
  *   Unless required by applicable law or agreed to in writing, software
@@ -15,252 +15,100 @@
 
 package org.openkilda.controller;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import org.openkilda.controller.mockdata.TestMockStats;
+import org.openkilda.model.VictoriaStatsReq;
 import org.openkilda.service.StatsService;
-import org.openkilda.test.MockitoExtension;
+import org.openkilda.test.CustomMockitoExtension;
 
-import org.junit.Before;
-import org.junit.Test;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-
+import org.mockito.Mockito;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.Collections;
 
-@ExtendWith(MockitoExtension.class)
+
+@ExtendWith(CustomMockitoExtension.class)
 public class StatsControllerTest {
-    
+
     private MockMvc mockMvc;
 
     @Mock
     private StatsService statsService;
-    
+
     @InjectMocks
     private StatsController statsController;
 
-    @Before
+    @BeforeEach
     public void init() {
-        MockitoAnnotations.initMocks(this);
         mockMvc = MockMvcBuilders.standaloneSetup(statsController).build();
     }
 
     @Test
-    public void testGetMetersStatsForwardBits() throws Exception {
+    public void getFlowVictoriaStats() {
         try {
+            Mockito.when(statsService.getTransformedFlowVictoriaStats(Mockito.anyString(), Mockito.anyString(),
+                            Mockito.anyString(), Mockito.anyString(), Mockito.anyString(),
+                            Mockito.anyList(), Mockito.isNull()))
+                    .thenReturn(Collections.emptyList());
             mockMvc.perform(
-                    get(
-                            "/api/stats/meter/{flowId}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
-                            TestMockStats.FLOW_ID, TestMockStats.START_DATE,
-                            TestMockStats.END_DATE, TestMockStats.DOWNSAMPLE,
-                            TestMockStats.METRIC_BITS, TestMockStats.DIRECTION_FORWARD)
+                    post(
+                            "/api/stats/flowgraph/{statsType}",
+                            "flow")
+                            .param("flowId", "flow1")
+                            .param("startDate", "123")
+                            .param("endDate", "321")
+                            .param("step", "30s")
+                            .param("metric", "raw_packets")
                             .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-            assertTrue(true);
         } catch (Exception ex) {
             System.out.println("exception: " + ex.getMessage());
-            assertTrue(false);
+            fail();
         }
     }
 
     @Test
-    public void testGetMetersStatsReverseBits() throws Exception {
+    public void commonVictoriaStats() {
         try {
+            VictoriaStatsReq req = new VictoriaStatsReq();
+            String reqString = new ObjectMapper().writeValueAsString(req);
+
+            Mockito.when(statsService.getVictoriaStats(Mockito.any()))
+                    .thenReturn(Collections.emptyList());
             mockMvc.perform(
-                    get(
-                            "/api/stats/meter/{flowId}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
-                            TestMockStats.FLOW_ID, TestMockStats.START_DATE,
-                            TestMockStats.END_DATE, TestMockStats.DOWNSAMPLE,
-                            TestMockStats.METRIC_BITS, TestMockStats.DIRECTION_REVERSE)
+                    post("/api/stats/common")
+                            .content(reqString)
                             .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-            assertTrue(true);
         } catch (Exception ex) {
             System.out.println("exception: " + ex.getMessage());
-            assertTrue(false);
+            fail();
         }
     }
 
     @Test
-    public void testGetMetersStatsForwardReverseBits() throws Exception {
+    public void switchPortsStats() {
         try {
-            mockMvc.perform(
-                    get(
-                            "/api/stats/meter/{flowId}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
-                            TestMockStats.FLOW_ID, TestMockStats.START_DATE,
-                            TestMockStats.END_DATE, TestMockStats.DOWNSAMPLE,
-                            TestMockStats.METRIC_BITS, TestMockStats.DIRECTION_BOTH).contentType(
-                            MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-            assertTrue(true);
-        } catch (Exception ex) {
-            System.out.println("exception: " + ex.getMessage());
-            assertTrue(false);
-        }
-    }
+            VictoriaStatsReq req = new VictoriaStatsReq();
+            String reqString = new ObjectMapper().writeValueAsString(req);
 
-    @Test
-    public void testGetMetersStatsForwardBytes() throws Exception {
-        try {
+            Mockito.when(statsService.getSwitchPortsStats(Mockito.any()))
+                    .thenReturn(Collections.emptyList());
             mockMvc.perform(
-                    get(
-                            "/api/stats/meter/{flowId}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
-                            TestMockStats.FLOW_ID, TestMockStats.START_DATE,
-                            TestMockStats.END_DATE, TestMockStats.DOWNSAMPLE,
-                            TestMockStats.METRIC_BYTES, TestMockStats.DIRECTION_FORWARD)
+                    post("/api/stats/switchports")
+                            .content(reqString)
                             .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-            assertTrue(true);
         } catch (Exception ex) {
             System.out.println("exception: " + ex.getMessage());
-            assertTrue(false);
+            fail();
         }
     }
-
-    @Test
-    public void testGetMetersStatsReverseBytes() throws Exception {
-        try {
-            mockMvc.perform(
-                    get(
-                            "/api/stats/meter/{flowId}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
-                            TestMockStats.FLOW_ID, TestMockStats.START_DATE,
-                            TestMockStats.END_DATE, TestMockStats.DOWNSAMPLE,
-                            TestMockStats.METRIC_BYTES, TestMockStats.DIRECTION_REVERSE)
-                            .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-            assertTrue(true);
-        } catch (Exception ex) {
-            System.out.println("exception: " + ex.getMessage());
-            assertTrue(false);
-        }
-    }
-
-    @Test
-    public void testGetMetersStatsForwardReverseBytes() throws Exception {
-        try {
-            mockMvc.perform(
-                    get(
-                            "/api/stats/meter/{flowId}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
-                            TestMockStats.FLOW_ID, TestMockStats.START_DATE,
-                            TestMockStats.END_DATE, TestMockStats.DOWNSAMPLE,
-                            TestMockStats.METRIC_BYTES, TestMockStats.DIRECTION_BOTH).contentType(
-                            MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-            assertTrue(true);
-        } catch (Exception ex) {
-            System.out.println("exception: " + ex.getMessage());
-            assertTrue(false);
-        }
-    }
-
-
-    @Test
-    public void testGetMetersStatsForwardPackets() throws Exception {
-        try {
-            mockMvc.perform(
-                    get(
-                            "/api/stats/meter/{flowId}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
-                            TestMockStats.FLOW_ID, TestMockStats.START_DATE,
-                            TestMockStats.END_DATE, TestMockStats.DOWNSAMPLE,
-                            TestMockStats.METRIC_PACKETS, TestMockStats.DIRECTION_FORWARD)
-                            .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-            assertTrue(true);
-        } catch (Exception ex) {
-            System.out.println("exception: " + ex.getMessage());
-            assertTrue(false);
-        }
-    }
-
-    @Test
-    public void testGetMetersStatsReversePackets() throws Exception {
-        try {
-            mockMvc.perform(
-                    get(
-                            "/api/stats/meter/{flowId}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
-                            TestMockStats.FLOW_ID, TestMockStats.START_DATE,
-                            TestMockStats.END_DATE, TestMockStats.DOWNSAMPLE,
-                            TestMockStats.METRIC_PACKETS, TestMockStats.DIRECTION_REVERSE)
-                            .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-            assertTrue(true);
-        } catch (Exception ex) {
-            System.out.println("exception: " + ex.getMessage());
-            assertTrue(false);
-        }
-    }
-
-    @Test
-    public void testGetMetersStatsForwardReversePackets() throws Exception {
-        try {
-            mockMvc.perform(
-                    get(
-                            "/api/stats/meter/{flowId}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
-                            TestMockStats.FLOW_ID, TestMockStats.START_DATE,
-                            TestMockStats.END_DATE, TestMockStats.DOWNSAMPLE,
-                            TestMockStats.METRIC_PACKETS, TestMockStats.DIRECTION_BOTH)
-                            .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-            assertTrue(true);
-        } catch (Exception ex) {
-            System.out.println("exception: " + ex.getMessage());
-            assertTrue(false);
-        }
-    }
-
-
-    @Test
-    public void testMeterStatsApiIfMetricNotPassed() throws Exception {
-        try {
-            mockMvc.perform(
-                    get(
-                            "/api/stats/meter/{flowId}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
-                            TestMockStats.FLOW_ID, TestMockStats.START_DATE,
-                            TestMockStats.END_DATE, TestMockStats.DOWNSAMPLE, null,
-                            TestMockStats.DIRECTION_BOTH).contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(status().isNotFound());
-            assertTrue(true);
-        } catch (Exception ex) {
-            System.out.println("exception: " + ex.getMessage());
-            assertTrue(false);
-        }
-    }
-
-    @Test
-    public void testMeterStatsApiIfFlowIdNotPassed() throws Exception {
-        try {
-            mockMvc.perform(
-                    get(
-                            "/api/stats/meter/{flowId}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
-                            "", TestMockStats.START_DATE, TestMockStats.END_DATE,
-                            TestMockStats.DOWNSAMPLE, null, TestMockStats.DIRECTION_BOTH)
-                            .contentType(MediaType.APPLICATION_JSON)).andExpect(
-                    status().isNotFound());
-            assertTrue(true);
-        } catch (Exception ex) {
-            System.out.println("exception: " + ex.getMessage());
-            assertTrue(false);
-        }
-    }
-
-    @Test
-    public void testGetFlowStats() throws Exception {
-        try {
-            mockMvc.perform(
-                    get("/api/stats/flowid/{flowId}/{startDate}/{endDate}/{downsample}/{metric}",
-                            TestMockStats.FLOW_ID, TestMockStats.START_DATE,
-                            TestMockStats.END_DATE, TestMockStats.DOWNSAMPLE,
-                            TestMockStats.METRIC_BITS, TestMockStats.DIRECTION_FORWARD)
-                            .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-
-            assertTrue(true);
-        } catch (Exception ex) {
-            assertTrue(false);
-        }
-
-
-    }
-
-
-
 }

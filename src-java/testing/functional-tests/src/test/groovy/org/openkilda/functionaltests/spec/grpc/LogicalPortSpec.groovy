@@ -40,7 +40,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         def request = new LogicalPortDto(LogicalPortType.BFD, [switchPort], switchLogicalPort)
         cleanupManager.addAction(OTHER, {grpc.deleteSwitchLogicalPort(sw.address, switchLogicalPort)})
         def responseAfterCreating = grpc.createLogicalPort(sw.address, request)
-        assert responseAfterCreating.logicalPortNumber.value == switchLogicalPort
+        assert responseAfterCreating.logicalPortNumber == switchLogicalPort
 
         then: "Able to get the created logical port"
         def responseAfterGetting = grpc.getSwitchLogicalPortConfig(sw.address, switchLogicalPort)

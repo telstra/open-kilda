@@ -73,7 +73,7 @@ public class LoggingRequestInterceptor implements ClientHttpRequestInterceptor {
 
     private String genereateCurl(HttpRequest request, byte[] payload) throws IOException {
         StringBuilder sb = new StringBuilder();
-        sb.append(format("curl -X %s \\\n", request.getMethodValue()));
+        sb.append(format("curl -X %s \\\n", request.getMethod().name()));
         sb.append(request.getURI().toString()).append(" \\\n");
         request.getHeaders().forEach((k, v) -> sb.append(format("-H '%s: %s' \\\n", k,
                 StringUtils.substringBetween(v.toString(), "[", "]"))));

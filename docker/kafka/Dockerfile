@@ -1,4 +1,4 @@
-# Copyright 2017 Telstra Open Source
+# Copyright 2024 Telstra Open Source
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -16,12 +16,12 @@
 ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
-ENV PACKAGE kafka_2.12-2.0.0
+ENV PACKAGE kafka_2.12-3.6.0
 
 WORKDIR /tmp/
 
-RUN    wget -q https://archive.apache.org/dist/kafka/2.0.0/$PACKAGE.tgz \
-    && wget -q https://archive.apache.org/dist/kafka/2.0.0/$PACKAGE.tgz.md5 \
+RUN    wget -q https://archive.apache.org/dist/kafka/3.6.0/$PACKAGE.tgz \
+    && wget -q https://archive.apache.org/dist/kafka/3.6.0/$PACKAGE.tgz.md5 \
     && sed 's/\ //g' $PACKAGE.tgz.md5 > $PACKAGE.tmp.md5 \
     && awk -F ":" '{print $2 " " $1}' $PACKAGE.tmp.md5 > $PACKAGE.tgz.md5 \
     && md5sum -c $PACKAGE.tgz.md5 \

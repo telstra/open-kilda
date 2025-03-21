@@ -17,7 +17,7 @@ package org.openkilda.northbound.dto.v2.switches;
 
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -29,7 +29,7 @@ import java.util.Map;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class SwitchFlowsPerPortResponse {
     Map<Integer, List<FlowResponseV2>> flowsByPort;
 }

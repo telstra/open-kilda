@@ -24,6 +24,12 @@ import java.util.Arrays;
 import java.util.List;
 
 public abstract class AbstractMessage {
+
+    /**
+     * Transforms messages before emitting. Uses different formats for different message fields.
+     * @return a transformed message.
+     * @throws JsonProcessingException when a field cannot be formatted.
+     */
     public List<Object> pack() throws JsonProcessingException {
         Fields format = getFormat();
         Object[] packed = new Object[format.size()];

@@ -20,13 +20,13 @@ import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.messaging.nbtopology.request.CreateOrUpdateFeatureTogglesRequest;
 import org.openkilda.messaging.nbtopology.request.GetFeatureTogglesRequest;
 import org.openkilda.messaging.nbtopology.response.FeatureTogglesResponse;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.FeatureTogglesService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CompletableFuture;
@@ -38,11 +38,14 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
     /**
      * The kafka topic for the nb topology.
      */
-    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
-    private String nbworkerTopic;
+    private final String nbworkerTopic;
 
     @Autowired
     private MessagingChannel messagingChannel;
+
+    public FeatureTogglesServiceImpl(KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig) {
+        this.nbworkerTopic = kafkaTopicsNorthboundConfig.getTopoNbTopic();
+    }
 
     @Override
     public CompletableFuture<FeatureTogglesDto> toggleFeatures(FeatureTogglesDto dto) {

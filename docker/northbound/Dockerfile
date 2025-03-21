@@ -18,4 +18,10 @@ FROM ${base_image}
 
 ADD BUILD/northbound/libs/northbound.jar /app/
 WORKDIR /app
-CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-jar", "northbound.jar"]
+
+# This is an example of a command that starts Northbound with JMX enabled. You can connect to the specified IP and port
+# with visualVM or other tool to get runtime information.
+#CMD ["java", "-Dcom.sun.management.jmxremote", "-Dcom.sun.management.jmxremote.rmi.port=9445", "-Dcom.sun.management.jmxremote.port=9445", "-Djava.rmi.server.hostname=172.19.114.89", "-Dcom.sun.management.jmxremote.local.only=false", "-Dcom.sun.management.jmxremote.ssl=false", "-Dcom.sun.management.jmxremote.authenticate=false", "-jar", "northbound.jar"]
+#EXPOSE 9445
+
+CMD ["java", "-jar", "northbound.jar"]

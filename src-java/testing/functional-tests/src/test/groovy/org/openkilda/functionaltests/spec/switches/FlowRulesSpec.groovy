@@ -39,9 +39,26 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
-@Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different 
+import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+import static spock.util.matcher.HamcrestSupport.expect
+
+@Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different
 circumstances: e.g. persisting rules on newly connected switch, installing default rules on new switch etc.""")
 
 class FlowRulesSpec extends HealthCheckSpecification {

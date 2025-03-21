@@ -17,7 +17,11 @@ package org.openkilda.northbound.utils;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
-import com.google.common.collect.ImmutableList;
+import jakarta.annotation.Priority;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
@@ -27,11 +31,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-import javax.annotation.Priority;
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 /**
  * Filter that controls existence of correlation id in the header. It should not allow to access to any resources
@@ -41,12 +40,12 @@ import javax.servlet.http.HttpServletResponse;
 @Component
 public class RequestCorrelationInspectorFilter extends OncePerRequestFilter {
 
-    private static final List<String> EXCLUDE_PATTERNS = ImmutableList.of(
+    private static final List<String> EXCLUDE_PATTERNS = List.of(
             "/v1/**",
             // swagger related patterns
             "/swagger*/**",
-            "/webjars/**",
-            "/v2/api-docs"
+            "/v3/api-docs/**",
+            "/webjars/**"
     );
 
     private final PathMatcher matcher = new AntPathMatcher();

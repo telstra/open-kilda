@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 
 package org.openkilda.service;
+
+import static org.openkilda.utility.SwitchUtil.customSwitchName;
 
 import org.openkilda.constants.IConstants;
 import org.openkilda.integration.converter.FlowConverter;
@@ -42,8 +44,7 @@ import org.openkilda.store.service.StoreService;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.StringUtil;
 
-import org.apache.log4j.Logger;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.usermanagement.exception.RequestValidationException;
@@ -65,11 +66,9 @@ import java.util.stream.Collectors;
  *
  * @author Gaurav Chugh
  */
-
+@Slf4j
 @Service
 public class FlowService {
-
-    private static final Logger LOGGER = Logger.getLogger(FlowService.class);
 
     @Autowired
     private FlowsIntegrationService flowsIntegrationService;
@@ -89,9 +88,6 @@ public class FlowService {
     @Autowired
     private StoreService storeService;
 
-    @Autowired
-    private FlowConverter flowConverter;
-
     /**
      * get All Flows.
      *
@@ -105,7 +101,7 @@ public class FlowService {
         if (CollectionUtil.isEmpty(statuses) || statuses.contains("active")) {
             flows = flowsIntegrationService.getFlows();
             if (flows == null) {
-                flows = new ArrayList<FlowInfo>();
+                flows = new ArrayList<>();
             }
         }
         if (!controller) {
@@ -126,7 +122,7 @@ public class FlowService {
                         processInventoryFlow(flows, inventoryFlows);
                     }
                 } catch (Exception ex) {
-                    LOGGER.error("Error occurred while retrieving flows from store", ex);
+                    log.error("Error occurred while retrieving flows from store", ex);
                 }
             }
         }
@@ -136,8 +132,7 @@ public class FlowService {
     /**
      * Gets the flow count.
      *
-     * @param flows
-     *            the flows
+     * @param flows the flows
      * @return the flow count
      */
     public Collection<FlowCount> getFlowsCount(final List<FlowV2> flows) {
@@ -149,13 +144,13 @@ public class FlowService {
                 FlowCount flowInfo = new FlowCount();
                 if (flow.getSource() != null) {
                     flowInfo.setSrcSwitch(flow.getSource().getSwitchId());
-                    String srcSwitchName = switchIntegrationService.customSwitchName(csNames,
+                    String srcSwitchName = customSwitchName(csNames,
                             flow.getSource().getSwitchId());
                     flowInfo.setSrcSwitchName(srcSwitchName);
                 }
                 if (flow.getDestination() != null) {
                     flowInfo.setDstSwitch(flow.getDestination().getSwitchId());
-                    String dstSwitchName = switchIntegrationService.customSwitchName(csNames,
+                    String dstSwitchName = customSwitchName(csNames,
                             flow.getDestination().getSwitchId());
                     flowInfo.setDstSwitchName(dstSwitchName);
                 }
@@ -174,8 +169,7 @@ public class FlowService {
     /**
      * Gets the path link.
      *
-     * @param flowId
-     *            the flow id
+     * @param flowId the flow id
      * @return the path link
      */
     public FlowPayload getFlowPath(final String flowId) throws IntegrationException {
@@ -194,8 +188,7 @@ public class FlowService {
     /**
      * Re route Flow by flow id.
      *
-     * @param flowId
-     *            the flow id
+     * @param flowId the flow id
      * @return flow path
      */
     public FlowPath rerouteFlow(String flowId) {
@@ -205,8 +198,7 @@ public class FlowService {
     /**
      * Validate Flow.
      *
-     * @param flowId
-     *            the flow id
+     * @param flowId the flow id
      * @return the string
      */
     public String validateFlow(String flowId) {
@@ -216,8 +208,7 @@ public class FlowService {
     /**
      * Flow by flow id.
      *
-     * @param flowId
-     *            the flow id
+     * @param flowId the flow id
      * @return the flow by id
      * @throws AccessDeniedException the access denied exception
      */
@@ -227,14 +218,14 @@ public class FlowService {
         try {
             flow = flowsIntegrationService.getFlowById(flowId);
         } catch (InvalidResponseException ex) {
-            LOGGER.error("Error occurred while retrieving flows from controller", ex);
+            log.error("Error occurred while retrieving flows from controller", ex);
             if (controller) {
                 throw new InvalidResponseException(ex.getCode(), ex.getResponse());
             }
         }
         Map<String, String> csNames = switchIntegrationService.getSwitchNames();
         if (flow != null) {
-            flowInfo = flowConverter.toFlowV2Info(flow, csNames);
+            flowInfo = FlowConverter.toFlowV2Info(flow, csNames);
         }
         UserInfo userInfo = userService.getLoggedInUserInfo();
         try {
@@ -259,7 +250,7 @@ public class FlowService {
                         if (("UP".equalsIgnoreCase(flowInfo.getStatus())
                                 && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
                                 || ("DOWN".equalsIgnoreCase(flowInfo.getStatus())
-                                    && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
+                                && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
                             discrepancy.setStatus(true);
 
                             FlowState flowState = new FlowState();
@@ -288,15 +279,15 @@ public class FlowService {
 
                         flowInfo.setDiscrepancy(discrepancy);
                     } else {
-                        flowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
+                        FlowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
                     }
-                } 
-            } 
+                }
+            }
             if (flow == null) {
                 throw new RequestValidationException("Can not get flow: Flow " + flowId + " not found");
             }
         } catch (Exception ex) {
-            LOGGER.error("Error occurred while retrieving flows from store", ex);
+            log.error("Error occurred while retrieving flows from store", ex);
             throw new RequestValidationException(ex.getMessage());
         }
         return flowInfo;
@@ -305,8 +296,7 @@ public class FlowService {
     /**
      * Gets the flow status by id.
      *
-     * @param flowId
-     *            the flow id
+     * @param flowId the flow id
      * @return the flow status by id
      */
     public FlowStatus getFlowStatusById(String flowId) {
@@ -316,8 +306,7 @@ public class FlowService {
     /**
      * Creates the flow.
      *
-     * @param flow
-     *            the flow
+     * @param flow the flow
      * @return the flow
      */
     public FlowV2 createFlow(FlowV2 flow) {
@@ -329,10 +318,8 @@ public class FlowService {
     /**
      * Update flow.
      *
-     * @param flowId
-     *            the flow id
-     * @param flow
-     *            the flow
+     * @param flowId the flow id
+     * @param flow   the flow
      * @return the flow
      */
     public FlowV2 updateFlow(String flowId, FlowV2 flow) {
@@ -344,10 +331,8 @@ public class FlowService {
     /**
      * Delete flow.
      *
-     * @param flowId
-     *            the flow id
-     * @param userInfo
-     *            the user info
+     * @param flowId   the flow id
+     * @param userInfo the user info
      * @return the flow
      */
     public FlowV2 deleteFlow(String flowId, UserInfo userInfo) {
@@ -362,22 +347,20 @@ public class FlowService {
 
     /**
      * Re sync flow.
-     * 
-     * @param flowId
-     *            the flow id
-     * 
+     *
+     * @param flowId the flow id
      * @return
      */
     public String resyncFlow(String flowId) {
         activityLogger.log(ActivityType.RESYNC_FLOW, flowId);
         return flowsIntegrationService.resyncFlow(flowId);
     }
-    
+
     /**
      * Flow ping.
      *
      * @param flowId the flow id
-     * @param flow the flow
+     * @param flow   the flow
      * @return the string
      */
     public String flowPing(String flowId, FlowV2 flow) {
@@ -387,10 +370,8 @@ public class FlowService {
     /**
      * Process inventory flow.
      *
-     * @param flows
-     *            the flows
-     * @param inventoryFlows
-     *            the inventory flows
+     * @param flows          the flows
+     * @param inventoryFlows the inventory flows
      */
     private void processInventoryFlow(final List<FlowInfo> flows, final List<InventoryFlow> inventoryFlows) {
         List<FlowInfo> discrepancyFlow = new ArrayList<FlowInfo>();
@@ -418,7 +399,7 @@ public class FlowService {
                 if (("UP".equalsIgnoreCase(flows.get(index).getStatus())
                         && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
                         || ("DOWN".equalsIgnoreCase(flows.get(index).getStatus())
-                                && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
+                        && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
                     discrepancy.setInventoryDiscrepancy(true);
                     discrepancy.setStatus(true);
 
@@ -432,7 +413,7 @@ public class FlowService {
                 flows.get(index).setInventoryFlow(true);
             } else {
                 FlowInfo flowObj = new FlowInfo();
-                flowConverter.toFlowInfo(flowObj, inventoryFlow, csNames);
+                FlowConverter.toFlowInfo(flowObj, inventoryFlow, csNames);
                 flowObj.setInventoryFlow(true);
                 discrepancyFlow.add(flowObj);
             }
@@ -484,7 +465,7 @@ public class FlowService {
                 status.setStatuses(new HashSet<String>(flowStoreService.getAllStatus()));
             }
         } else {
-            LOGGER.info("Link store is not configured. ");
+            log.info("Link store is not configured. ");
         }
         return status.getStatuses() != null ? status.getStatuses() : new HashSet<String>();
     }
@@ -492,14 +473,13 @@ public class FlowService {
     /**
      * Gets the flow history by id.
      *
-     * @param flowId
-     *            the flow id
+     * @param flowId the flow id
      * @return the flow history by id
      */
     public List<FlowHistory> getFlowHistory(String flowId, String timeFrom, String timeTo) {
         return flowsIntegrationService.getFlowHistoryById(flowId, timeFrom, timeTo);
     }
-    
+
     /**
      * Flow connected devices.
      *
