@@ -50,15 +50,12 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.Properties;
 import java.util.UUID;
 
-@Disabled("Sleep method from Storm Utils causes gradle to exit. Without the sleep, the test fails because there are"
-        + "no records when polling from the speaker")
 public class IslLatencyTopologyTest extends AbstractStormTest {
 
     private static final int POLL_TIMEOUT = 1000;

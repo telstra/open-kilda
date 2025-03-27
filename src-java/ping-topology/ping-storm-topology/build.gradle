@@ -32,7 +32,8 @@ dependencies {
     testImplementation("org.mockito:mockito-junit-jupiter")
     testImplementation("org.hamcrest:hamcrest-library")
     testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl")
-    testRuntimeOnly("org.apache.curator:curator-test")
+    testRuntimeOnly("org.apache.curator:curator-test:5.5.0")
+    testRuntimeOnly("io.dropwizard.metrics:metrics-core:3.2.6!!")
 
     compileOnly("org.projectlombok:lombok")
     testCompileOnly("org.projectlombok:lombok")

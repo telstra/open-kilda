@@ -34,7 +34,8 @@ dependencies {
     testImplementation(project(path: ":kilda-persistence-tinkerpop", configuration: "testArtifacts"))
 
     testRuntimeOnly("org.glassfish:jakarta.el")
-    testRuntimeOnly("org.apache.curator:curator-test")
+    testRuntimeOnly("org.apache.curator:curator-test:5.5.0")
+    testRuntimeOnly("io.dropwizard.metrics:metrics-core:3.2.6!!")
     testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl")
 
     compileOnly("org.projectlombok:lombok")

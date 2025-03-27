@@ -16,7 +16,7 @@
 package org.openkilda.bluegreen;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
-import com.esotericsoftware.kryo.serializers.FieldSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,7 +29,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
-@DefaultSerializer(FieldSerializer.class)
+@DefaultSerializer(BeanSerializer.class)
 public class LifecycleEvent implements Serializable {
     private Signal signal;
     private UUID uuid;
