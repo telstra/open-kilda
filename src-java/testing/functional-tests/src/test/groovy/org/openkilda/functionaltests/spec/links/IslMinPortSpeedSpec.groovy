@@ -20,31 +20,22 @@ class IslMinPortSpeedSpec extends HealthCheckSpecification {
     @Tags([SMOKE, HARDWARE])
     def "System sets min port speed for isl capacity"() {
         given: "Two ports with different port speed"
-        def isl = topology.islsForActiveSwitches.find {
-            it.getAswitch()?.inPort && it.getAswitch()?.outPort
-        } ?: assumeTrue(false, "Unable to find required ports in topology")
-        def port = northbound.getPort(isl.srcSwitch.dpId, isl.srcPort)
-        assumeTrue(isl as boolean, "Wasn't able to find required a-switch links")
-
-        def notConnectedIsls = topology.notConnectedIsls
-        def newDst = notConnectedIsls.find {
-            it.srcSwitch.dpId != isl.srcSwitch.dpId &&
-                    northbound.getPort(it.srcSwitch.dpId, it.srcPort).maxSpeed != port.maxSpeed
+        def isl = isls.all().withASwitch().random()
+        def port = isl.srcEndpoint.retrieveDetails()
+        def newDst = isls.allNotConnected().getListOfIsls().find {
+            it.srcSwId != isl.srcSwId && it.srcEndpoint.retrieveDetails().maxSpeed != port.maxSpeed
         }
         assumeTrue(newDst as boolean, "Wasn't able to find a port with other port speed")
-        def newDstPort = northbound.getPort(newDst.srcSwitch.dpId, newDst.srcPort)
+        def newDstPort = newDst.srcEndpoint.retrieveDetails()
 
         when: "Replug one end of the connected link to the destination switch(isl.srcSwitchId -> newDst.srcSwitchId)"
-        def newIsl = islHelper.replugDestination(isl, newDst, true, false)
-
-        Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
-            [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
-        }
-        islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
+        def newIsl = isl.replugDestination(newDst, true, false)
+        newIsl.waitForStatus(DISCOVERED)
+        isl.waitForStatus(MOVED)
 
         then: "Max bandwidth of new ISL is equal to the minimal port speed"
         Wrappers.wait(WAIT_OFFSET) {
-            islUtils.getIslInfo(newIsl).get().maxBandwidth == [port.maxSpeed, newDstPort.maxSpeed].min()
+           assert newIsl.getNbDetails().maxBandwidth == [port.maxSpeed, newDstPort.maxSpeed].min()
         }
     }
 }

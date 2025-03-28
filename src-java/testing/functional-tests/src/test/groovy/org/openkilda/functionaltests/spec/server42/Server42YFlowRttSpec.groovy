@@ -23,6 +23,8 @@ import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOU
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.builder.YFlowBuilder
@@ -73,7 +75,9 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
                 .withSharedEpEp1Ep2InChain().random()
     }
 
-    @Tags(TOPOLOGY_DEPENDENT)
+    @IterationTags([
+            @IterationTag(tags = [TOPOLOGY_DEPENDENT], iterationNameRegex = /ep1 and ep2/)
+    ])
     def "Create an Y-Flow (#description) with server42 Rtt feature and check datapoints in tsdb"() {
         given: "Three active switches with server42 connected"
         assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
@@ -129,7 +133,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         "ep1 is the full port, ep1/ep2 is y-point, encapsulation TRANSIT_VLAN"             | false                  | { YFlowBuilder builder -> builder.withEp1Vlan(0).build() }
         "all endpoints qnq, shared ep is y-point, encapsulation TRANSIT_VLAN"              | true                   | { YFlowBuilder builder -> builder.withSharedEpQnQ().withEp1QnQ().withEp2QnQ().build() }
         "tagged flow, shared ep is y-point, protected path, encapsulation VXLAN"           | true                   | { YFlowBuilder builder -> builder.withProtectedPath(true).withEncapsulationType(VXLAN).build() }
-        "ep1+ep2 qnq, ep1/ep2 is y-point, encapsulation TRANSIT_VLAN"                      | false                  | { YFlowBuilder builder -> builder.withEp1QnQ().withEp2QnQ().build() }
+        "ep1 and ep2 qnq, ep1/ep2 is y-point, encapsulation TRANSIT_VLAN"                  | false                  | { YFlowBuilder builder -> builder.withEp1QnQ().withEp2QnQ().build() }
     }
 
     @Tags([TOPOLOGY_DEPENDENT])

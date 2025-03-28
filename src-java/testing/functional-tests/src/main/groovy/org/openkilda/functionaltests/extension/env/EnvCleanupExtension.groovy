@@ -19,6 +19,7 @@ import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.IslUtils
+import org.openkilda.testing.tools.TopologyPool
 
 import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.AbstractGlobalExtension
@@ -31,6 +32,9 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
 
     @Autowired
     TopologyDefinition topology
+
+    @Autowired
+    TopologyPool topologyPool
 
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
@@ -98,23 +102,26 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
 
     def resetCosts() {
         log.info("Resetting all link costs")
-        database.resetCosts(topology.isls)
+        database.resetCosts()
     }
 
     def resetBandwidth(List<IslInfoData> links) {
-        def topoIsls = topology.isls.collectMany { [it, it.reversed] }
-        links.each { link ->
-            if (link.availableBandwidth != link.speed || link.maxBandwidth != link.speed
-                    || link.defaultMaxBandwidth != link.speed) {
-                def isl = topoIsls.find {
-                    it.srcSwitch.dpId == link.source.switchId && it.srcPort == link.source.portNo &&
-                            it.dstSwitch.dpId == link.destination.switchId && it.dstPort == link.destination.portNo
+        List<TopologyDefinition> topologies = [topology, topologyPool.topologies].flatten()
+        topologies.each { topo ->
+            def topoIsls = topo.isls.collectMany { [it, it.reversed] }
+            links.each { link ->
+                if (link.availableBandwidth != link.speed || link.maxBandwidth != link.speed
+                        || link.defaultMaxBandwidth != link.speed) {
+                    def isl = topoIsls.find {
+                        it.srcSwitch.dpId == link.source.switchId && it.srcPort == link.source.portNo &&
+                                it.dstSwitch.dpId == link.destination.switchId && it.dstPort == link.destination.portNo
+                    }
+                    if (!isl) {
+                        throw new IslNotFoundException("Wasn't able to find isl: $link")
+                    }
+                    log.info("Resetting available bandwidth on ISL: $isl")
+                    database.resetIslBandwidth(isl)
                 }
-                if (!isl) {
-                    throw new IslNotFoundException("Wasn't able to find isl: $link")
-                }
-                log.info("Resetting available bandwidth on ISL: $isl")
-                database.resetIslBandwidth(isl)
             }
         }
     }
@@ -149,6 +156,7 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
         }
     }
 
+    //used for HW env(no parallel topologies)
     def resetAswRules() {
         def requiredAswRules = topology.isls.collectMany {
             if (it.aswitch?.inPort && it.aswitch?.outPort) {
