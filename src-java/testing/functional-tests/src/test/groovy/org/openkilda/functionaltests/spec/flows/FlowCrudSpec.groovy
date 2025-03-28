@@ -1,8 +1,11 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
+import static org.openkilda.functionaltests.model.stats.Direction.*
 
+import org.openkilda.functionaltests.helpers.model.IslExtended
 import org.openkilda.functionaltests.helpers.model.SwitchExtended
 
 import groovy.util.logging.Slf4j
@@ -23,7 +26,6 @@ import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
@@ -411,28 +413,29 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     def "A flow cannot be created with asymmetric forward and reverse paths"() {
         given: "Two active neighboring switches with two possible flow paths at least and different number of hops"
-        List<List<Isl>> availablePathsIsls
         //the shortest path between neighboring switches is 1 ISL(2 nodes: src_sw-port<--->port-dst_sw)
-        int shortestIslCountPath = 1
+        int shortestNodesCountPath = 2
         def swPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).getSwitchPairs().find {
-            availablePathsIsls = it.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
-            availablePathsIsls.size() > 1  && availablePathsIsls.find { it.size() > shortestIslCountPath }
+            def availablePathsIsls = it.paths
+            availablePathsIsls.size() > 1  && availablePathsIsls.find { it.size() > shortestNodesCountPath }
         } ?: assumeTrue(false, "No suiting active neighboring switches with two possible flow paths at least and " +
                 "different number of hops found")
 
         and: "Make all shorter(one isl) forward paths not preferable. Shorter reverse paths are still preferable"
-        List<Isl> modifiedIsls = availablePathsIsls.findAll { it.size() == shortestIslCountPath }.flatten().unique() as List<Isl>
-        islHelper.updateIslsCostInDatabase(modifiedIsls, Integer.MAX_VALUE)
+        def modifiedIsls = isls.all()
+                .collectIslsFromPaths(swPair.retrievePathsWithNodesCount(shortestNodesCountPath))
+                .updateIslsCostInDb(Integer.MAX_VALUE)
 
         when: "Create a flow"
         def flow = flowFactory.getRandom(swPair)
 
         then: "The flow is built through one of the long paths"
         def fullFlowPath = flow.retrieveAllEntityPaths()
-        def forwardIsls = fullFlowPath.getInvolvedIsls(Direction.FORWARD)
-        def reverseIsls = fullFlowPath.getInvolvedIsls(Direction.REVERSE)
+        def forwardIsls = isls.all().findInPath(fullFlowPath, FORWARD)
+        def reverseIsls = isls.all().findInPath(fullFlowPath, REVERSE)
+
         assert forwardIsls.intersect(modifiedIsls).isEmpty()
-        assert forwardIsls.size() > shortestIslCountPath
+        assert forwardIsls.size() > 1 //1 ISL(2 nodes: src_sw-port<--->port-dst_sw)
 
         and: "The flow has symmetric forward and reverse paths even though there is a more preferable reverse path"
         forwardIsls.collect { it.reversed }.reverse() == reverseIsls
@@ -443,8 +446,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "A switch that has no connection to other switches"
         def isolatedSwitch = switchPairs.all().nonNeighbouring().random().src
         SwitchPair switchPair = data.switchPair(isolatedSwitch)
-        def connectedIsls = topology.getRelatedIsls(isolatedSwitch.switchId)
-        islHelper.breakIsls(connectedIsls)
+        def connectedIsls = isls.all().relatedTo(isolatedSwitch).getListOfIsls()
+
+        breakIsls(connectedIsls)
 
         when: "Try building a flow using the isolated switch"
         def invalidFlow = flowFactory.getBuilder(switchPair).build()
@@ -633,9 +637,9 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
     def "Unable to create a flow on an isl port when ISL status is FAILED"() {
         given: "An inactive isl with failed state"
         def swPair = switchPairs.all().neighbouring().withExactlyNIslsBetweenSwitches(1).random()
-        Isl isl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
+        def isl = isls.all().betweenSwitchPair(swPair).first()
         assumeTrue(isl as boolean, "Unable to find required isl")
-        islHelper.breakIsl(isl)
+        isl.breakIt()
 
         when: "Try to create a flow using ISL src port"
         def invalidFlowEntity = flowFactory.getBuilder(swPair).withSourcePort(isl.srcPort).build()
@@ -643,30 +647,21 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
         then: "Flow is not created"
         def exc = thrown(HttpClientErrorException)
-        new FlowNotCreatedExpectedError(
-                getPortViolationErrorDescriptionPattern("source", isl.srcPort, isl.srcSwitch.dpId)).matches(exc)
+        new FlowNotCreatedExpectedError(getPortViolationErrorDescriptionPattern("source", isl.srcPort, isl.srcSwId)).matches(exc)
     }
 
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {
         given: "An inactive isl with moved state"
-        Isl isl
-        def swPair = switchPairs.all().neighbouring().getSwitchPairs().find{ pair ->
-            isl = topology.getRelatedIsls(pair.src.switchId).find {
-                it.dstSwitch.dpId == pair.dst.switchId && it.aswitch
-            }
-            isl
+        def notConnectedIsl = isls.allNotConnected().first()
+        IslExtended isl = isls.all().withASwitch().getListOfIsls().find {
+            !it.involvedSwIds.contains(notConnectedIsl.srcSwId)
         }
-        assumeTrue(swPair as boolean, "Unable to find swPair with a-switch isl")
 
-        def notConnectedIsls = topology.notConnectedIsls
-        assumeTrue(notConnectedIsls.size() > 0, "Unable to find non-connected isl")
-        def notConnectedIsl = notConnectedIsls.first()
-        def newIsl = islHelper.replugDestination(isl, notConnectedIsl, true, false)
+        def swPair = switchPairs.all().specificPair(isl.srcSwId, isl.dstSwId)
 
-        islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
-        wait(discoveryExhaustedInterval + WAIT_OFFSET) {
-            [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
-        }
+        def newIsl = isl.replugDestination(notConnectedIsl, true, false)
+        isl.waitForStatus(MOVED)
+        newIsl.waitForStatus(DISCOVERED)
 
         when: "Try to create a flow using ISL src port"
         def invalidFlowEntity = flowFactory.getBuilder(swPair).withSourcePort(isl.srcPort).build()
@@ -675,7 +670,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         then: "Flow is not created"
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(
-                getPortViolationErrorDescriptionPattern("source", isl.srcPort, isl.srcSwitch.dpId)).matches(exc)
+                getPortViolationErrorDescriptionPattern("source", isl.srcPort, isl.srcSwId)).matches(exc)
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)
@@ -810,9 +805,11 @@ types .* or update switch properties and add needed encapsulation type./).matche
     def "Flow status accurately represents the actual state of the flow and flow rules"() {
         when: "Create a flow on a long path"
         def swPair = switchPairs.all().random()
-        def availablePaths = swPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
-        def longPath = availablePaths.max { it.size() }
-        availablePaths.findAll { !it.containsAll(longPath) }.each { islHelper.makePathIslsMorePreferable(longPath, it) }
+        def availablePathIsls = swPair.retrieveAvailablePaths().collect { isls.all().findInPath(it) }
+        def longPathIsls = availablePathIsls.max { it.size() }
+        availablePathIsls.findAll { it != longPathIsls }
+                .each { isls.all().makePathIslsMorePreferable(longPathIsls, it) }
+
         def flow = flowFactory.getRandom(swPair, false, IN_PROGRESS)
 
         then: "Flow status is changed to UP only when all rules are actually installed"
@@ -822,7 +819,11 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
         def flowInfo = flow.retrieveDetailsFromDB()
         def flowCookies = [flowInfo.forwardPath.cookie.value, flowInfo.reversePath.cookie.value]
-        def involvedSws = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
+
+        def flowPath = flow.retrieveAllEntityPaths()
+        assert isls.all().findInPath(flowPath) == longPathIsls
+
+        def involvedSws = switches.all().findSwitchesInPath(flowPath)
         withPool(involvedSws.size()) {
             involvedSws.eachParallel { SwitchExtended sw ->
                 assert sw.rulesManager.getRules().cookie.containsAll(flowCookies)
@@ -950,9 +951,10 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def flow = flowFactory.getRandom(switchPair)
 
         when: "Make the current path less preferable than alternatives"
-        def initialFlowIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
-        switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { !it.containsAll(initialFlowIsls) }
-                .each { islHelper.makePathIslsMorePreferable(it, initialFlowIsls) }
+        def initialFlowPath = flow.retrieveAllEntityPaths()
+        def initialFlowIsls = isls.all().findInPath(initialFlowPath)
+        switchPair.retrieveAvailablePaths().collect { isls.all().findInPath(it) }.findAll { it != initialFlowIsls }
+                .each { isls.all().makePathIslsMorePreferable(it, initialFlowIsls) }
 
         and: "Update the flow"
         def newFlowDesc = flow.description + " updated"
@@ -963,7 +965,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def newFlowPath
         wait(rerouteDelay + WAIT_OFFSET) {
             newFlowPath = flow.retrieveAllEntityPaths()
-            assert newFlowPath.getInvolvedIsls() != initialFlowIsls
+            assert isls.all().findInPath(newFlowPath) != initialFlowIsls
         }
 
         and: "Flow is updated"
@@ -984,9 +986,9 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         when: "Make the current path less preferable than alternatives"
         def initialFlowPath = flow.retrieveAllEntityPaths()
-        def initialFlowIsls = initialFlowPath.getInvolvedIsls()
-        switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { !it.containsAll(initialFlowIsls) }
-                .each { islHelper.makePathIslsMorePreferable(it, initialFlowIsls) }
+        def lessPreferablePath = isls.all().findInPath(initialFlowPath)
+        switchPair.retrieveAvailablePaths().collect { isls.all().findInPath(it) }.findAll { it != lessPreferablePath }
+                .each { isls.all().makePathIslsMorePreferable(it, lessPreferablePath) }
 
         and: "Update the flow: vlanId on the src endpoint"
         def flowExpectedEntity = flow.deepCopy().tap { it.source.vlanId = flow.destination.vlanId - 1 }
@@ -998,7 +1000,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay) {
-            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowPath.getInvolvedIsls()
         }
 
         when: "Update the flow: vlanId on the dst endpoint"
@@ -1011,7 +1013,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay) {
-            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowPath.getInvolvedIsls()
         }
 
         when: "Update the flow: port number and vlanId on the src/dst endpoints"
@@ -1029,7 +1031,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
-            assert updatedFlow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowIsls
+            assert updatedFlow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowPath.getInvolvedIsls()
         }
 
         and: "Flow is valid"

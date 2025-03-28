@@ -29,6 +29,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowPathDirection
 import org.openkilda.model.FlowPathStatus
 import org.openkilda.model.SwitchId
+import org.openkilda.model.TransitVlan
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
@@ -501,6 +502,14 @@ class FlowExtended {
     void updateFlowMeterIdInDB(long newMeterId) {
         log.debug("Updating Flow '$flowId' meter in DB")
         database.updateFlowMeterId(flowId, newMeterId)
+    }
+
+    List<TransitVlan> getTransitVlansForMainPath(def flowDBInfo = retrieveDetailsFromDB()) {
+        database.getTransitVlans(flowDBInfo.forwardPathId, flowDBInfo.reversePathId)
+    }
+
+    List<TransitVlan> getTransitVlansForProtectedPath(def flowDBInfo = retrieveDetailsFromDB()) {
+        database.getTransitVlans(flowDBInfo.protectedForwardPathId, flowDBInfo.protectedReversePathId)
     }
 
     boolean isFlowAtSingleSwitch() {

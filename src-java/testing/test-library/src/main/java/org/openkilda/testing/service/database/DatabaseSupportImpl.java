@@ -243,6 +243,23 @@ public class DatabaseSupportImpl implements Database {
         });
     }
 
+    /**
+     * Set cost for passed ISLs to be equal to specified value.
+     * @param islsToUpdate ISLs to be changed
+     * @param value cost to set
+     * @return true if at least 1 ISL was affected
+     */
+    @Override
+    public boolean updateIslsCosts(List<Isl> islsToUpdate, int value) {
+        return transactionManager.doInTransaction(() -> {
+            Collection<org.openkilda.model.Isl> dbIsls = getIsls(islsToUpdate);
+            dbIsls.forEach(isl -> {
+                isl.setCost(value);
+            });
+            return dbIsls.size() > 0;
+        });
+    }
+
     @Override
     public boolean updateIslLatency(Isl islToUpdate, long latency) {
         return transactionManager.doInTransaction(() -> {

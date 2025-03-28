@@ -19,12 +19,9 @@ import org.openkilda.functionaltests.helpers.factory.SwitchFactory
 import org.openkilda.functionaltests.model.switches.Manufacturer
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -95,6 +92,14 @@ class Switches {
         switches.findAll { !it.isOf12Version() }
     }
 
+    List<SwitchExtended> notCentec() {
+        switches.findAll { !it.isCentec() }
+    }
+
+    List<SwitchExtended> bfdSupported() {
+        switches.findAll { it.isBfdSupported() }
+    }
+
     Switches withConnectedToExactlyNManagementAndStatsFls(int flAmount) {
         switches = switches.findAll { flHelper.filterRegionsByMode(it.regions, RW).size() == flAmount
                 &&  flHelper.filterRegionsByMode(it.regions, RO).size() == flAmount
@@ -120,6 +125,16 @@ class Switches {
 
     Switches withVxlanEnabled() {
         switches = switches.findAll { it.isVxlanEnabled() }
+        return this
+    }
+
+    Switches withRtlSupport() {
+        switches = switches.findAll { it.isRtlSupported() }
+         return this
+    }
+
+    Switches withoutRtlSupport() {
+        switches = switches.findAll { !it.isRtlSupported() }
         return this
     }
 

@@ -5,6 +5,8 @@ import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
+import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.CLASS
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
 import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
@@ -14,12 +16,12 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.IslExtended
+import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -33,7 +35,7 @@ import spock.lang.Shared
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class FlowMonitoringSpec extends HealthCheckSpecification {
     @Shared
-    List<Isl> mainIsls, alternativeIsls, islsToBreak
+    List<IslExtended> mainIsls, alternativeIsls, islsToBreak
     @Shared
     SwitchPair switchPair
     @Autowired
@@ -57,15 +59,14 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
     def setupSpec() {
         //setup: Two active switches with two diverse paths
         switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
-        List<List<Isl>> paths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
-        mainIsls = paths[0]
-        alternativeIsls = paths[1]
+        List<Path> paths = switchPair.retrieveAvailablePaths()
+        mainIsls = isls.all().findInPath(paths[0])
+        alternativeIsls = isls.all().findInPath(paths[1])
         //deactivate other paths for more clear experiment
-        def isls = mainIsls.collectMany { [it, it.reversed]} + alternativeIsls.collectMany { [it, it.reversed]}
-        islsToBreak = paths.findAll{ it != mainIsls && it != alternativeIsls }
-                .flatten().unique().collectMany{ [it, it.reversed] }.findAll { !isls.contains(it)}
+        islsToBreak = isls.all().relatedTo(switchPair)
+                .excludeIsls(mainIsls + alternativeIsls).getListOfIsls()
 
-        islHelper.breakIsls(islsToBreak, CleanupAfter.CLASS)
+        breakIsls(islsToBreak, CLASS)
     }
 
     @ResourceLock(S42_TOGGLE)
@@ -88,15 +89,12 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
 
-        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
+        assert isls.all().findInPath(flow.retrieveAllEntityPaths()) == mainIsls
 
         when: "Main path does not satisfy SLA(update isl latency via db)"
         def isl = mainIsls.first()
-        String srcInterfaceName = isl.srcSwitch.name + "-" + isl.srcPort
-        String dstInterfaceName = isl.dstSwitch.name + "-" + isl.dstPort
         def newLatency = (flow.maxLatency + (flow.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
-        islHelper.setDelay(srcInterfaceName, newLatency)
-        islHelper.setDelay(dstInterfaceName, newLatency)
+        isl.setDelayOnBothInterfaces(newLatency)
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
             verifyLatencyInTsdb(flow.flowId, newLatency)
         }
@@ -141,15 +139,12 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 3) {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
-        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
+        assert isls.all().findInPath(flow.retrieveAllEntityPaths()) == mainIsls
 
         when: "Main path does not satisfy SLA(update isl latency via db)"
         def isl = mainIsls.first()
-        String srcInterfaceName = isl.srcSwitch.name + "-" + isl.srcPort
-        String dstInterfaceName = isl.dstSwitch.name + "-" + isl.dstPort
         def newLatency = (flow.maxLatency + (flow.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
-        islHelper.setDelay(srcInterfaceName, newLatency)
-        islHelper.setDelay(dstInterfaceName, newLatency)
+        isl.setDelayOnBothInterfaces(newLatency)
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
             verifyLatencyInTsdb(flow.flowId, newLatency)
         }
@@ -159,7 +154,7 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         !flow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE)
 
         and: "Flow path is not changed"
-        flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
+        isls.all().findInPath(flow.retrieveAllEntityPaths()) == mainIsls
     }
 
     def setLatencyForPaths(int mainPathLatency, int alternativePathLatency) {
@@ -167,16 +162,14 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         def mainIslLatency = mainPathLatency.intdiv(mainIsls.size()) * nanoMultiplier
         def alternativeIslLatency = alternativePathLatency.intdiv(alternativeIsls.size()) * nanoMultiplier
 
-        database.updateIslsLatency([mainIsls[0], mainIsls[0].reversed],
-                mainIslLatency + (mainPathLatency % mainIsls.size()) * nanoMultiplier)
-        mainIsls.size() > 1 && database.updateIslsLatency(mainIsls.tail().collectMany { [it, it.reversed] }, mainIslLatency)
+        mainIsls.first().updateLatencyInDb(mainIslLatency + (mainPathLatency % mainIsls.size()) * nanoMultiplier)
+        mainIsls.size() > 1 &&  mainIsls.tail().each{ it.updateLatencyInDb(mainIslLatency) }
 
-        database.updateIslsLatency([alternativeIsls[0], alternativeIsls[0].reversed],
-                alternativeIslLatency + (alternativePathLatency % alternativeIsls.size()) * nanoMultiplier)
-        alternativeIsls.size() > 1 && database.updateIslsLatency(alternativeIsls.tail().collectMany { [it, it.reversed] }, alternativeIslLatency)
+        alternativeIsls.first().updateLatencyInDb(alternativeIslLatency + (alternativePathLatency % alternativeIsls.size()) * nanoMultiplier)
+        alternativeIsls.size() > 1 &&  alternativeIsls.tail().each { it.updateLatencyInDb(alternativeIslLatency) }
     }
 
-    void verifyLatencyInTsdb(flowId, expectedMs) {
+    void verifyLatencyInTsdb(String flowId, expectedMs) {
         def flowStatsResult = flowStats.of(flowId).get(FLOW_RTT, FORWARD, FLOW_MONITORING)
         def actual = flowStatsResult.getDataPoints().max {it.getKey()}.getValue()
         def nanoMultiplier = 1000000
