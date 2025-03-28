@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.*
+import static org.openkilda.functionaltests.helpers.model.Isls.makePathIslsMorePreferable
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -389,9 +390,9 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         assumeTrue(switchPair as boolean, "Wasn't able to find suitable switches")
         //make a no-vxlan path to be the most preferred
-        def noVxlanPathIsls = noVxlanPath.getInvolvedIsls()
-        switchPair.retrieveAvailablePaths().findAll { it != noVxlanPath }.collect { it.getInvolvedIsls() }
-                .each { islHelper.makePathIslsMorePreferable(noVxlanPathIsls, it) }
+        def noVxlanPathIsls = isls.all().findInPath(noVxlanPath)
+        switchPair.retrieveAvailablePaths().findAll { it != noVxlanPath }.collect { isls.all().findInPath(it)}
+                .each { makePathIslsMorePreferable(noVxlanPathIsls, it, northbound.getAllLinks()) }
 
         def initNoVxlanSwProps
         def isVxlanEnabledOnNoVxlanSw = noVxlanSwId in vxlanEnabledSws
@@ -410,7 +411,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         then: "Flow is built through vxlan-enabled path, even though it is not the shortest"
         def flowPath = flow.retrieveAllEntityPaths()
-        flowPath.getInvolvedIsls() != noVxlanPathIsls
+        isls.all().findInPath(flowPath) != noVxlanPathIsls
         !flowPath.getInvolvedSwitches().contains(noVxlanSwId)
     }
 

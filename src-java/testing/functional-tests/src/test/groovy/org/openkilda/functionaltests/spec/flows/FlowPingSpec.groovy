@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.model.Isls.makePathIslsMorePreferable
 import static org.openkilda.functionaltests.model.switches.Manufacturer.CENTEC
 import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_RULE
 import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
@@ -19,6 +20,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
+import org.openkilda.functionaltests.helpers.model.IslExtended
 import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -148,27 +150,29 @@ class FlowPingSpec extends HealthCheckSpecification {
     @IterationTag(tags = [SMOKE], iterationNameRegex = /forward path/)
     def "Flow ping can detect a broken path(#description) for a vlan flow"() {
         given: "A flow with at least 1 a-switch link"
-        List<List<Isl>> allPaths = []
-        List<Isl> aswitchPathIsls = []
         //select src and dst switches that have an a-switch path
-        def swPair = switchPairs.all().withSourceSwitchNotManufacturedBy(CENTEC).getSwitchPairs().find {
-            allPaths = it.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
-            aswitchPathIsls = allPaths.find { it.find { isl ->  isl.aswitch }}
-            aswitchPathIsls
+        IslExtended chosenIsl
+        def islsWithASwitch = isls.all().withASwitch().getListOfIsls()
+        def swPair = switchPairs.all().neighbouring().withSourceSwitchNotManufacturedBy(CENTEC).getSwitchPairs().find { sw ->
+            chosenIsl = islsWithASwitch.find {
+                it.srcSwId == sw.src.switchId && it.dstSwId == sw.dst.switchId
+            }
+            chosenIsl
         } ?: assumeTrue(false, "Wasn't able to find suitable switch pair")
 
         //make a-switch path the most preferable
-        allPaths.findAll { !it.containsAll(aswitchPathIsls) }.each { islHelper.makePathIslsMorePreferable(aswitchPathIsls, it) }
+        def allPaths = swPair.retrieveAvailablePaths().collect { isls.all().findInPath(it) }
+        List<IslExtended> aswitchPathIsls = allPaths.find { it == [chosenIsl] }
+        allPaths.findAll { it != aswitchPathIsls }.each { makePathIslsMorePreferable(aswitchPathIsls, it, northbound.getAllLinks()) }
 
         //build a flow
         def flow = flowFactory.getRandom(swPair)
-        assert aswitchPathIsls == flow.retrieveAllEntityPaths().getInvolvedIsls()
+        assert aswitchPathIsls == isls.all().findInPath(flow.retrieveAllEntityPaths())
 
         when: "Break the flow by removing rules from a-switch"
-        def islToBreak = aswitchPathIsls.find { it.aswitch }
         def rulesToRemove = []
-        data.breakForward && rulesToRemove << islToBreak.aswitch
-        data.breakReverse && rulesToRemove << islToBreak.aswitch.reversed
+        data.breakForward && rulesToRemove << chosenIsl.getASwitch()
+        data.breakReverse && rulesToRemove << chosenIsl.getASwitch().reversed
         aSwitchFlows.removeFlows(rulesToRemove)
 
         and: "Ping the flow"

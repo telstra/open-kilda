@@ -139,6 +139,7 @@ public class IslUtils {
      * @param isl IslInfoData object to convert
      */
     public LinkParametersDto toLinkParameters(IslInfoData isl) {
+        //can be a part of isls as it is used only for purgeTopology
         return new LinkParametersDto(isl.getSource().getSwitchId().toString(), isl.getSource().getPortNo(),
                 isl.getDestination().getSwitchId().toString(), isl.getDestination().getPortNo());
     }
@@ -160,6 +161,7 @@ public class IslUtils {
      */
     public LinkUnderMaintenanceDto toLinkUnderMaintenance(IslInfoData isl, boolean underMaintenance,
                                                           boolean evacuate) {
+        //the same for this transformation as it can be specified in ISLs
         return new LinkUnderMaintenanceDto(isl.getSource().getSwitchId().toString(), isl.getSource().getPortNo(),
                 isl.getDestination().getSwitchId().toString(), isl.getDestination().getPortNo(), underMaintenance,
                 evacuate);

@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FA
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.model.FlowActionType.REROUTE
 import static org.openkilda.functionaltests.helpers.model.FlowActionType.REROUTE_FAILED
+import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
 import static org.openkilda.functionaltests.helpers.model.SwitchExtended.isDefaultMeter
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
@@ -206,11 +207,11 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
     def "Unable to create a flow with protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def swPair = switchPairs.all().neighbouring().random()
-        def isls = topology.getRelatedIsls(swPair.src.switchId)
+        def bandwidth = 100
+        def directIsl = isls.all().betweenSwitchPair(swPair).first()
 
         and: "Update all ISLs which can be used by protected path"
-        def bandwidth = 100
-        islHelper.setAvailableBandwidth(isls[1..-1], 90)
+        isls.all().relatedTo(swPair.src).excludeIsls([directIsl]).updateIslsAvailableBandwidth(bandwidth - 1 )
 
         when: "Create flow with protected path"
        flowFactory.getBuilder(swPair)
@@ -228,8 +229,10 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches without alt paths"
         def switchPair = switchPairs.all().neighbouring().random()
-        def broughtDownIsls = topology.getRelatedIsls(switchPair.src.switchId)[1..-1]
-        islHelper.breakIsls(broughtDownIsls)
+        def directIsl = isls.all().betweenSwitchPair(switchPair).first()
+        def broughtDownIsls = isls.all().relatedTo(switchPair.src)
+                .excludeIsls([directIsl]).getListOfIsls()
+        breakIsls(broughtDownIsls)
 
         when: "Try to create a new flow with protected path"
         flowFactory.getBuilder(switchPair)
@@ -424,15 +427,15 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 .createV1()
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
-        def flowPathIsl = flow.retrieveAllEntityPaths().getMainPathInvolvedIsls()
-        def broughtDownIsls = topology.getRelatedIsls(switchPair.src.switchId) - flowPathIsl
-        islHelper.breakIsls(broughtDownIsls)
+        def flowPath = flow.retrieveAllEntityPaths()
+        def protectedIsls = isls.all().findInPath(flowPath.getProtectedPath())
+        def mainIsls = isls.all().findInPath(flowPath.getMainPath())
+        def broughtDownIsls = isls.all().relatedTo(switchPair)
+                .excludeIsls(mainIsls + protectedIsls).getListOfIsls()
+        breakIsls(broughtDownIsls)
 
         when: "Break ISL on a protected path (bring port down) for changing the flow state to DEGRADED"
-        def flowPathInfo = flow.retrieveAllEntityPaths()
-        def protectedIsls = flowPathInfo.getProtectedPathInvolvedIsls()
-        def currentIsls = flowPathInfo.getMainPathInvolvedIsls()
-        islHelper.breakIsl(protectedIsls[0])
+        protectedIsls.first().breakIt()
 
         then: "Flow state is changed to DEGRADED"
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.DEGRADED }
@@ -442,7 +445,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         }
 
         when: "Break ISL on the main path (bring port down) for changing the flow state to DOWN"
-        islHelper.breakIsl(currentIsls[0])
+        mainIsls.first().breakIt()
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
@@ -465,7 +468,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 ~/Could not swap paths: Protected flow path ${flow.flowId} is not in ACTIVE state/).matches(exc)
 
         when: "Restore ISL for the main path only"
-        islHelper.restoreIsl(currentIsls[0])
+        mainIsls.first().restore()
 
         then: "Flow state is still DEGRADED"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -485,7 +488,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 ~/Could not swap paths: Protected flow path ${flow.flowId} is not in ACTIVE state/).matches(exc1)
 
         when: "Restore ISL for the protected path"
-        islHelper.restoreIsl(protectedIsls[0])
+        protectedIsls.first().restore()
 
         then: "Flow state is changed to UP"
         //it often fails in scope of the whole spec on the hardware env, that's why '* 2' is added

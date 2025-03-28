@@ -1,12 +1,13 @@
 package org.openkilda.functionaltests.spec.links
 
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.link.LinkPropertiesNotUpdatedExpectedError
-import org.openkilda.functionaltests.extension.fixture.TestFixture
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto
 import org.openkilda.testing.Constants
@@ -86,14 +87,20 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         key << ["cost", "max_bandwidth"]
     }
 
-    @TestFixture(setup = "prepareLinkPropsForSearch", cleanup = "cleanLinkPropsAfterSearch")
     def "Searching for link props with #data.descr"() {
+        setup:"Preparing system for the following search"
+        northbound.updateLinkProps(propsDataForSearch)
+
         when: "Get link properties with search query"
         def foundProps = northboundGlobal.getLinkProps(*data.params)
                 .findAll { it.srcSwitch.startsWith("0f") } //exclude props from other labs
 
         then: "Returned props list match expected"
         foundProps.sort() == expected.sort()
+
+        cleanup:
+        northbound.deleteLinkProps(propsDataForSearch)
+        Wrappers.wait(WAIT_OFFSET / 2) { assert northbound.getLinkProps(topology.isls).empty }
 
         where:
         data << [
@@ -151,14 +158,14 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
 
     def "Updating cost, max bandwidth and description via link props actually updates cost, max bandwidth and description on ISLs"() {
         given: "An active ISL"
-        def isl = topology.islsForActiveSwitches.first()
-        def initialMaxBandwidth = islUtils.getIslInfo(isl).get().maxBandwidth
+        def isl = isls.all().first()
+        def initialMaxBandwidth = isl.getNbDetails().maxBandwidth
 
         when: "Create link props of ISL to update cost and max bandwidth on the forward and reverse directions"
         def costValue = "12345"
         def maxBandwidthValue = "54321"
         def descriptionValue = "Description test"
-        def linkProps = [islUtils.toLinkProps(isl, [
+        def linkProps = [isl.toLinkProps([
                 "cost": costValue,
                 "max_bandwidth": maxBandwidthValue,
                 "description": descriptionValue
@@ -169,23 +176,23 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         assert northbound.getLinkProps(topology.isls).size() == 2
 
         then: "Cost on forward and reverse ISLs is really updated"
-        database.getIslCost(isl) == costValue.toInteger()
-        database.getIslCost(isl.reversed) == costValue.toInteger()
+        isl.getCostFromDb() == costValue.toInteger()
+        isl.reversed.getCostFromDb() == costValue.toInteger()
 
-        and: "Max bandwidth on forward and reverse ISLs is really updated as well"
+        and: "Max bandwidth and description on forward and reverse ISLs is really updated as well"
         def updatedLinks = northbound.getAllLinks()
-        islUtils.getIslInfo(updatedLinks, isl).get().maxBandwidth == maxBandwidthValue.toInteger()
-        islUtils.getIslInfo(updatedLinks, isl.reversed).get().maxBandwidth == maxBandwidthValue.toInteger()
+        [isl, isl.reversed].each {
+            def islDetails =  it.getInfo(updatedLinks)
+            assert islDetails.maxBandwidth == maxBandwidthValue.toInteger()
+            assert islDetails.description == descriptionValue
 
-        and: "Description on forward and reverse ISLs is really updated as well"
-        islUtils.getIslInfo(updatedLinks, isl).get().description == descriptionValue
-        islUtils.getIslInfo(updatedLinks, isl.reversed).get().description == descriptionValue
+        }
 
         when: "Update link props on the forward direction of ISL to update cost one more time"
         def newCostValue = "345"
         cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
                 {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
-        northbound.updateLinkProps([islUtils.toLinkProps(isl, ["cost": newCostValue])])
+        northbound.updateLinkProps([isl.toLinkProps(["cost": newCostValue])])
 
         then: "Forward and reverse directions of the link props are really updated"
         northbound.getLinkProps(topology.isls).each {
@@ -193,74 +200,62 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         }
 
         and: "Cost on forward and reverse ISLs is really updated"
-        database.getIslCost(isl) == newCostValue.toInteger()
-        database.getIslCost(isl.reversed) == newCostValue.toInteger()
+        isl.getCostFromDb() == newCostValue.toInteger()
+        isl.reversed.getCostFromDb() == newCostValue.toInteger()
 
         when: "Delete link props"
         northbound.deleteLinkProps(linkProps)
-        def linkPropsAreDeleted = true
 
         then: "Cost on ISLs is changed to the default value"
-        database.getIslCost(isl) == Constants.DEFAULT_COST
-        database.getIslCost(isl.reversed) == Constants.DEFAULT_COST
+        isl.getCostFromDb() == Constants.DEFAULT_COST
+        isl.reversed.getCostFromDb() == Constants.DEFAULT_COST
 
-        and: "Max bandwidth on forward and reverse ISLs is changed to the initial value as well"
+        and: "Max bandwidth and description on forward and reverse ISLs is changed to the initial value as well"
         def links = northbound.getAllLinks()
-        islUtils.getIslInfo(links, isl).get().maxBandwidth == initialMaxBandwidth
-        islUtils.getIslInfo(links, isl.reversed).get().maxBandwidth == initialMaxBandwidth
+        [isl, isl.reversed].each {
+            def islDetails =  it.getInfo(links)
+            assert islDetails.maxBandwidth == initialMaxBandwidth
+            assert islDetails.description == null
 
-        and: "Description on forward and reverse ISLs are removed"
-        islUtils.getIslInfo(links, isl).get().description == null
-        islUtils.getIslInfo(links, isl.reversed).get().description == null
+        }
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "Newly discovered link gets cost and max bandwidth from link props"() {
         given: "An active ISL"
-        def isl = topology.islsForActiveSwitches.first()
+        def isl = isls.all().first()
 
         and: "Bring port down on the source switch"
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        isl.srcEndpoint.down()
         TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getLink(isl).actualState == IslChangeType.FAILED
-            assert northbound.getLink(isl.reversed).actualState == IslChangeType.FAILED
+            assert isl.getNbDetails().actualState == FAILED
+            assert isl.reversed.getNbDetails().actualState == FAILED
         }
 
         and: "Delete the link"
-        islHelper.deleteIsl(isl)
-        !islUtils.getIslInfo(isl)
-        !islUtils.getIslInfo(isl.reversed)
+        isl.delete()
+        !isl.isPresent()
 
         and: "Set cost and max bandwidth on the deleted link via link props"
         def costValue = "12345"
         def maxBandwidthValue = "54321"
-        def linkProps = [islUtils.toLinkProps(isl, ["cost": costValue, "max_bandwidth": maxBandwidthValue])]
+        def linkProps = [isl.toLinkProps(["cost": costValue, "max_bandwidth": maxBandwidthValue])]
         cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
                 {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
         northbound.updateLinkProps(linkProps)
 
         when: "Bring port up on the source switch to discover the deleted link"
-        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
-        }
+        isl.srcEndpoint.up()
+        isl.waitForStatus(DISCOVERED, discoveryInterval + WAIT_OFFSET)
 
         then: "The discovered link gets cost from link props"
-        database.getIslCost(isl) == costValue.toInteger()
-        database.getIslCost(isl.reversed) == costValue.toInteger()
+        isl.getCostFromDb() == costValue.toInteger()
+        isl.reversed.getCostFromDb() == costValue.toInteger()
 
         and: "The discovered link gets max bandwidth from link props as well"
         def links = northbound.getAllLinks()
-        islUtils.getIslInfo(links, isl).get().maxBandwidth == maxBandwidthValue.toInteger()
-        islUtils.getIslInfo(links, isl.reversed).get().maxBandwidth == maxBandwidthValue.toInteger()
-    }
-    def prepareLinkPropsForSearch() {
-        northbound.updateLinkProps(propsDataForSearch)
-    }
-
-    def cleanLinkPropsAfterSearch() {
-        northbound.deleteLinkProps(propsDataForSearch)
-        Wrappers.wait(WAIT_OFFSET / 2) { assert northbound.getLinkProps(topology.isls).empty }
+        isl.getInfo(links).maxBandwidth == maxBandwidthValue.toInteger()
+        isl.reversed.getInfo(links).maxBandwidth == maxBandwidthValue.toInteger()
     }
 }

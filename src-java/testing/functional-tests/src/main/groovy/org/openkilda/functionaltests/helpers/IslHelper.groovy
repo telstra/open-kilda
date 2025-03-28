@@ -124,16 +124,6 @@ class IslHelper {
         }
     }
 
-    def setAvailableBandwidth(Isl isl, long newValue) {
-        cleanupManager.addAction(RESET_ISL_PARAMETERS, {resetAvailableBandwidth([isl, isl.reversed])})
-        database.updateIslAvailableBandwidth(isl, newValue)
-    }
-
-    def setAvailableBandwidth(List<Isl> isls, long newValue) {
-        cleanupManager.addAction(RESET_ISL_PARAMETERS, {resetAvailableBandwidth(isls)})
-        database.updateIslsAvailableBandwidth(isls, newValue)
-    }
-
     def setAvailableAndMaxBandwidth(List<Isl> isls, long availableValue, long maxValue = availableValue) {
         cleanupManager.addAction(RESET_ISL_PARAMETERS, {resetAvailableBandwidth(isls)})
         database.updateIslsAvailableAndMaxBandwidth(isls, availableValue, maxValue)
@@ -141,17 +131,6 @@ class IslHelper {
 
     def resetAvailableBandwidth(List<Isl> isls) {
         database.resetIslsBandwidth(isls)
-    }
-
-    def updateLinkMaxBandwidthUsingApi(Isl isl, long newMaxBandwidth) {
-        cleanupManager.addAction(DELETE_ISLS_PROPERTIES, {deleteAllLinksProperties()})
-        northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId,
-                isl.dstPort, newMaxBandwidth)
-    }
-
-    void updateIslsCostInDatabase(List<Isl> isls, Integer newCost) {
-        cleanupManager.addAction(RESET_ISLS_COST,{ database.resetCosts(topology.isls) })
-        isls.each { database.updateIslCost(it, newCost) }
     }
 
     /**
@@ -169,24 +148,6 @@ class IslHelper {
         def currentLatency = northbound.getLink(isl).latency
         cleanupManager.addAction(RESET_ISL_PARAMETERS, {database.updateIslLatency(isl, currentLatency)})
         return database.updateIslLatency(isl, newLatency)
-    }
-
-    def deleteAllLinksProperties() {
-        return northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-    }
-
-    def setLinkBfd(Isl isl, BfdProperties props = new BfdProperties(350L, (short) 3)) {
-        cleanupManager.addAction(OTHER, {deleteLinkBfd(isl)})
-        return northboundV2.setLinkBfd(isl, props)
-    }
-
-    def setLinkBfdFromApiV1(Isl isl, boolean isEnabled) {
-        cleanupManager.addAction(OTHER, {deleteLinkBfd(isl)})
-        return northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, isEnabled))
-    }
-
-    def deleteLinkBfd(Isl isl) {
-        return northboundV2.deleteLinkBfd(isl)
     }
 
     def setLinkMaintenance(Isl isl, boolean isUnderMaintenance, boolean isEvacuate) {
@@ -217,22 +178,6 @@ class IslHelper {
         return newIsl
     }
 
-    //TOOD: replace boolean parameter with enum FORCE/NOT_FORCE
-    def deleteIsl(Isl isl, boolean isForce = false) {
-        cleanupManager.addAction(RESTORE_ISL, {
-            def links = northbound.getAllLinks()
-            def forwardIsl = islUtils.getIslInfo(links, isl)
-            def reverseIsl = islUtils.getIslInfo(links, isl.reversed)
-           if(!((forwardIsl.isPresent() && reverseIsl.isPresent()) && (forwardIsl.get().state == DISCOVERED && reverseIsl.get().state == DISCOVERED))) {
-               northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
-               northbound.portDown(isl.dstSwitch.dpId, isl.dstPort)
-           }
-            restoreIsl(isl)
-            database.resetCosts([isl, isl.reversed])
-        })
-        return northbound.deleteLink(islUtils.toLinkParameters(isl), isForce)
-    }
-
     def getPortBlinkerForSource(Isl isl, long interval) {
         def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, interval)
         cleanupManager.addAction(RESTORE_ISL, {
@@ -241,11 +186,6 @@ class IslHelper {
             islUtils.waitForIslStatus([isl], DISCOVERED)
         })
         return blinker
-    }
-
-    def setDelay(String bridgeName, Integer delayMs) {
-        cleanupManager.addAction(CLEAN_LINK_DELAY, {lockKeeperService.cleanupLinkDelay(bridgeName)})
-        return lockKeeperService.setLinkDelay(bridgeName, delayMs)
     }
 
     private def closePortBlinker(PortBlinker blinker) {
@@ -286,16 +226,6 @@ class IslHelper {
                     ["cost": (islCosts.get(islToAvoid) + difference + 1).toString()])])
         }
         return islToAvoid
-    }
-
-    /**
-     * Get total cost of all ISLs that are involved in a given path.
-     *
-     * @param isls represents a given path
-     * @return total path cost
-     */
-    int getCost(List<Isl> isls) {
-        return isls.sum { database.getIslCost(it) } as int
     }
 
     /**

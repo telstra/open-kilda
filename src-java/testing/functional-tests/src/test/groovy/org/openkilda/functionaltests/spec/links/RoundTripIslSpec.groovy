@@ -32,35 +32,33 @@ class RoundTripIslSpec extends HealthCheckSpecification {
     /*we need this variable because it takes more time to DEACTIVATE a switch
     via the 'knockoutSwitch' method on the stage env*/
     Integer customWaitOffset = WAIT_OFFSET * 4
-
+//check on hardware env
 
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Isl with round-trip properly changes status after port events(#descr)"() {
         given: "Round-trip ISL with a-switch"
-        def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort &&
-                [it.srcSwitch, it.dstSwitch].every { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
-        }
-        assumeTrue(isl != null, "Wasn't able to find round-trip ISL with a-switch")
-        islHelper.setLinkBfd(isl)
+        def switchesWithRtl = switches.all().withRtlSupport().getListOfSwitches()
+        def isl = isls.all().withASwitch().betweenSwitches(switchesWithRtl).random()
+        isl.setBfd()
 
         when: "Port down event happens"
-        islHelper.breakIsl(isl)
+        isl.breakIt()
 
         and: "Port up event happens, but traffic goes only in one direction"
-        aSwitchFlows.removeFlows([isl.aswitch])
+        aSwitchFlows.removeFlows([isl.getASwitch()])
 
         then: "ISL is not getting discovered"
         TimeUnit.SECONDS.sleep(discoveryInterval + 2)
-        northbound.getLink(isl).state == FAILED
-        northbound.getLink(isl.reversed).state == FAILED
+        isl.getNbDetails().state == FAILED
+        isl.reversed.getNbDetails().state == FAILED
 
         when: "Traffic starts to flow in both directions"
-        aSwitchFlows.addFlows([isl.aswitch])
+        aSwitchFlows.addFlows([isl.getASwitch()])
 
         then: "ISL gets discovered"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            def fw = northbound.getLink(isl)
-            def rv = northbound.getLink(isl.reversed)
+            def fw = isl.getNbDetails()
+            def rv = isl.reversed.getNbDetails()
             assert fw.state == DISCOVERED
             assert fw.actualState == DISCOVERED
             assert rv.state == DISCOVERED
@@ -77,16 +75,12 @@ class RoundTripIslSpec extends HealthCheckSpecification {
         given: "A switch with/without round trip latency ISLs"
         def roundTripIsls
         def nonRoundTripIsls
-        def swToDeactivate = switches.all().getListOfSwitches().find { sw ->
-            if (sw.getDbFeatures().contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
-                roundTripIsls = topology.getRelatedIsls(sw.switchId).findAll {
-                    it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
-                }
-                nonRoundTripIsls = topology.getRelatedIsls(sw.switchId).findAll {
-                    !it.dstSwitch.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
-                }
-                roundTripIsls && nonRoundTripIsls
-            }
+        def switchesWithRtl = switches.all().withRtlSupport().getListOfSwitches()
+        def swToDeactivate = switchesWithRtl.find { sw ->
+            def swRelatedIsls = isls.all().relatedTo(sw).getListOfIsls()
+            roundTripIsls = swRelatedIsls.findAll { it.dstSwId in switchesWithRtl.switchId }
+            nonRoundTripIsls = swRelatedIsls.findAll { it.dstSwId !in switchesWithRtl.switchId }
+            roundTripIsls && nonRoundTripIsls
         } ?: assumeTrue(false, "Wasn't able to find a switch with suitable links")
 
         when: "Simulate connection lose between the switch and FL, the switch becomes DEACTIVATED and remains operable"
@@ -98,14 +92,14 @@ class RoundTripIslSpec extends HealthCheckSpecification {
         then: "All non round trip latency ISLs are FAILED"
         Wrappers.wait(WAIT_OFFSET) {
             withPool {
-                nonRoundTripIsls.eachParallel { assert northbound.getLink(it).state == FAILED }
+                nonRoundTripIsls.eachParallel { assert it.getNbDetails().state == FAILED }
             }
         }
 
         and: "All round trip latency ISLs are still DISCOVERED (the system uses round trip latency status \
 for ISL alive confirmation)"
         withPool {
-            roundTripIsls.eachParallel { assert northbound.getLink(it).state == DISCOVERED }
+            roundTripIsls.eachParallel { assert it.getNbDetails().state == DISCOVERED }
         }
     }
 
@@ -113,17 +107,14 @@ for ISL alive confirmation)"
     def "A round trip latency ISL goes down when both switches lose connection to FL"() {
         given: "A round trip latency ISL"
         def swPair = switchPairs.all().neighbouring().withIslRttSupport().first()
-        Isl roundTripIsl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
-        assert roundTripIsl
+        def roundTripIsl = isls.all().betweenSwitchPair(swPair).first()
 
         when: "Switches lose connection to FL, switches become DEACTIVATED but keep processing packets"
         swPair.src.knockout(RW)
         swPair.dst.knockout(RW)
 
         then: "The round trip latency ISL is FAILED (because round_trip_status is not available in DB for current ISL on both switches)"
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET / 2) {
-            assert northbound.getLink(roundTripIsl).state == FAILED
-        }
+        roundTripIsl.waitForStatus(FAILED)
     }
 
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
@@ -131,22 +122,18 @@ for ISL alive confirmation)"
 round trip latency rule is removed on the dst switch"() {
         given: "A round trip latency ISL"
         def swPair = switchPairs.all().neighbouring().withIslRttSupport().first()
-        Isl roundTripIsl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
-        assert roundTripIsl
+        def roundTripIsl = isls.all().betweenSwitchPair(swPair).first()
 
         and: "Round trip status is ACTIVE for the given ISL in both directions"
         [roundTripIsl, roundTripIsl.reversed].each {
-            assert northbound.getLink(it).roundTripStatus == DISCOVERED
+            assert it.getNbDetails().roundTripStatus == DISCOVERED
         }
 
         when: "Simulate connection lose between the src switch and FL, switches become DEACTIVATED and remain operable"
         def mgmtBlockData = swPair.src.knockout(RW)
 
         then: "Round trip status for forward direction is not available and ACTIVE in reverse direction"
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET / 2) {
-            assert northbound.getLink(roundTripIsl).roundTripStatus == FAILED
-            assert northbound.getLink(roundTripIsl.reversed).roundTripStatus == DISCOVERED
-        }
+        roundTripIsl.waitForRoundTripStatus(FAILED, DISCOVERED)
 
         when: "Delete ROUND_TRIP_LATENCY_RULE_COOKIE on the dst switch"
         swPair.dst.rulesManager.delete(DeleteRulesAction.REMOVE_ROUND_TRIP_LATENCY)
@@ -156,15 +143,11 @@ round trip latency rule is removed on the dst switch"() {
 
         then: "The round trip latency ISL is FAILED"
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET / 2) {
-            assert northbound.getLink(roundTripIsl).state == FAILED
+            assert roundTripIsl.getNbDetails().state == FAILED
         }
 
         and: "Round trip status is not available for the given ISL in both directions"
-        Wrappers.wait(WAIT_OFFSET / 2) {
-            [roundTripIsl, roundTripIsl.reversed].each {
-                assert northbound.getLink(it).roundTripStatus == FAILED
-            }
-        }
+        roundTripIsl.waitForRoundTripStatus(FAILED)
 
         when: "Restore connection between the src switch and FL"
         swPair.src.revive(mgmtBlockData)
@@ -175,13 +158,11 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         then: "Round trip isl is DISCOVERED"
-        northbound.getLink(roundTripIsl).state == DISCOVERED
+        roundTripIsl.getNbDetails().state == DISCOVERED
 
         and: "Round trip status is available for the given ISL in forward direction only"
-        Wrappers.wait(WAIT_OFFSET / 2) {
-            assert northbound.getLink(roundTripIsl).roundTripStatus == DISCOVERED
-            assert northbound.getLink(roundTripIsl.reversed).roundTripStatus == FAILED
-        }
+        roundTripIsl.waitForRoundTripStatus(DISCOVERED, FAILED)
+
 
         when: "Install ROUND_TRIP_LATENCY_RULE_COOKIE on the dst switch"
         swPair.dst.rulesManager.install(InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY)
@@ -190,28 +171,23 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         then: "Round trip status is available for the given ISL in both directions"
-        Wrappers.wait(WAIT_OFFSET / 2) {
-            [roundTripIsl, roundTripIsl.reversed].each {
-                assert northbound.getLink(it).roundTripStatus == DISCOVERED }
-        }
+        roundTripIsl.waitForRoundTripStatus(DISCOVERED)
     }
 
     @Tags([SMOKE_SWITCHES])
     def "A round trip latency ISL goes down when portDiscovery property is disabled on the src/dst ports"() {
         given: "A round trip latency ISL"
         def swPair = switchPairs.all().neighbouring().withIslRttSupport().first()
-        Isl roundTripIsl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
-        assert roundTripIsl
+        def roundTripIsl = isls.all().betweenSwitchPair(swPair).first()
 
         when: "Disable portDiscovery on the srcPort"
-        def islSrcPort = swPair.src.getPort(roundTripIsl.srcPort)
-        islSrcPort.setDiscovery(false)
+        roundTripIsl.srcEndpoint.setDiscovery(false)
 
         then: "Isl is still DISCOVERED"
         Wrappers.wait(WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            def islInfoForward = islUtils.getIslInfo(links, roundTripIsl,).get()
-            def islInfoReverse = islUtils.getIslInfo(links, roundTripIsl.reversed).get()
+            def islInfoForward = roundTripIsl.getInfo(links, false)
+            def islInfoReverse = roundTripIsl.getInfo(links, true)
             assert islInfoForward.state == DISCOVERED
             assert islInfoForward.actualState == FAILED
             assert islInfoReverse.state == DISCOVERED
@@ -219,15 +195,14 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Disable portDiscovery property on the dstPort"
-        def islDstPort = swPair.dst.getPort(roundTripIsl.dstPort)
-        islDstPort.setDiscovery(false)
+        roundTripIsl.dstEndpoint.setDiscovery(false)
 
         then: "Status of the link is changed to FAILED"
         //don't need to wait discoveryTimeout, disablePortDiscovery(on src/dst sides) == portDown
         Wrappers.wait(WAIT_OFFSET) {
             def allLinks = northbound.getAllLinks()
-            def islInfoForward = islUtils.getIslInfo(allLinks, roundTripIsl).get()
-            def islInfoReverse = islUtils.getIslInfo(allLinks, roundTripIsl.reversed).get()
+            def islInfoForward = roundTripIsl.getInfo(allLinks, false)
+            def islInfoReverse = roundTripIsl.getInfo(allLinks, true)
             assert islInfoForward.state == FAILED
             assert islInfoForward.actualState == FAILED
             assert islInfoReverse.state == FAILED
@@ -235,14 +210,14 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Enable portDiscovery on the src/dst ports"
-        islSrcPort.setDiscovery(true)
-        islDstPort.setDiscovery(true)
+        roundTripIsl.srcEndpoint.setDiscovery(true)
+        roundTripIsl.dstEndpoint.setDiscovery(true)
 
         then: "ISL is rediscovered"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            def islInfoForward = islUtils.getIslInfo(links, roundTripIsl).get()
-            def islInfoReverse = islUtils.getIslInfo(links, roundTripIsl.reversed).get()
+            def islInfoForward = roundTripIsl.getInfo(links, false)
+            def islInfoReverse = roundTripIsl.getInfo(links, true)
             assert islInfoForward.state == DISCOVERED
             assert islInfoForward.actualState == DISCOVERED
             assert islInfoReverse.state == DISCOVERED
@@ -254,46 +229,37 @@ round trip latency rule is removed on the dst switch"() {
     def "Able to delete failed ISL without force if it was discovered with disabled portDiscovery on a switch"() {
         given: "A deleted round trip latency ISL"
         def swPair = switchPairs.all().neighbouring().withIslRttSupport().first()
-        Isl roundTripIsl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
-        assert roundTripIsl
+        def roundTripIsl = isls.betweenSwitchPair(swPair).first()
 
-        islHelper.breakIsl(roundTripIsl)
+        roundTripIsl.breakIt()
         Wrappers.wait(WAIT_OFFSET) {
             //https://github.com/telstra/open-kilda/issues/3847
-            Wrappers.silent { northbound.deleteLink(islUtils.toLinkParameters(roundTripIsl)) }
-            def links = northbound.getAllLinks()
-            assert !islUtils.getIslInfo(links, roundTripIsl).present
+            Wrappers.silent { roundTripIsl.delete() }
+            assert !roundTripIsl.isPresent()
         }
 
         when: "Disable portDiscovery on the srcPort"
-        def islSrcPort = swPair.src.getPort(roundTripIsl.srcPort)
-        islSrcPort.setDiscovery(false)
+        roundTripIsl.srcEndpoint.setDiscovery(false)
 
         and: "Revive the ISL back (bring switch port up)"
-        islHelper.restoreIsl(roundTripIsl)
+        roundTripIsl.restore()
 
         then: "The src/dst switches are valid"
         //https://github.com/telstra/open-kilda/issues/3906
 //        switchHelper.synchronizeAndGetFixedEntries([roundTripIsl.srcSwitch, roundTripIsl.dstSwitch]).isEmpty()
 
         when: "Disable portDiscovery on the dstPort"
-        def islDstPort = swPair.dst.getPort(roundTripIsl.dstPort)
-        islDstPort.setDiscovery(false)
+        roundTripIsl.dstEndpoint.setDiscovery(false)
 
         then: "The ISL is failed"
-        Wrappers.wait(WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, roundTripIsl).get().state == FAILED
-            assert islUtils.getIslInfo(links, roundTripIsl.reversed).get().state == FAILED
-        }
+        roundTripIsl.waitForStatus(FAILED, WAIT_OFFSET)
 
         when: "Delete the ISL without the 'force' option"
-        islHelper.deleteIsl(roundTripIsl)
+        roundTripIsl.delete()
 
         then: "The ISL is deleted"
         Wrappers.wait(WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            assert !islUtils.getIslInfo(links, roundTripIsl).present
+            !roundTripIsl.isPresent()
         }
     }
 }
