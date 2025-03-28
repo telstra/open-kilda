@@ -292,6 +292,14 @@ class SwitchExtended {
         return getOfVersion() == OF_13.toString()
     }
 
+    boolean isRtlSupported() {
+        getDbFeatures().contains(NOVIFLOW_COPY_FIELD)
+    }
+
+    boolean isBfdSupported() {
+        getDbFeatures().contains(SwitchFeature.BFD)
+    }
+
     String hwSwString() {
         "${nbFormat().hardware} ${nbFormat().software}"
     }
@@ -369,7 +377,7 @@ class SwitchExtended {
         }
 
         if ((toggles.server42IslRtt && isS42Supported(swProps) && (swProps.server42IslRtt == "ENABLED" ||
-                swProps.server42IslRtt == "AUTO" && !getDbFeatures().contains(NOVIFLOW_COPY_FIELD)))) {
+                swProps.server42IslRtt == "AUTO" && !isRtlSupported()))) {
             devicesRules.add(SERVER_42_ISL_RTT_TURNING_COOKIE)
             devicesRules.add(SERVER_42_ISL_RTT_OUTPUT_COOKIE)
             relatedLinks.each {

@@ -7,7 +7,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.model.FlowActionType.REROUTE
 import static org.openkilda.functionaltests.helpers.model.FlowActionType.REROUTE_FAILED
-
+import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -755,22 +755,23 @@ switches"() {
         def flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1).create()
 
         and: "Update the first flow so that it consumes all bandwidth on the link"
-        def flow1Isl = flow1.retrieveAllEntityPaths().getInvolvedIsls().first()
-        def flow1IslMaxBw = islUtils.getIslInfo(flow1Isl).get().maxBandwidth
-
+        def flow1Isl = isls.all().findInPath(flow1.retrieveAllEntityPaths()).first()
+        def flow1IslMaxBw = flow1Isl.getNbDetails().maxBandwidth
         flow1.update(flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
 
         and: "Break all alternative paths for the first flow"
-        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src.switchId) - flow1Isl
-        islHelper.breakIsls(broughtDownIsls)
+        def broughtDownIsls = isls.all().relatedTo(flow1SwitchPair.src)
+                .excludeIsls([flow1Isl]).getListOfIsls()
+        breakIsls(broughtDownIsls)
 
         and: "Update max bandwidth for the second flow's link so that it is equal to max bandwidth of the first flow"
-        def flow2Isl = flow2.retrieveAllEntityPaths().getInvolvedIsls().first()
-        islHelper.updateLinkMaxBandwidthUsingApi(flow2Isl, flow1IslMaxBw)
+        def flow2Isl = isls.all().findInPath(flow2.retrieveAllEntityPaths()).first()
+        flow2Isl.updateMaxBandwidth(flow1IslMaxBw)
 
         and: "Break all alternative paths for the second flow"
-        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src.switchId) - flow2Isl - broughtDownIsls
-        islHelper.breakIsls(flow2BroughtDownIsls)
+        def flow2BroughtDownIsls = isls.all().relatedTo(flow2SwitchPair.src)
+                .excludeIsls([flow2Isl] + broughtDownIsls).getListOfIsls()
+        breakIsls(flow2BroughtDownIsls)
 
         when: "Try to swap endpoints for two flows"
         def flow1Src = flow2.source
@@ -813,22 +814,23 @@ switches"() {
         def flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1).create()
 
         and: "Update the first flow so that it consumes all bandwidth on the link"
-        def flow1Isl = flow1.retrieveAllEntityPaths().getInvolvedIsls().first()
-        def flow1IslMaxBw = islUtils.getIslInfo(flow1Isl).get().maxBandwidth
-
+        def flow1Isl = isls.all().findInPath(flow1.retrieveAllEntityPaths()).first()
+        def flow1IslMaxBw = flow1Isl.getNbDetails().maxBandwidth
         flow1.update(flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
 
         and: "Break all alternative paths for the first flow"
-        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src.switchId) - flow1Isl
-        islHelper.breakIsls(broughtDownIsls)
+        def broughtDownIsls = isls.all().relatedTo(flow1SwitchPair.src)
+                .excludeIsls([flow1Isl]).getListOfIsls()
+        breakIsls(broughtDownIsls)
 
         and: "Update max bandwidth for the second flow's link so that it is not enough bandwidth for the first flow"
-        def flow2Isl = flow2.retrieveAllEntityPaths().getInvolvedIsls().first()
-        islHelper.updateLinkMaxBandwidthUsingApi(flow2Isl, flow1IslMaxBw - 1)
+        def flow2Isl = isls.all().findInPath(flow2.retrieveAllEntityPaths()).first()
+        flow2Isl.updateMaxBandwidth(flow1IslMaxBw - 1)
 
         and: "Break all alternative paths for the second flow"
-        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src.switchId) - flow2Isl - broughtDownIsls
-        islHelper.breakIsls(flow2BroughtDownIsls)
+        def flow2BroughtDownIsls = isls.all().relatedTo(flow2SwitchPair.src)
+                .excludeIsls([flow2Isl] + broughtDownIsls).getListOfIsls()
+        breakIsls(flow2BroughtDownIsls)
 
         when: "Try to swap endpoints for two flows"
         def flow1Src = flow2.source
@@ -863,22 +865,24 @@ switches"() {
         def flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1).create()
 
         and: "Update the first flow so that it consumes all bandwidth on the link"
-        def flow1Isl = flow1.retrieveAllEntityPaths().getInvolvedIsls().first()
-        def flow1IslMaxBw = islUtils.getIslInfo(flow1Isl).get().maxBandwidth
+        def flow1Isl = isls.all().findInPath( flow1.retrieveAllEntityPaths()).first()
+        def flow1IslMaxBw = flow1Isl.getNbDetails().maxBandwidth
 
         flow1.update(flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
 
         and: "Break all alternative paths for the first flow"
-        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src.switchId) - flow1Isl
-        islHelper.breakIsls(broughtDownIsls)
+        def broughtDownIsls = isls.all().relatedTo(flow1SwitchPair.src)
+                .excludeIsls([flow1Isl]).getListOfIsls()
+        breakIsls(broughtDownIsls)
 
         and: "Update max bandwidth for the second flow's link so that it is not enough bandwidth for the first flow"
-        def flow2Isl = flow2.retrieveAllEntityPaths().getInvolvedIsls().first()
-        islHelper.updateLinkMaxBandwidthUsingApi(flow2Isl, flow1IslMaxBw - 1)
+        def flow2Isl = isls.all().findInPath(flow2.retrieveAllEntityPaths()).first()
+        flow2Isl.updateMaxBandwidth(flow1IslMaxBw - 1)
 
         and: "Break all alternative paths for the second flow"
-        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src.switchId) - flow2Isl - broughtDownIsls
-        islHelper.breakIsls(flow2BroughtDownIsls)
+        def flow2BroughtDownIsls = isls.all().relatedTo(flow2SwitchPair.src)
+                .excludeIsls([flow2Isl] + broughtDownIsls).getListOfIsls()
+        breakIsls(flow2BroughtDownIsls)
 
         when: "Try to swap endpoints for two flows"
         def flow1Src = flow2.source
@@ -925,8 +929,8 @@ switches"() {
                 .collectMany { it.retrieveAllEntityPaths().getInvolvedSwitches() }.unique())
 
         and: "Break all paths for the first flow"
-        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src.switchId)
-        islHelper.breakIsls(broughtDownIsls)
+        def broughtDownIsls = isls.all().relatedTo(flow1SwitchPair.src).getListOfIsls()
+        breakIsls(broughtDownIsls)
 
         when: "Try to swap endpoints for two flows"
         northbound.swapFlowEndpoint(

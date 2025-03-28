@@ -3,6 +3,7 @@ package org.openkilda.functionaltests
 import org.openkilda.functionaltests.helpers.IslHelper
 import org.openkilda.functionaltests.helpers.model.ASwitchFlows
 import org.openkilda.functionaltests.helpers.model.ASwitchPorts
+import org.openkilda.functionaltests.helpers.model.Isls
 import org.openkilda.functionaltests.helpers.model.KildaConfiguration
 import org.openkilda.functionaltests.helpers.model.FeatureToggles
 import org.openkilda.functionaltests.helpers.model.SwitchPairs
@@ -72,6 +73,8 @@ class BaseSpecification extends Specification {
     StatsHelper statsHelper
     @Autowired @Shared
     Switches switches
+    @Autowired @Shared
+    Isls isls
     @Autowired @Shared
     SwitchPairs switchPairs
     @Autowired @Shared

@@ -389,9 +389,9 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         assumeTrue(switchPair as boolean, "Wasn't able to find suitable switches")
         //make a no-vxlan path to be the most preferred
-        def noVxlanPathIsls = noVxlanPath.getInvolvedIsls()
-        switchPair.retrieveAvailablePaths().findAll { it != noVxlanPath }.collect { it.getInvolvedIsls() }
-                .each { islHelper.makePathIslsMorePreferable(noVxlanPathIsls, it) }
+        def noVxlanPathIsls = isls.all().findInPath(noVxlanPath)
+        switchPair.retrieveAvailablePaths().findAll { it != noVxlanPath }.collect { isls.all().findInPath(it)}
+                .each { isls.all().makePathIslsMorePreferable(noVxlanPathIsls, it) }
 
         def initNoVxlanSwProps
         def isVxlanEnabledOnNoVxlanSw = noVxlanSwId in vxlanEnabledSws
@@ -410,7 +410,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         then: "Flow is built through vxlan-enabled path, even though it is not the shortest"
         def flowPath = flow.retrieveAllEntityPaths()
-        flowPath.getInvolvedIsls() != noVxlanPathIsls
+        isls.all().findInPath(flowPath) != noVxlanPathIsls
         !flowPath.getInvolvedSwitches().contains(noVxlanSwId)
     }
 
