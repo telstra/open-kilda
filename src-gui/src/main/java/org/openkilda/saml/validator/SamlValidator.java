@@ -40,12 +40,12 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 @Component
 public class SamlValidator {
-    
+
     private static final Logger LOGGER = LoggerFactory.getLogger(SamlValidator.class);
-    
+
     @Autowired
     private SamlRepository samlRepository;
-    
+
     @Autowired
     private MessageUtils messageUtil;
 
@@ -59,7 +59,7 @@ public class SamlValidator {
      * @param userCreation the userCreation
      * @param roleIds the role ids
      */
-    public void validateCreateProvider(MultipartFile file, String name, String entityId, String url, 
+    public void validateCreateProvider(MultipartFile file, String name, String entityId, String url,
             boolean userCreation, List<Long> roleIds) {
         SamlConfigEntity samlConfigEntity = samlRepository.findByEntityIdOrNameEqualsIgnoreCase(entityId, name);
         if (samlConfigEntity != null) {
@@ -74,7 +74,7 @@ public class SamlValidator {
             }
         }
         String metadataEntityId = validateEntityId(file, url);
-        if (!metadataEntityId.equals(entityId)) { 
+        if (!metadataEntityId.equals(entityId)) {
             throw new RequestValidationException("Entity Id must be same as Metadata Entity Id");
         }
         if (userCreation) {
@@ -83,7 +83,7 @@ public class SamlValidator {
             }
         }
     }
-    
+
     /**
      * Validate update provider.
      *
@@ -96,7 +96,7 @@ public class SamlValidator {
      * @param roleIds the role ids
      * @return the saml config entity
      */
-    public SamlConfigEntity validateUpdateProvider(String uuid, MultipartFile file, String name, 
+    public SamlConfigEntity validateUpdateProvider(String uuid, MultipartFile file, String name,
             String entityId, String url, boolean userCreation, List<Long> roleIds) {
         SamlConfigEntity samlConfigEntity = getEntityByUuid(uuid);
         SamlConfigEntity configEntity = samlRepository.findByUuidNotAndEntityIdOrUuidNotAndNameEqualsIgnoreCase(
@@ -117,7 +117,7 @@ public class SamlValidator {
             String metadataEntityId = validateEntityId(file, url);
             if (!metadataEntityId.equals(entityId)) {
                 throw new RequestValidationException("Entity Id must be same as Metadata Entity Id");
-            } 
+            }
         }
         if (userCreation) {
             if (roleIds.isEmpty() || roleIds == null) {
@@ -126,7 +126,7 @@ public class SamlValidator {
         }
         return samlConfigEntity;
     }
-    
+
     /**
      * Validate entity id.
      *
@@ -138,8 +138,11 @@ public class SamlValidator {
         String entityId = null;
         try {
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            dbFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            dbFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
             DocumentBuilder docBuilder = dbFactory.newDocumentBuilder();
-            Document doc = null; 
+            Document doc = null;
             if (file != null) {
                 doc = docBuilder.parse(file.getInputStream());
             } else if (url != null) {
@@ -160,7 +163,7 @@ public class SamlValidator {
             throw new RequestValidationException(messageUtil.getAttributeMetadataInvalid("url"));
         }
     }
-    
+
     /**
      * Get saml config entity.
      *
