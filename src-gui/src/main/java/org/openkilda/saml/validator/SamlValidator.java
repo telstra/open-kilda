@@ -19,7 +19,6 @@ import org.openkilda.saml.dao.entity.SamlConfigEntity;
 import org.openkilda.saml.repository.SamlRepository;
 
 import org.apache.commons.io.FilenameUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,22 +31,45 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.List;
-
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 @Component
 public class SamlValidator {
-    
+
     private static final Logger LOGGER = LoggerFactory.getLogger(SamlValidator.class);
-    
+
     @Autowired
     private SamlRepository samlRepository;
-    
+
     @Autowired
     private MessageUtils messageUtil;
+
+    private void validateUrl(String url) {
+        if (url == null) {
+            return;
+        }
+        try {
+            URL parsedUrl = new URL(url);
+            String protocol = parsedUrl.getProtocol();
+
+            if (!protocol.equals("http") && !protocol.equals("https")) {
+                throw new RequestValidationException(messageUtil.getAttributeInvalid("URL", url));
+            }
+            // Prevent access to internal/private IPs
+            InetAddress addr = InetAddress.getByName(parsedUrl.getHost());
+            if (addr.isSiteLocalAddress() || addr.isLoopbackAddress() || addr.isAnyLocalAddress()) {
+                throw new RequestValidationException(messageUtil.getAttributeInvalid("URL", url));
+            }
+        } catch (MalformedURLException | UnknownHostException e) {
+            throw new RequestValidationException(messageUtil.getAttributeInvalid("URL", url));
+        }
+    }
 
     /**
      * Validate create provider.
@@ -59,8 +81,8 @@ public class SamlValidator {
      * @param userCreation the userCreation
      * @param roleIds the role ids
      */
-    public void validateCreateProvider(MultipartFile file, String name, String entityId, String url, 
-            boolean userCreation, List<Long> roleIds) {
+    public void validateCreateProvider(MultipartFile file, String name, String entityId, String url,
+                                       boolean userCreation, List<Long> roleIds) {
         SamlConfigEntity samlConfigEntity = samlRepository.findByEntityIdOrNameEqualsIgnoreCase(entityId, name);
         if (samlConfigEntity != null) {
             throw new RequestValidationException(messageUtil.getAttributeUnique("Provider name or Entity Id"));
@@ -68,13 +90,15 @@ public class SamlValidator {
         if (file == null && url == null) {
             throw new RequestValidationException(messageUtil.getAttributeNotNull("Metadata file or url"));
         }
+
+        validateUrl(url);
         if (file != null) {
             if (!FilenameUtils.getExtension(file.getOriginalFilename()).equals("xml")) {
                 throw new RequestValidationException(messageUtil.getAttributeMetadataInvalid("file"));
             }
         }
         String metadataEntityId = validateEntityId(file, url);
-        if (!metadataEntityId.equals(entityId)) { 
+        if (!metadataEntityId.equals(entityId)) {
             throw new RequestValidationException("Entity Id must be same as Metadata Entity Id");
         }
         if (userCreation) {
@@ -83,7 +107,7 @@ public class SamlValidator {
             }
         }
     }
-    
+
     /**
      * Validate update provider.
      *
@@ -96,8 +120,8 @@ public class SamlValidator {
      * @param roleIds the role ids
      * @return the saml config entity
      */
-    public SamlConfigEntity validateUpdateProvider(String uuid, MultipartFile file, String name, 
-            String entityId, String url, boolean userCreation, List<Long> roleIds) {
+    public SamlConfigEntity validateUpdateProvider(String uuid, MultipartFile file, String name, String entityId,
+                                                   String url, boolean userCreation, List<Long> roleIds) {
         SamlConfigEntity samlConfigEntity = getEntityByUuid(uuid);
         SamlConfigEntity configEntity = samlRepository.findByUuidNotAndEntityIdOrUuidNotAndNameEqualsIgnoreCase(
                 uuid, entityId, uuid, name);
@@ -114,10 +138,11 @@ public class SamlValidator {
                 throw new RequestValidationException(messageUtil.getAttributeInvalid("Entity Id", entityId));
             }
         } else {
+            validateUrl(url);
             String metadataEntityId = validateEntityId(file, url);
             if (!metadataEntityId.equals(entityId)) {
                 throw new RequestValidationException("Entity Id must be same as Metadata Entity Id");
-            } 
+            }
         }
         if (userCreation) {
             if (roleIds.isEmpty() || roleIds == null) {
@@ -126,7 +151,7 @@ public class SamlValidator {
         }
         return samlConfigEntity;
     }
-    
+
     /**
      * Validate entity id.
      *
@@ -138,8 +163,11 @@ public class SamlValidator {
         String entityId = null;
         try {
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            dbFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            dbFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            dbFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
             DocumentBuilder docBuilder = dbFactory.newDocumentBuilder();
-            Document doc = null; 
+            Document doc = null;
             if (file != null) {
                 doc = docBuilder.parse(file.getInputStream());
             } else if (url != null) {
@@ -160,7 +188,7 @@ public class SamlValidator {
             throw new RequestValidationException(messageUtil.getAttributeMetadataInvalid("url"));
         }
     }
-    
+
     /**
      * Get saml config entity.
      *
