@@ -1,5 +1,16 @@
 # Changelog
-## v1.163.0 (20/03/2025)
+## v1.164.0 (03/04/2025)
+
+### Bug Fixes:
+-  [#5778](https://github.com/telstra/open-kilda/pull/5778) Issue 2. Xml parser fix [**gui**]
+-  [#5779](https://github.com/telstra/open-kilda/pull/5779) blind ssrf fix [**gui**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.163.0...v1.164.0).
+
+---
+
+## v1.163.0 (19/03/2025)
 
 ### Bug Fixes:
 -  [#5768](https://github.com/telstra/open-kilda/pull/5768) update actions/cache v2 -> actions/cache v4
