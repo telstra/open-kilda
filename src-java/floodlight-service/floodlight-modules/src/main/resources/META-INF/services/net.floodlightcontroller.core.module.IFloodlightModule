@@ -5,3 +5,4 @@ org.openkilda.floodlight.pathverification.PathVerificationService
 org.openkilda.floodlight.switchmanager.SwitchManager
 org.openkilda.floodlight.statistics.StatisticsService
 org.openkilda.floodlight.kafka.StatsKafkaMessageCollector
+org.openkilda.floodlight.prob.ProbService
