@@ -20,7 +20,7 @@ dependencies {
     api(project(":kilda-persistence-api"))
     api(project(":blue-green"))
     api("org.squirrelframework:squirrel-foundation")
-    api("org.apache.storm:storm-kafka-client:2.6.1")
+    api("org.apache.storm:storm-kafka-client:2.6.2")
     api("com.google.guava:guava")
     api("org.apache.commons:commons-lang3")
     api("org.apache.commons:commons-collections4")
@@ -42,7 +42,7 @@ dependencies {
     implementation(project(":grpc-api"))
     implementation("org.yaml:snakeyaml:2.2")
     implementation("org.rocksdb:rocksdbjni:8.10.0") { because("Storm integration tests require it") }
-    implementation("org.apache.storm:flux-core:2.6.1")
+    implementation("org.apache.storm:flux-core:2.6.2")
 
     /**
      * This dependency must be compileOnly to prevent storm to be packed via transitive dependencies into the shadowJar,
