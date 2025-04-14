@@ -16,6 +16,7 @@
 #include <rte_branch_prediction.h>
 #include <rte_ring.h>
 #include <rte_mbuf.h>
+#include <rte_mbuf_dyn.h>
 
 #include <pcapplusplus/UdpLayer.h>
 #include <pcapplusplus/MBufRawPacket.h>
@@ -172,7 +173,8 @@ namespace org::openkilda {
     bool read_thread(
             boost::atomic<bool> &alive,
             pcpp::DpdkDevice *device,
-            boost::shared_ptr<rte_ring> ring) {
+            boost::shared_ptr<rte_ring> ring,
+            int mbuf_dyn_timestamp_offset) {
 
         BOOST_LOG_TRIVIAL(info) << "read_thread started ";
         pcpp::MBufRawPacket mbuf_raw_table[Config::chunk_size];
@@ -199,7 +201,8 @@ namespace org::openkilda {
 
             for (uint32_t i = 0; i < table_size; ++i) {
                 mbuf_table[i] = mbuf_raw_ptr_table[i]->getMBuf();
-                mbuf_table[i]->timestamp = timestamp;
+                uint64_t* ptr = RTE_MBUF_DYNFIELD(mbuf_table[i], mbuf_dyn_timestamp_offset, uint64_t *);
+                *ptr = timestamp;
             }
 
             uint32_t enqueued = rte_ring_sp_enqueue_bulk(ring.get(), reinterpret_cast<void *const *>(mbuf_table), table_size,
@@ -222,7 +225,8 @@ namespace org::openkilda {
             boost::atomic<bool> &alive,
             boost::shared_ptr<rte_ring> rx_ring,
             uint16_t zmq_port,
-            const pcpp::MacAddress &src_mac) {
+            const pcpp::MacAddress &src_mac,
+            int mbuf_dyn_timestamp_offset) {
 
         using Bucket = server42::stats::messaging::LatencyPacketBucket;
 
@@ -297,7 +301,8 @@ namespace org::openkilda {
                             if (payload->t1) {
                                 packet->set_t1(be64toh(payload->t1));
                             } else {
-                                packet->set_t1(mbuf_table[i]->timestamp);
+                                uint64_t* timestamp = RTE_MBUF_DYNFIELD(mbuf_table[i], mbuf_dyn_timestamp_offset, uint64_t *);
+                                packet->set_t1(*timestamp);
                             }
                             packet->set_packet_id(packet_id);
                             packet->set_direction(payload->direction);
@@ -323,7 +328,8 @@ namespace org::openkilda {
                             if (payload->t1) {
                                 packet->set_t1(be64toh(payload->t1));
                             } else {
-                                packet->set_t1(mbuf_table[i]->timestamp);
+                                uint64_t* timestamp = RTE_MBUF_DYNFIELD(mbuf_table[i], mbuf_dyn_timestamp_offset, uint64_t *);
+                                packet->set_t1(*timestamp);
                             }
                             packet->set_packet_id(packet_id);
                             BOOST_LOG_TRIVIAL(debug) << packet->DebugString();

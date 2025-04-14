@@ -2,9 +2,10 @@ include(ExternalProject)
 
 ExternalProject_Add(pcapplusplus_external
         URL
-        https://github.com/seladb/PcapPlusPlus/releases/download/v19.12/pcapplusplus-19.12-source-linux.tar.gz
+        #https://github.com/seladb/PcapPlusPlus/releases/download/v19.12/pcapplusplus-19.12-source-linux.tar.gz
+        https://github.com/seladb/PcapPlusPlus/releases/download/v21.11/pcapplusplus-21.11-source-linux.tar.gz
         URL_HASH
-        SHA1=009c51d4389e9d5937ad133b73265ad176eee9c9
+        SHA1=57c7300033a480cb2c6a910feeb3cfba5eaae6c0
         DEPENDS
         dpdk_external
         CONFIGURE_COMMAND

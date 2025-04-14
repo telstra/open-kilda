@@ -15,6 +15,8 @@ COPY ./external /root/external
 COPY ./build.sh /root/
 COPY ./src /root/src
 
-RUN SERVER42_BUILD_TARGETS="boost_external dpdk_external pcapplusplus_external zeromq_external protobuf_external" ./build.sh
+RUN SERVER42_BUILD_TARGETS="dpdk_external" ./build.sh
+RUN SERVER42_BUILD_TARGETS="pcapplusplus_external" ./build.sh
+RUN SERVER42_BUILD_TARGETS="boost_external zeromq_external protobuf_external" ./build.sh
 
 CMD ["bash"]
