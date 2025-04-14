@@ -57,8 +57,7 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     @Override
     public void init() {
         super.init();
-
-        historyService = new HistoryService(persistenceManager);
+        historyService = new HistoryService(PERSISTENCE_MANAGER_INSTANCE);
     }
 
     @Override

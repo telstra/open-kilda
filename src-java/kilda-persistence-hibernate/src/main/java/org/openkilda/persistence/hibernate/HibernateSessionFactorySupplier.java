@@ -34,7 +34,7 @@ import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.context.internal.ManagedSessionContext;
-import org.hibernate.dialect.MySQLDialect;
+import org.hibernate.dialect.MySQL8Dialect;
 
 import java.io.Serializable;
 import java.util.function.Supplier;
@@ -62,14 +62,16 @@ public class HibernateSessionFactorySupplier implements Supplier<SessionFactory>
     }
 
     private SessionFactory makeHibernateSessionFactory() {
+        log.info("HibernateSessionFactorySupplier makeHibernateSessionFactory");
         StandardServiceRegistry standardRegistry = new StandardServiceRegistryBuilder()
                 .applySetting(AvailableSettings.DRIVER, hibernateConfig.getDriverClass())
                 .applySetting(AvailableSettings.USER, hibernateConfig.getUser())
                 .applySetting(AvailableSettings.PASS, hibernateConfig.getPassword())
                 .applySetting(AvailableSettings.URL, hibernateConfig.getUrl())
-                .applySetting(AvailableSettings.DIALECT, MySQLDialect.class.getName())
+                .applySetting(AvailableSettings.DIALECT, MySQL8Dialect.class.getName())
                 .applySetting(AvailableSettings.CURRENT_SESSION_CONTEXT_CLASS, ManagedSessionContext.class.getName())
                 .applySetting(AvailableSettings.C3P0_IDLE_TEST_PERIOD, 600)  // seconds?
+                .applySetting(AvailableSettings.C3P0_MAX_SIZE, 30)
                 .applySetting(AvailableSettings.C3P0_CONFIG_PREFIX + ".testConnectionOnCheckout", true)
                 .applySetting(AvailableSettings.C3P0_CONFIG_PREFIX + ".preferredTestQuery", "SELECT 1")
                 // TODO(surabujin): detect debugging mode and enable for it
