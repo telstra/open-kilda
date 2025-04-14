@@ -144,8 +144,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
         fireError(Event.NO_PATH_FOUND, errorReason);
     }
 
-    public void fireRerouteIsSkipped(String errorReason) {
-        fireError(Event.REROUTE_IS_SKIPPED, errorReason);
+    public void fireErrorRerouteIsSkipped(String errorReason) {
+        fireError(Event.REROUTE_IS_SKIPPED_ERROR, errorReason);
     }
 
     public void setRerouteError(RerouteError rerouteError) {
@@ -214,8 +214,9 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.MARKED_FLOW_DOWN_OR_DEGRADED)
                     .on(Event.NO_PATH_FOUND)
                     .perform(new OnNoPathFoundAction(persistenceManager, dashboardLogger, false));
-            builder.transition().from(State.MARKED_FLOW_DOWN_OR_DEGRADED).to(State.RESOURCE_ALLOCATION_COMPLETED)
-                    .on(Event.NEXT)
+            builder.transitions().from(State.MARKED_FLOW_DOWN_OR_DEGRADED)
+                    .toAmong(State.RESOURCE_ALLOCATION_COMPLETED, State.RESOURCE_ALLOCATION_COMPLETED)
+                    .onEach(Event.NEXT, Event.REROUTE_IS_NOT_REQUIRED)
                     .perform(new PostResourceAllocationAction(persistenceManager));
             builder.transitions().from(State.PROTECTED_RESOURCES_ALLOCATED)
                     .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
@@ -224,8 +225,11 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.INSTALLING_NON_INGRESS_RULES)
                     .on(Event.NEXT)
                     .perform(new InstallNonIngressRulesAction(persistenceManager, resourcesManager));
+            builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.NOTIFY_FLOW_MONITOR)
+                    .on(Event.REROUTE_IS_NOT_REQUIRED)
+                    .perform(new RevertFlowStatusAction(persistenceManager));
             builder.transition().from(State.RESOURCE_ALLOCATION_COMPLETED).to(State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
-                    .on(Event.REROUTE_IS_SKIPPED)
+                    .on(Event.REROUTE_IS_SKIPPED_ERROR)
                     .perform(new RevertFlowStatusAction(persistenceManager));
             builder.transitions().from(State.RESOURCE_ALLOCATION_COMPLETED)
                     .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_ALLOCATED_RESOURCES)
@@ -546,7 +550,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
         NEXT,
 
         NO_PATH_FOUND,
-        REROUTE_IS_SKIPPED,
+        REROUTE_IS_SKIPPED_ERROR,
+        REROUTE_IS_NOT_REQUIRED,
 
         RESPONSE_RECEIVED,
         ERROR_RECEIVED,
