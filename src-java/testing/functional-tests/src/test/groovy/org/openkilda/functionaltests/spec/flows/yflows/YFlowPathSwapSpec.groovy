@@ -9,7 +9,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.ExamReport
@@ -78,8 +77,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         }
         def updatedPath = yFlow.retrieveAllEntityPaths()
         updatedPath.subFlowPaths.each { subFlowPath ->
-            assert subFlowPath.path.forward == initialPath.subFlowPaths.find { it.flowId == subFlowPath.flowId }.protectedPath.forward
-            assert subFlowPath.protectedPath.forward == initialPath.subFlowPaths.find { it.flowId == subFlowPath.flowId }.path.forward
+            assert subFlowPath.path.forward == initialPath.getSubFlowProtectedPath(subFlowPath.flowId)
+            assert subFlowPath.protectedPath.forward == initialPath.getSubFlowMainPath(subFlowPath.flowId)
             assert subFlowPath.getCommonIslsWithProtected().isEmpty()
         }
 
@@ -140,31 +139,27 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         }
 
         and: "Other ISLs have not enough bandwidth to host the flows in case of reroute"
-        List<Isl> yFlowIsls = initialPath.subFlowPaths.collectMany { subFlow ->
-            subFlow.getInvolvedIsls().collectMany {[it, it.reversed] }}.unique()
+        def yFlowIsls = isls.all().findInPath(initialPath)
 
-        islHelper.setAvailableAndMaxBandwidth(yFlowIsls, 0, yFlow.maximumBandwidth)
+        def alternativeIsls = isls.all().excludeIsls(yFlowIsls)
+                .updateIslsAvailableAndMaxBandwidthInDb(0, yFlow.maximumBandwidth - 1).getListOfIsls()
 
-        List<Isl> alternativeIsls = (swT.retrieveAvailablePathsEp1() + swT.retrieveAvailablePathsEp2())
-                .collectMany { it.getInvolvedIsls() }.unique().collectMany { [it, it.reversed] }
-        alternativeIsls.removeAll(yFlowIsls)
-
-        islHelper.setAvailableAndMaxBandwidth(alternativeIsls, 0, yFlow.maximumBandwidth - 1)
+        isls.all().excludeIsls(alternativeIsls).updateIslsAvailableAndMaxBandwidthInDb(0, yFlow.maximumBandwidth)
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
-        def islToBreak = initialPath.subFlowPaths.first().path.forward.getInvolvedIsls().last()
-        islHelper.breakIsl(islToBreak)
+        def islToBreak = isls.all().findInPath(initialPath.getSubFlowMainPath(yFlow.subFlows.first().flowId)).last()
+        islToBreak.breakIt()
 
         then: "The sub-flows are switched to protected paths"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             assert yFlow.retrieveDetails().status == FlowState.DEGRADED
         }
-        verifyAll(northbound.getFlow(initialPath.subFlowPaths.first().flowId)) {
+        verifyAll(northbound.getFlow(yFlow.subFlows.first().flowId)) {
             status == FlowState.DEGRADED.toString()
             flowStatusDetails.mainFlowPathStatus == "Up"
             flowStatusDetails.protectedFlowPathStatus == "Down"
         }
-        verifyAll(northbound.getFlow(initialPath.subFlowPaths.last().flowId)) {
+        verifyAll(northbound.getFlow(yFlow.subFlows.last().flowId)) {
             upOrDegradedState.contains(status)
             flowStatusDetails.mainFlowPathStatus == "Up"
             upOrDownState.contains(flowStatusDetails.protectedFlowPathStatus)
@@ -172,8 +167,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         def updatedPathAfterPortDown = yFlow.retrieveAllEntityPaths()
         updatedPathAfterPortDown.subFlowPaths.each { subFlowPath ->
-            assert subFlowPath.path.forward == initialPath.subFlowPaths.find { it.flowId == subFlowPath.flowId }.protectedPath.forward
-            assert subFlowPath.protectedPath.forward == initialPath.subFlowPaths.find { it.flowId == subFlowPath.flowId }.path.forward
+            assert subFlowPath.path.forward == initialPath.getSubFlowProtectedPath(subFlowPath.flowId)
+            assert subFlowPath.protectedPath.forward == initialPath.getSubFlowMainPath(subFlowPath.flowId)
             assert subFlowPath.getCommonIslsWithProtected().isEmpty()
         }
 
@@ -188,16 +183,16 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         when: "Restore port status"
-        islHelper.restoreIsl(islToBreak)
+        islToBreak.restore()
 
         then: "Paths of the y-flow is not changed"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.getFlow(initialPath.subFlowPaths.first().flowId)) {
+            verifyAll(northbound.getFlow(yFlow.subFlows.first().flowId)) {
                 status == FlowState.UP.toString()
                 flowStatusDetails.mainFlowPathStatus == "Up"
                 flowStatusDetails.protectedFlowPathStatus == "Up"
             }
-            verifyAll(northbound.getFlow(initialPath.subFlowPaths.last().flowId)) {
+            verifyAll(northbound.getFlow(yFlow.subFlows.last().flowId)) {
                 status == FlowState.UP.toString()
                 flowStatusDetails.mainFlowPathStatus == "Up"
                 flowStatusDetails.protectedFlowPathStatus == "Up"
@@ -206,8 +201,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         def updatedPathAfterPortUp = yFlow.retrieveAllEntityPaths()
         updatedPathAfterPortUp.subFlowPaths.each { subFlowPath ->
-            assert subFlowPath.path.forward == updatedPathAfterPortDown.subFlowPaths.find { it.flowId == subFlowPath.flowId }.path.forward
-            assert subFlowPath.protectedPath.forward == updatedPathAfterPortDown.subFlowPaths.find { it.flowId == subFlowPath.flowId }.protectedPath.forward
+            assert subFlowPath.path.forward == updatedPathAfterPortDown.getSubFlowMainPath(subFlowPath.flowId)
+            assert subFlowPath.protectedPath.forward == updatedPathAfterPortDown.getSubFlowProtectedPath(subFlowPath.flowId)
             assert subFlowPath.getCommonIslsWithProtected().isEmpty()
         }
 
@@ -259,38 +254,36 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         }
 
         and: "Other ISLs have not enough bandwidth to host the flows in case of reroute"
-        List<Isl> yFlowIsls = initialPath.subFlowPaths.collectMany { subFlow ->
-            subFlow.getInvolvedIsls().collectMany {[it, it.reversed] }}.unique()
-        islHelper.setAvailableAndMaxBandwidth(yFlowIsls, 0, yFlow.maximumBandwidth)
+        def yFlowIsls = isls.all().findInPath(initialPath)
+        def alternativeIsls = isls.all().excludeIsls(yFlowIsls)
+                .updateIslsAvailableAndMaxBandwidthInDb(0, yFlow.maximumBandwidth - 1).getListOfIsls()
 
-        List<Isl> alternativeIsls = (swT.retrieveAvailablePathsEp1() + swT.retrieveAvailablePathsEp2())
-                .collectMany { it.getInvolvedIsls()}.unique().collectMany { [it, it.reversed] }
-        alternativeIsls.removeAll(yFlowIsls)
-        islHelper.setAvailableAndMaxBandwidth(alternativeIsls, 0, yFlow.maximumBandwidth - 1)
+        isls.all().excludeIsls(alternativeIsls).updateIslsAvailableAndMaxBandwidthInDb(0, yFlow.maximumBandwidth)
 
         when: "Break ISL on the protected path (bring port down) to make it INACTIVE"
-        def islToBreak = initialPath.subFlowPaths.first().path.forward.getInvolvedIsls().last()
-        islHelper.breakIsl(islToBreak)
+        def islToBreak = isls.all().findInPath(initialPath.getSubFlowProtectedPath(yFlow.subFlows.first().flowId)).last()
+        islToBreak.breakIt()
 
-        then: "The sub-flows are switched to protected paths"
+        then: "Flow status is changed to DEGRADED as the protected path of one of the sub-flows is DOWN"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             assert yFlow.retrieveDetails().status == FlowState.DEGRADED
         }
-        verifyAll(northbound.getFlow(initialPath.subFlowPaths.first().flowId)) {
+        verifyAll(northbound.getFlow(yFlow.subFlows.first().flowId)) {
             status == FlowState.DEGRADED.toString()
             flowStatusDetails.mainFlowPathStatus == "Up"
             flowStatusDetails.protectedFlowPathStatus == "Down"
         }
-        verifyAll(northbound.getFlow(initialPath.subFlowPaths.first().flowId)) {
+        verifyAll(northbound.getFlow(yFlow.subFlows.last().flowId)) {
             upOrDegradedState.contains(status)
             flowStatusDetails.mainFlowPathStatus == "Up"
             upOrDownState.contains(flowStatusDetails.protectedFlowPathStatus)
         }
 
+        and: "The sub-flows paths remain the same"
         def updatedPathAfterPortDown = yFlow.retrieveAllEntityPaths()
         updatedPathAfterPortDown.subFlowPaths.each { subFlowPath ->
-            assert subFlowPath.path.forward == initialPath.subFlowPaths.find { it.flowId == subFlowPath.flowId }.protectedPath.forward
-            assert subFlowPath.protectedPath.forward == initialPath.subFlowPaths.find { it.flowId == subFlowPath.flowId }.path.forward
+            assert subFlowPath.path.forward == initialPath.getSubFlowMainPath(subFlowPath.flowId)
+            assert subFlowPath.protectedPath.forward == initialPath.getSubFlowProtectedPath(subFlowPath.flowId)
             assert subFlowPath.getCommonIslsWithProtected().isEmpty()
         }
 
@@ -300,20 +293,20 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new YFlowPathNotSwappedExpectedError(HttpStatus.BAD_REQUEST,
-                ~/Could not swap y-flow paths: the protected path of sub-flow ${initialPath.subFlowPaths.first().flowId} \
+                ~/Could not swap y-flow paths: the protected path of sub-flow ${yFlow.subFlows.first().flowId} \
 is not in ACTIVE state, but in INACTIVE\\/INACTIVE \(forward\\/reverse\) state/).matches(exc)
 
         when: "Restore port status"
-        islHelper.restoreIsl(islToBreak)
+        islToBreak.restore()
 
         then: "Paths of the y-flow is not changed"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.getFlow(initialPath.subFlowPaths.first().flowId)) {
+            verifyAll(northbound.getFlow(yFlow.subFlows.first().flowId)) {
                 status == FlowState.UP.toString()
                 flowStatusDetails.mainFlowPathStatus == "Up"
                 flowStatusDetails.protectedFlowPathStatus == "Up"
             }
-            verifyAll(northbound.getFlow(initialPath.subFlowPaths.last().flowId)) {
+            verifyAll(northbound.getFlow(yFlow.subFlows.last().flowId)) {
                 status == FlowState.UP.toString()
                 flowStatusDetails.mainFlowPathStatus == "Up"
                 flowStatusDetails.protectedFlowPathStatus == "Up"
@@ -322,8 +315,8 @@ is not in ACTIVE state, but in INACTIVE\\/INACTIVE \(forward\\/reverse\) state/)
 
         def updatedPathAfterPortUp = yFlow.retrieveAllEntityPaths()
         updatedPathAfterPortUp.subFlowPaths.each { subFlowPath ->
-            assert subFlowPath.path.forward == updatedPathAfterPortDown.subFlowPaths.find { it.flowId == subFlowPath.flowId }.path.forward
-            assert subFlowPath.protectedPath.forward == updatedPathAfterPortDown.subFlowPaths.find { it.flowId == subFlowPath.flowId }.protectedPath.forward
+            assert subFlowPath.path.forward == updatedPathAfterPortDown.getSubFlowMainPath(subFlowPath.flowId)
+            assert subFlowPath.protectedPath.forward == updatedPathAfterPortDown.getSubFlowProtectedPath(subFlowPath.flowId)
             assert subFlowPath.getCommonIslsWithProtected().isEmpty()
         }
     }

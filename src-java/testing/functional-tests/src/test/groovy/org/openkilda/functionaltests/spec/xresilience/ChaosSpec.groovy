@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.xresilience
 
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
+import static org.openkilda.functionaltests.model.switches.Manufacturer.CENTEC
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -10,6 +11,7 @@ import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.functionaltests.model.stats.Direction
+import org.openkilda.functionaltests.model.switches.Manufacturer
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
@@ -52,13 +54,14 @@ class ChaosSpec extends HealthCheckSpecification {
         }
 
         when: "Random ISLs 'blink' for some time"
-        def islsAmountToBlink = topology.islsForActiveSwitches.size() * 5
+        def islsAmountToBlink = isls.all().getListOfIsls().size() * 5
+        def centecSws = switches.all().withManufacturer(CENTEC).getListOfSwitches()
         def r = new Random()
         islsAmountToBlink.times {
             //have certain instabilities with blinking centec ports, thus exclude them here
-            def isls = topology.islsForActiveSwitches.findAll { !it.srcSwitch.centec }
+            def isls = isls.all().notRelatedTo(centecSws).getListOfIsls()
             def randomIsl = isls[r.nextInt(isls.size())]
-            blinkPort(randomIsl.srcSwitch.dpId, randomIsl.srcPort)
+            randomIsl.blinkSrcEndpoint()
             //1 of 4 times we will add a minor sleep after blink in order not to fail all ISLs at once
             r.nextInt(4) == 3 && sleep((long) (discoveryInterval / 2) * 1000)
         }
@@ -80,10 +83,5 @@ class ChaosSpec extends HealthCheckSpecification {
 
         and: "All switches are valid"
         synchronizeAndCollectFixedDiscrepancies(activeSwitches).isEmpty()
-    }
-
-    def blinkPort(SwitchId swId, int port) {
-        northbound.portDown(swId, port)
-        northbound.portUp(swId, port)
     }
 }

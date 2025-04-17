@@ -36,7 +36,6 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         given: "Switches with three not overlapping paths at least"
         def swT = switchTriplets.all().withAllDifferentEndpoints().withTraffgensOnEachEnd()
                 .withAtLeastNNonOverlappingPaths(3).withAtLeastNIslOnSharedEndpoint(5).random()
-        assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create three Ha-Flows with diversity enabled"
         def haFlow1 = haFlowFactory.getRandom(swT)
@@ -81,7 +80,6 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
     def "Able to create HA-Flow diverse with regular flow that is already in diverse group with another HA-Flow"() {
         given: "Switches with two not overlapping paths at least"
         def swT = switchTriplets.all().withAllDifferentEndpoints().withAtLeastNNonOverlappingPaths(2).random()
-        assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create an HA-Flow without diversity"
         def haFlow1 = haFlowFactory.getRandom(swT)
@@ -135,7 +133,6 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
     def "Able to create HA-Flow diverse with Y-Flow that is in diverse group with another HA-Flow"() {
         given: "Switches with three not overlapping paths at least"
         def swT = switchTriplets.all().withAllDifferentEndpoints().withAtLeastNNonOverlappingPaths(3).random()
-        assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create an HA-Flow without diversity"
         def haFlow1 = haFlowFactory.getRandom(swT)

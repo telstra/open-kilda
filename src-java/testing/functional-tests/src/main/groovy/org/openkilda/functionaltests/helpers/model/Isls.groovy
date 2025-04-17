@@ -6,12 +6,14 @@ import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELE
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISL_PARAMETERS
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
+import static org.openkilda.functionaltests.model.stats.Direction.*
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 import org.openkilda.functionaltests.helpers.factory.IslFactory
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.Direction
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -121,17 +123,26 @@ class Isls {
 
     /***
      *
+     * @param switchId
+     * @return all ISLs whose source is specified switch
+     */
+    Isls relatedTo(SwitchId switchId) {
+        def foundIsls = []
+        isls.each {
+            it.srcSwId == switchId && foundIsls.add(it)
+            it.dstSwId == switchId && foundIsls.add(it.reversed)
+        }
+        isls = foundIsls
+        return this
+    }
+
+    /***
+     *
      * @param sw
      * @return all ISLs whose source is specified switch
      */
     Isls relatedTo(SwitchExtended sw) {
-        def foundIsls = []
-        isls.each {
-            it.srcSwId == sw.switchId && foundIsls.add(it)
-            it.dstSwId == sw.switchId && foundIsls.add(it.reversed)
-        }
-        isls = foundIsls
-        return this
+       relatedTo(sw.switchId)
     }
 
     /***
@@ -141,6 +152,11 @@ class Isls {
      */
     Isls relatedTo(SwitchPair switchPair) {
         isls = isls.findAll { !it.involvedSwIds.intersect(switchPair.toList().switchId).isEmpty() }
+        return this
+    }
+
+    Isls relatedTo(List<SwitchExtended> switches) {
+        isls = isls.findAll { !it.involvedSwIds.intersect(switches.switchId).isEmpty() }
         return this
     }
 
@@ -168,18 +184,21 @@ class Isls {
     }
 
     Isls collectIslsFromPaths(List<Path> paths) {
-        def allIsls = paths.collectMany { it.getInvolvedIsls() }.unique()
-        isls = isls.findAll { !allIsls.intersect([it.isl, it.reversed.isl]).isEmpty() }
+        def allIsls = paths.collectMany { it.getInvolvedIsls() }.unique().collectMany { [it, it.reversed] }
+        isls = isls.findAll { it.isl in allIsls }
         return this
     }
 
-
-    List<IslExtended> findInPath(FlowEntityPath flowPath, Direction direction = Direction.FORWARD) {
+    List<IslExtended> findInPath(FlowEntityPath flowPath, Direction direction = FORWARD) {
         findIsls(flowPath.getInvolvedIsls(direction))
     }
 
-    List<IslExtended> findInPath(FlowWithSubFlowsEntityPath complexFlowPath, Direction direction = Direction.FORWARD) {
+    List<IslExtended> findInPath(FlowWithSubFlowsEntityPath complexFlowPath, Direction direction = FORWARD) {
         findIsls(complexFlowPath.getInvolvedIsls(direction))
+    }
+
+    List<IslExtended> findInPath(FlowWithSubFlowsEntityPath complexFlowPath, String subFlowId, Direction direction = FORWARD) {
+        findIsls(complexFlowPath.subFlowPaths.find { it.flowId == subFlowId }.getInvolvedIsls(direction))
     }
 
     List<IslExtended> findInPath(Path path) {

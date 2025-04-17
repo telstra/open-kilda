@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.model.FlowActionType.REROUTE_FAILED
+import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
 import static org.openkilda.messaging.command.switches.DeleteRulesAction.DROP_ALL_ADD_DEFAULTS
 import static org.openkilda.messaging.command.switches.InstallRulesAction.INSTALL_DEFAULTS
 import static org.openkilda.messaging.payload.flow.FlowState.DOWN
@@ -18,12 +19,8 @@ import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
-import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.model.stats.Direction
-import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.command.switches.InstallRulesAction
 import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -152,8 +149,8 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse5*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
 
         when: "Bring down all ports on src switch to make flow DOWN"
-        def switchIsls = topology.getRelatedIsls(switchPair.src.switchId)
-        islHelper.breakIsls(switchIsls)
+        def switchIsls = isls.all().relatedTo(switchPair.src).getListOfIsls()
+        breakIsls(switchIsls)
 
         and: "Get all flows going through the src switch"
         Wrappers.wait(WAIT_OFFSET * 2) {

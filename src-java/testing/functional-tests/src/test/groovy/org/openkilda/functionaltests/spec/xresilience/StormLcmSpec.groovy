@@ -3,6 +3,9 @@ package org.openkilda.functionaltests.spec.xresilience
 import static org.assertj.core.api.Assertions.assertThat
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.messaging.info.event.IslChangeType.*
+import static org.openkilda.messaging.info.event.SwitchChangeType.*
+import static org.openkilda.model.IslStatus.ACTIVE
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
 import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
@@ -17,9 +20,6 @@ import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchDbData
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.model.IslStatus
 import org.openkilda.testing.Constants
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -66,13 +66,13 @@ class StormLcmSpec extends HealthCheckSpecification {
     def cleanupSpec() {
         Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
             assert northbound.getAllSwitches().findAll {
-                it.switchId in topology.switches.dpId && it.state == SwitchChangeType.ACTIVATED
+                it.switchId in topology.switches.dpId && it.state == ACTIVATED
             }.size() == topology.activeSwitches.size()
         }
 
         Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
             assert northbound.getAllLinks().findAll {
-                it.source.switchId in topology.switches.dpId && it.state == IslChangeType.DISCOVERED
+                it.source.switchId in topology.switches.dpId && it.state == DISCOVERED
             }.size() == topology.islsForActiveSwitches.size() * 2
         }
     }
@@ -120,13 +120,13 @@ class StormLcmSpec extends HealthCheckSpecification {
         and: "Topology is recovered after storm topology restarting"
         Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
             assert northbound.getAllLinks().findAll {
-                it.source.switchId in topology.switches.dpId && it.state == IslChangeType.DISCOVERED
+                it.source.switchId in topology.switches.dpId && it.state == DISCOVERED
             }.size() == topology.islsForActiveSwitches.size() * 2
         }
         //wait until switches are activated
         Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
             assert northbound.getAllSwitches().findAll {
-                it.switchId in topology.switches.dpId && it.state == SwitchChangeType.ACTIVATED
+                it.switchId in topology.switches.dpId && it.state == ACTIVATED
             }.size() == topology.activeSwitches.size()
         }
 
@@ -154,9 +154,9 @@ class StormLcmSpec extends HealthCheckSpecification {
         wfmManipulator.killTopology(networkTopologyName)
 
         and: "Disconnect switches on both ends of ISL"
-        def islUnderTest = topology.islsForActiveSwitches.first()
-        def srcBlockData = lockKeeper.knockoutSwitch(islUnderTest.srcSwitch, RW)
-        def dstBlockData = lockKeeper.knockoutSwitch(islUnderTest.dstSwitch, RW)
+        def islUnderTest = isls.all().first()
+        def srcBlockData = lockKeeper.knockoutSwitch(islUnderTest.srcSw, RW)
+        def dstBlockData = lockKeeper.knockoutSwitch(islUnderTest.dstSw, RW)
 
         and: "Deploy network topology back"
         wfmManipulator.deployTopology(networkTopologyName)
@@ -165,24 +165,20 @@ class StormLcmSpec extends HealthCheckSpecification {
 
         then: "Switches are recognized as being deactivated"
         Wrappers.wait(Constants.FL_DUMP_INTERVAL * 3) { //can take up to 3 network dumps
-            assert northbound.getSwitch(islUnderTest.srcSwitch.dpId).state == SwitchChangeType.DEACTIVATED
-            assert northbound.getSwitch(islUnderTest.dstSwitch.dpId).state == SwitchChangeType.DEACTIVATED
+            assert northbound.getSwitch(islUnderTest.srcSwId).state == DEACTIVATED
+            assert northbound.getSwitch(islUnderTest.dstSwId).state == DEACTIVATED
         }
 
         and: "ISL between the switches gets failed after discovery timeout"
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            def allIsls = northbound.getAllLinks()
-            assert islUtils.getIslInfo(allIsls, islUnderTest).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(allIsls, islUnderTest.reversed).get().state == IslChangeType.FAILED
-        }
+        islUnderTest.waitForStatus(FAILED, discoveryTimeout + WAIT_OFFSET)
 
         cleanup:
         networkTopologyName && !networkDeployed && wfmManipulator.deployTopology(networkTopologyName)
-        srcBlockData && lockKeeper.reviveSwitch(islUnderTest.srcSwitch, srcBlockData)
-        dstBlockData && lockKeeper.reviveSwitch(islUnderTest.dstSwitch, dstBlockData)
+        srcBlockData && lockKeeper.reviveSwitch(islUnderTest.srcSw, srcBlockData)
+        dstBlockData && lockKeeper.reviveSwitch(islUnderTest.dstSw, dstBlockData)
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET * 3) {
-            assert database.getIsls(topology.getIsls()).every {it.status == IslStatus.ACTIVE}
-            assert northbound.getAllLinks().every {it.state == IslChangeType.DISCOVERED}
+            assert northbound.getAllLinks().every { it.state == DISCOVERED }
+            assert database.getIsls(topology.getIsls()).every { it.status == ACTIVE }
         }
     }
 

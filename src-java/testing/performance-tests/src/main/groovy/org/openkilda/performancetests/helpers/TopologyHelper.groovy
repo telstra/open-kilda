@@ -6,6 +6,7 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.performancetests.model.CustomTopology
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
@@ -117,7 +118,13 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
             [it.source.switchId.toString(), it.source.portNo,
              it.destination.switchId.toString(), it.destination.portNo].sort()
         }.each { it ->
-            northbound.deleteLink(islUtils.toLinkParameters(it))
+            def linkParams = LinkParametersDto.builder()
+                    .srcSwitch(it.source.switchId.toString())
+                    .srcPort(it.source.portNo)
+                    .dstSwitch(it.destination.switchId.toString())
+                    .dstPort(it.destination.portNo).build()
+
+            northbound.deleteLink(linkParams)
         }
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert northbound.getAllLinks().empty

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
+import static org.openkilda.functionaltests.helpers.model.Isls.restoreIsls
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 
 import groovy.util.logging.Slf4j
@@ -55,10 +57,10 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         def initialPaths = haFlow.retrievedAllEntityPaths()
-        def islToFail = initialPaths.subFlowPaths.first().getInvolvedIsls().first()
+        def islToFail = isls.all().findInPath(initialPaths, haFlow.subFlows.haSubFlowId.first()).first()
 
         when: "Fail an HA-flow ISL (bring switch port down)"
-        islHelper.breakIsl(islToFail)
+        islToFail.breakIt()
 
         then: "The HA-flow was rerouted after reroute delay"
         def newPaths = null
@@ -124,24 +126,29 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         def initialPaths = haFlow.retrievedAllEntityPaths()
-        def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls().first()} as Set
-        assert subFlowsFirstIsls.size() == 1, "Selected ISL is not common for both sub-flows (not shared switch)"
+        def firstSubFlowIsls = isls.all().findInPath(initialPaths, haFlow.subFlows.haSubFlowId.first())
+        def secondSubFlowIsls = isls.all().findInPath(initialPaths, haFlow.subFlows.haSubFlowId.last())
+        assert firstSubFlowIsls.first() == secondSubFlowIsls.first(), "Selected ISL is not common for both sub-flows (not shared switch)"
 
         when: "Bring all ports down on the shared switch that are involved in the current and alternative paths"
-        def alternativeIsls = (swT.retrieveAvailablePathsEp1() + swT.retrieveAvailablePathsEp2())
-                .collect { it.getInvolvedIsls().first() }.unique().findAll { !subFlowsFirstIsls.contains(it) }
-
-        islHelper.breakIsls(alternativeIsls)
+        def alternativeIsls = isls.all().relatedTo(swT.shared).excludeIsls(firstSubFlowIsls + secondSubFlowIsls).getListOfIsls()
+        breakIsls(alternativeIsls)
         assert haFlow.retrieveDetails().status == FlowState.UP
 
         //to avoid automatic rerouting an actual flow port is the last one to switch off.
-        islHelper.breakIsls(subFlowsFirstIsls)
+        firstSubFlowIsls.first().breakIt()
 
         then: "The HA-flow goes to 'Down' status"
         haFlow.waitForBeingInState(FlowState.DOWN, rerouteDelay + WAIT_OFFSET)
+        wait(WAIT_OFFSET) {
+            assert haFlow.getHistory().getEntriesByType(HaFlowActionType.REROUTE).find {
+                it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+                        && it.payloads.find { it.action == HaFlowActionType.REROUTE_FAIL.payloadLastAction }
+            }
+        }
 
         when: "Bring all ports up on the shared switch that are involved in the alternative paths"
-        alternativeIsls.each { islHelper.restoreIsl(it) } //fails on jenkins if do it asynchronously
+        restoreIsls(alternativeIsls)
 
         then: "The HA-flow goes to 'Up' state and the HA-flow was rerouted"
         def newPaths = null
@@ -154,8 +161,8 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "The first (shared) subFlow's ISl  has been changed due to the ha-Flow reroute"
-        def newPathSubFlowsFirstIsls = newPaths.subFlowPaths.collect{ it.getInvolvedIsls().first()} as Set
-        newPathSubFlowsFirstIsls != subFlowsFirstIsls
+        def newPathSubFlowsIsls = isls.all().findInPath(newPaths,  haFlow.subFlows.haSubFlowId.first())
+        newPathSubFlowsIsls.first() != firstSubFlowIsls.first()
 
         and: "HA-flow passes validation"
         haFlow.validate().asExpected
@@ -177,17 +184,18 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         def initialPaths = haFlow.retrievedAllEntityPaths()
-        def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls().first()}.unique()
-        assert subFlowsFirstIsls.size() == 1, "Selected ISL is not common for both sub-flows (not shared switch)"
+        def firstSubFlowsIsls = isls.all().findInPath(initialPaths, haFlow.subFlows.haSubFlowId.first())
+        def secondSubFlowsIsls = isls.all().findInPath(initialPaths, haFlow.subFlows.haSubFlowId.last())
+        assert firstSubFlowsIsls.first() == secondSubFlowsIsls.first(), "Selected ISL is not common for both sub-flows (not shared switch)"
 
         and: "All ISL ports on the shared switch that are involved in the alternative HA-flow paths are down"
-        def alternativeIsls = (swT.retrieveAvailablePathsEp1() + swT.retrieveAvailablePathsEp2())
-                .collect { it.getInvolvedIsls().first() }.unique().findAll { !subFlowsFirstIsls.contains(it) }
-        islHelper.breakIsls(alternativeIsls)
+        def alternativeIsls = isls.all().relatedTo(swT.shared)
+                .excludeIsls(firstSubFlowsIsls + secondSubFlowsIsls).getListOfIsls()
+        breakIsls(alternativeIsls)
         assert haFlow.retrieveDetails().status == FlowState.UP
 
         when: "Bring port down of ISL which is involved in the current HA-flow paths"
-        islHelper.breakIsl(subFlowsFirstIsls.first())
+        firstSubFlowsIsls.first().breakIt()
 
         then: "The HA-flow goes to 'Down' status"
         haFlow.waitForBeingInState(FlowState.DOWN, rerouteDelay + WAIT_OFFSET)

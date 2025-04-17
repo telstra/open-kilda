@@ -88,11 +88,11 @@ class PathCheckSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().nonNeighbouring().random()
         def availablePaths = switchPair.retrieveAvailablePaths()
         def path = availablePaths.first()
-        def pathInvolvedIsls = path.getInvolvedIsls()
+        def pathInvolvedIsls = isls.all().findInPath(path)
 
         and: "Flow with cost computation strategy on that path"
-        availablePaths.collect{ it.getInvolvedIsls() }.findAll { !it.containsAll(pathInvolvedIsls) }
-                .each { islHelper.makePathIslsMorePreferable(pathInvolvedIsls, it) }
+        availablePaths.collect{ isls.all().findInPath(it) }.findAll { !it.containsAll(pathInvolvedIsls) }
+                .each { isls.all().makePathIslsMorePreferable(pathInvolvedIsls, it) }
 
         def flow = flowFactory.getBuilder(switchPair, false)
                 .withPathComputationStrategy(PathComputationStrategy.COST).build()
