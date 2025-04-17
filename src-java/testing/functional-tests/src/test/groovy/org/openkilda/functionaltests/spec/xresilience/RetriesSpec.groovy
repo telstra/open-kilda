@@ -25,6 +25,8 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.IslExtended
+import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.model.SwitchId
 import org.openkilda.model.SwitchStatus
@@ -49,53 +51,41 @@ class RetriesSpec extends HealthCheckSpecification {
     def "System retries the reroute (global retry) if it fails to install rules on one of the current target path's switches"() {
         given: "Switch pair with at least 3 available paths, one path should have a transit switch that we will break \
 and at least 1 path must remain safe"
-        List<Isl> mainPathIsls, failoverPathIsls, safePathIsls
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(3).random()
+        def availablePaths = switchPair.retrieveAvailablePaths().collect{ isls.all().findInPath(it) }
+
+        def mainPathIsls = availablePaths.first()
+        List<SwitchId> mainPathSwitches = mainPathIsls.involvedSwIds.flatten() as List<SwitchId>
+
         SwitchId switchIdToBreak //will belong to failoverPath and be absent in safePath
-        Isl islToBreak //will be used to break the mainPath. This ISL is not used in safePath or failoverPath
-        def switchPair = switchPairs.all().nonNeighbouring().getSwitchPairs().find { swPair ->
-            if(swPair.paths.size() >= 3) {
-                def availablePath = swPair.retrieveAvailablePaths()
-                failoverPathIsls = availablePath.find { failoverPathCandidate ->
-                    def failoverSwitches = failoverPathCandidate.getInvolvedSwitches()
-                    safePathIsls = availablePath.find { safePathCandidate ->
-                        def safeSwitches = safePathCandidate.getInvolvedSwitches()
-                        def mainPath = availablePath.find { it != failoverPathCandidate && it != safePathCandidate }
-                        mainPathIsls = mainPath.getInvolvedIsls()
-                        def mainSwitches = mainPath.getInvolvedSwitches()
-                        switchIdToBreak = failoverSwitches.find { swId -> !safeSwitches.contains(swId) && !mainSwitches.contains(swId) }
-                        safePathIsls = safePathCandidate.getInvolvedIsls()
-                        Set<Isl> allSafeIsls = safePathIsls.collectMany { [it, it.reversed] }
-                        Set<Isl> allFailoverIsls = failoverPathCandidate.getInvolvedIsls().collectMany { [it, it.reversed] }
-                        islToBreak = mainPathIsls.collectMany { [it, it.reversed] }.find {
-                            !allSafeIsls.contains(it) && !allFailoverIsls.contains(it) && it.srcSwitch.dpId != switchIdToBreak
-                        }
-                        switchIdToBreak && islToBreak
-                    }?.getInvolvedIsls()
-                }?.getInvolvedIsls()
-            }
-            failoverPathIsls
+        def failoverPathIsls = availablePaths.find {
+            switchIdToBreak = it.involvedSwIds.flatten().find { it !in mainPathSwitches }
+            return switchIdToBreak
         }
-        assert switchPair, "Not able to find a switch pair with suitable paths"
+        def safePathIsls= availablePaths.find { it != mainPathIsls && it != failoverPathIsls
+                && !it.involvedSwIds.any{ it.contains(switchIdToBreak)}}
+        assert safePathIsls
+        def islToBreak = mainPathIsls.find { !it.isIncludedInPath(failoverPathIsls + safePathIsls)}
+
         log.debug("main path: $mainPathIsls\nfailover path: $failoverPathIsls\nsafe path: $safePathIsls\nisl to break: " +
                 "$islToBreak\nswitch to break: $switchIdToBreak")
 
         and: "A flow using given switch pair"
-        def availablePathsIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
-        availablePathsIsls.findAll { it != mainPathIsls }.each { islHelper.makePathIslsMorePreferable(mainPathIsls, it) }
+        availablePaths.findAll { it != mainPathIsls }.each { isls.all().makePathIslsMorePreferable(mainPathIsls, it) }
         def flow = flowFactory.getRandom(switchPair)
-        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainPathIsls
+        assert isls.all().findInPath(flow.retrieveAllEntityPaths()) == mainPathIsls
 
         and: "Switch on the preferred failover path will suddenly be unavailable for rules installation when the reroute starts"
         //select a required failover path beforehand
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        availablePathsIsls.findAll { it != failoverPathIsls }.each { islHelper.makePathIslsMorePreferable(failoverPathIsls, it) }
+        isls.all().deleteAllProps()
+        availablePaths.findAll { it != failoverPathIsls }.each { isls.all().makePathIslsMorePreferable(failoverPathIsls, it) }
         //disconnect the switch, but make it look like 'active'
         def swToManipulate = switches.all().findSpecific(switchIdToBreak)
         swToManipulate.knockout(RW)
         swToManipulate.setStatusInDb(SwitchStatus.ACTIVE)
 
         when: "Main path of the flow breaks initiating a reroute"
-        islHelper.breakIsl(islToBreak)
+        islToBreak.breakIt()
 
         then: "System fails to install rules on desired path and tries to retry reroute and find new path (global retry)"
         wait(WAIT_OFFSET * 3, 0.1) {
@@ -112,17 +102,16 @@ and at least 1 path must remain safe"
             assert flow.retrieveFlowStatus().status == UP
         }
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def flowPathIsls = flowPathInfo.getInvolvedIsls()
+        def flowPathIsls = isls.all().findInPath(flowPathInfo)
         flowPathIsls != mainPathIsls
         flowPathIsls != failoverPathIsls
         !flowPathInfo.getInvolvedSwitches().contains(switchIdToBreak)
-        !flowPathInfo.getInvolvedIsls().contains(islToBreak)
-        !flowPathInfo.getInvolvedIsls().contains(islToBreak.reversed)
+        !islToBreak.isIncludedInPath(flowPathIsls)
 
         and: "All related switches have no rule anomalies"
         def switchesToVerify = switches.all().findSpecific(
-                islHelper.retrieveInvolvedSwitches((mainPathIsls + failoverPathIsls + flowPathIsls).unique())
-                .findAll { it.dpId != switchIdToBreak }.dpId as List<SwitchId> )
+                (mainPathIsls + failoverPathIsls + flowPathIsls).involvedSwIds.flatten().unique()
+                        .findAll { it != switchIdToBreak } as List<SwitchId>)
         validateAndCollectFoundDiscrepancies(switchesToVerify).isEmpty()
     }
 

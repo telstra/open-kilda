@@ -3,6 +3,8 @@ package org.openkilda.functionaltests.spec.switches
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
+import static org.openkilda.functionaltests.helpers.model.Isls.restoreIsls
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
@@ -73,7 +75,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
     def "Unable to delete an inactive switch with active ISLs"() {
         given: "An inactive switch with ISLs"
         def sw = switches.all().first()
-        def swIsls = topology.getRelatedIsls(sw.switchId)
+        def swIsls = isls.all().relatedTo(sw).getListOfIsls()
         sw.knockout(RW)
 
         when: "Try to delete the switch"
@@ -90,8 +92,8 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
     def "Unable to delete an inactive switch with inactive ISLs (ISL ports are down)"() {
         given: "An inactive switch with ISLs"
         def sw = switches.all().first()
-        def swIsls = topology.getRelatedIsls(sw.switchId)
-        islHelper.breakIsls(swIsls)
+        def swIsls = isls.all().relatedTo(sw).getListOfIsls()
+        breakIsls(swIsls)
         sw.knockout(RW, false)
 
         when: "Try to delete the switch"
@@ -135,11 +137,11 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         def sw = switches.all().first()
         //need to restore supportedTransitEncapsulation field after deleting sw
         def initSwProps = sw.getProps()
-        def swIsls = topology.getRelatedIsls(sw.switchId)
+        def swIsls = isls.all().relatedTo(sw).getListOfIsls()
         // port down on all active ISLs on switch
-        islHelper.breakIsls(swIsls)
+        breakIsls(swIsls)
         // delete all ISLs on switch
-        swIsls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
+        swIsls.each { it.delete() }
         // deactivate switch
         sw.knockoutWithoutLinksCheckWhenRecover(RW)
 
@@ -160,7 +162,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         //need to restore supportedTransitEncapsulation field after deleting sw
         def initSwProps = sw.getCachedProps()
-        def swIsls = topology.getRelatedIsls(sw.switchId)
+        def swIsls = isls.all().relatedTo(sw).getListOfIsls()
 
         // enable connected devices on switch
         sw.updateProperties(initSwProps.jacksonCopy().tap {
@@ -188,9 +190,9 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         }
 
         // port down on all active ISLs on switch
-        islHelper.breakIsls(swIsls)
+        breakIsls(swIsls)
         // delete all ISLs on switch
-        swIsls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
+        swIsls.each { it.delete() }
         // deactivate switch
         sw.knockoutWithoutLinksCheckWhenRecover(RW)
 
@@ -207,7 +209,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         def sw = switches.all().first()
         //need to restore supportedTransitEncapsulation field after deleting sw
         def initSwProps = sw.getProps()
-        def swIsls = topology.getRelatedIsls(sw.switchId)
+        def swIsls = isls.all().relatedTo(sw).getListOfIsls()
 
         when: "Try to force delete the switch"
         def response = sw.delete(true)
@@ -216,12 +218,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         response.deleted
         Wrappers.wait(WAIT_OFFSET) {
             assert !northbound.allSwitches.find{ it.switchId == sw.switchId }
-
-            def links = northbound.getAllLinks()
-            swIsls.each {
-                assert !islUtils.getIslInfo(links, it)
-                assert !islUtils.getIslInfo(links, it.reversed)
-            }
+            swIsls.each { assert !it.isPresent() }
         }
 
         cleanup: "Restore the switch, ISLs and reset costs"
@@ -234,10 +231,10 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         }
         sw.revive(blockData)
         // restore ISLs
-        swIsls.each { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
+        swIsls.each { antiflap.portDown(it.srcSwId, it.srcPort) }
         TimeUnit.SECONDS.sleep(antiflapMin)
-        islHelper.restoreIsls(swIsls)
+        restoreIsls(swIsls)
         initSwProps && northbound.updateSwitchProperties(sw.switchId, initSwProps)
-        database.resetCosts(topology.isls)
+        isls.all().resetCostsInDb()
     }
 }

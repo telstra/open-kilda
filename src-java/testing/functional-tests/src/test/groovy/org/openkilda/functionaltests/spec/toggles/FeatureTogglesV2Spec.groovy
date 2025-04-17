@@ -9,6 +9,8 @@ import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.helpers.model.FlowActionType.*
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.TRANSIT_VLAN
 import static org.openkilda.functionaltests.helpers.model.FlowStatusHistoryEvent.*
+import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
+import static org.openkilda.functionaltests.helpers.model.Isls.restoreIsls
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -250,16 +252,16 @@ feature toggle"() {
 
         //you have to break all altPaths to avoid rerouting when flowPath is broken
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def flowInvolvedIsls = flowPathInfo.getInvolvedIsls()
-        def altIsls = topology.getRelatedIsls(switchPair.src.switchId) - flowInvolvedIsls.first()
-        islHelper.breakIsls(altIsls)
+        def flowInvolvedIsls = isls.all().findInPath(flowPathInfo)
+        def altIsls = isls.all().relatedTo(switchPair.src).excludeIsls(flowInvolvedIsls).getListOfIsls()
+        breakIsls(altIsls)
 
         and: "Set flowsRerouteOnIslDiscovery=false"
         featureToggles.flowsRerouteOnIslDiscoveryEnabled(false)
 
         when: "Break the flow path(bring port down on the src switch)"
         def islToBreak = flowInvolvedIsls.first()
-        islHelper.breakIsl(islToBreak)
+        islToBreak.breakIt()
 
         then: "The flow becomes 'Down'"
         wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
@@ -280,7 +282,7 @@ feature toggle"() {
             }
         }
         when: "Restore all possible flow paths"
-        islHelper.restoreIsls(altIsls + islToBreak)
+        restoreIsls(altIsls + islToBreak)
 
         then: "The flow is still in 'Down' status, because flows_reroute_on_isl_discovery: false"
         assert flow.retrieveFlowStatus().status == FlowState.DOWN

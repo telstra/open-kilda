@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.helpers.model
 
 import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.helpers.model.PortExtended.closeBlinker
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.CLEAN_LINK_DELAY
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
@@ -16,6 +17,7 @@ import static org.openkilda.testing.Constants.ISL_RECOVER_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.helpers.KildaProperties
+import org.openkilda.functionaltests.helpers.thread.PortBlinker
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.IslChangeType
@@ -283,6 +285,11 @@ class IslExtended {
         northbound.deleteLinkProps([toLinkProps(params)])
     }
 
+    def blinkSrcEndpoint(){
+        northbound.portDown(srcSwId, srcPort)
+        northbound.portUp(srcSwId, srcPort)
+    }
+
     List<String> rerouteFlows() {
         northbound.rerouteLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
     }
@@ -349,6 +356,16 @@ class IslExtended {
                 0, plugIntoSource ? aswFlowForward.getReversed() : aswFlowForward)
 
         return new IslExtended(isl, northbound, northboundV2, database, lockKeeper, topology, cleanupManager)
+    }
+
+    def getPortBlinkerForSource(long interval) {
+        def blinker = srcEndpoint.getBlinker(interval)
+        cleanupManager.addAction(RESTORE_ISL, {
+            closeBlinker(blinker)
+            restore()
+            waitForStatus(DISCOVERED)
+        })
+        return blinker
     }
 
     /***

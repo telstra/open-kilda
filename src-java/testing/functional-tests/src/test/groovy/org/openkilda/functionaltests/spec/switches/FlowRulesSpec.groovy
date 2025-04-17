@@ -361,9 +361,9 @@ class FlowRulesSpec extends HealthCheckSpecification {
     def "Able to validate and sync missing rules for #description on terminating/transit switches"() {
         given: "Two active not neighboring switches with a long available path"
         def switchPair = switchPairs.all().nonNeighbouring().random()
-        def availablePath = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls()}
+        def availablePath = switchPair.retrieveAvailablePaths().collect { isls.all().findInPath(it) }
         def longPath = availablePath.max { it.size() }
-        availablePath.findAll { it != longPath }.each { islHelper.makePathIslsMorePreferable(longPath, it) }
+        availablePath.findAll { it != longPath }.each { isls.all().makePathIslsMorePreferable(longPath, it) }
 
         and: "Create a transit-switch flow going through these switches"
         def flow = flowFactory.getBuilder(switchPair)
@@ -567,8 +567,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         when: "Break the flow ISL (bring switch port down) to cause flow rerouting"
         def actualFlowPath = flow.retrieveAllEntityPaths()
         // Switches may have parallel links, so we need to get involved ISLs.
-        def islToFail = actualFlowPath.getInvolvedIsls().first()
-        islHelper.breakIsl(islToFail)
+        def islToFail = isls.all().findInPath(actualFlowPath).first()
+        islToFail.breakIt()
 
         then: "The flow was rerouted after reroute timeout"
         def flowInfoAfterReroute
