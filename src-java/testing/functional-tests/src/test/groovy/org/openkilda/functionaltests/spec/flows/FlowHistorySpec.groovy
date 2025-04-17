@@ -1,11 +1,9 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.model.FlowStatusHistoryEvent.DELETED
 import static org.openkilda.functionaltests.helpers.model.FlowStatusHistoryEvent.UP
-import static org.openkilda.model.SwitchFeature.*
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
@@ -344,10 +342,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY, SWITCH_RECOVER_ON_FAIL])
     def "Root cause is registered in flow history while rerouting"() {
         given: "An active flow"
-        def switchPair = switchPairs.all().getSwitchPairs().find {
-            it.src.getDbFeatures().contains(NOVIFLOW_COPY_FIELD)
-                    || it.dst.getDbFeatures().contains(NOVIFLOW_COPY_FIELD)
-        } ?: assumeTrue(false, "Wasn't able to find a suitable link")
+        def switchPair = switchPairs.all().random()
         def flow = flowFactory.getRandom(switchPair)
 
         when: "Deactivate the src switch and wait for links to change their state to FAILED"

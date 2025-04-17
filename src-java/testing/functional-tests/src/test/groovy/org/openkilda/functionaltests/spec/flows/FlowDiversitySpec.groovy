@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.messaging.payload.flow.FlowState.UP
 
@@ -168,25 +169,24 @@ class FlowDiversitySpec extends HealthCheckSpecification {
                 .withDiverseFlow(flow2.flowId).build()
                 .create()
 
-        def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect {flow ->
-           flow.retrieveAllEntityPaths()
+        def (flow1Isls, flow2Isls, flow3Isls) = [flow1, flow2, flow3].collect {flow ->
+           isls.all().findInPath(flow.retrieveAllEntityPaths())
         }
-        def allInvolvedIsls = [flow1Path, flow2Path, flow3Path].collectMany { path -> path.getInvolvedIsls()}
+        def allInvolvedIsls = flow1Isls +  flow2Isls +  flow3Isls
         assert allInvolvedIsls.unique(false) == allInvolvedIsls
 
         and: "Flow1 path is the most preferable"
-        def flow1Isls = flow1Path.getInvolvedIsls()
-        switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { !it.containsAll(flow1Isls) }
-                .each { islHelper.makePathIslsMorePreferable(flow1Isls, it) }
+        switchPair.retrieveAvailablePaths().collect { isls.all().findInPath(it) }.findAll {  it != flow1Isls }
+                .each { isls.all().makePathIslsMorePreferable(flow1Isls, it) }
 
         when: "Update the second flow to become not diverse"
         flow2.update(flow2.deepCopy().tap { it.diverseWith = [""]})
         flow2.waitForHistoryEvent(FlowActionType.UPDATE)
 
         then: "The flow became not diverse and rerouted to the more preferable path (path of the first flow)"
-        def flow2PathUpdated = flow2.retrieveAllEntityPaths()
-        flow2PathUpdated.getInvolvedIsls() != flow2Path.getInvolvedIsls()
-        flow2PathUpdated.getInvolvedIsls() == flow1Path.getInvolvedIsls()
+        def flow2NewIsls = isls.all().findInPath(flow2.retrieveAllEntityPaths())
+        flow2NewIsls != flow2Isls
+        flow2NewIsls == flow1Isls
 
         and: "The 'diverse_with' field is removed"
         !flow2.retrieveDetails().diverseWith
@@ -203,9 +203,9 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         flow3.waitForHistoryEvent(FlowActionType.UPDATE)
 
         then: "The flow became not diverse and rerouted to the more preferable path (path of the first flow)"
-        def flow3PathUpdated = flow3.retrieveAllEntityPaths()
-        flow3PathUpdated.getInvolvedIsls() != flow3Path.getInvolvedIsls()
-        flow3PathUpdated.getInvolvedIsls() == flow1Path.getInvolvedIsls()
+        def flow3NewIsls = isls.all().findInPath(flow3.retrieveAllEntityPaths())
+        flow3NewIsls != flow3Isls
+        flow3NewIsls == flow1Isls
 
         and: "The 'diverse_with' field is removed"
         !flow3.retrieveDetails().diverseWith
@@ -221,9 +221,10 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def flow1Path = flow1.retrieveAllEntityPaths().getPathNodes()
 
         and: "Make all alternative paths unavailable (bring ports down on the source switch)"
-        def broughtDownIsls = topology.getRelatedIsls(switchPair.src.switchId)
-                .findAll {it.srcPort != flow1Path.first().portNo}
-        islHelper.breakIsls(broughtDownIsls)
+        def broughtDownIsls = isls.all().relatedTo(switchPair.src).getListOfIsls().findAll {
+            it.srcPort != flow1Path.first().portNo
+        }
+        breakIsls(broughtDownIsls)
 
         when: "Create the second flow with diversity enabled"
         def flow2 = flowFactory.getBuilder(switchPair, false, flow1.occupiedEndpoints())
@@ -246,38 +247,40 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         and: "Create a flow going through these switches"
         def flow1 = flowFactory.getRandom(switchPair, false)
-        def initialFlowIsls = flow1.retrieveAllEntityPaths().getInvolvedIsls()
+        def initialFlowIsls = isls.all().findInPath(flow1.retrieveAllEntityPaths())
 
         and: "Make each alternative path less preferable than the first flow path"
-        def altPaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
-                .findAll { !it.containsAll(initialFlowIsls)}
+        def altPaths = switchPair.retrieveAvailablePaths().collect { isls.all().findInPath(it) }
+                .findAll { it != initialFlowIsls }
 
-        def flow1PathCost = islHelper.getCost(initialFlowIsls) + diversityIslCost + diversitySwitchCost * 2
+        def flow1PathCost = initialFlowIsls.sum { it.getCostFromDb() } + diversityIslCost + diversitySwitchCost * 2
+
         altPaths.each { altPath ->
-            def altPathCost = islHelper.getCost(altPath) + diversitySwitchCost * 2
+            def allIslsNbInfo = northbound.getAllLinks()
+            def altPathCost = altPath.sum { it.getInfo(allIslsNbInfo).cost } + diversitySwitchCost * 2
             int difference = flow1PathCost - altPathCost
             def firstAltPathIsl = altPath[0]
-            int firstAltPathIslCost = islHelper.getCost([firstAltPathIsl])
-            islHelper.updateIslsCost([firstAltPathIsl], (firstAltPathIslCost + Math.abs(difference) + 1))
+            int firstAltPathIslCost = firstAltPathIsl.getInfo(allIslsNbInfo).cost
+            firstAltPathIsl.updateCost(firstAltPathIslCost + Math.abs(difference) + 1)
         }
 
         when: "Create the second flow with diversity enabled"
         def flow2 = flowFactory.getBuilder(switchPair, false, flow1.occupiedEndpoints())
                 .withDiverseFlow(flow1.flowId).build().create()
-        def flow2Path = flow2.retrieveAllEntityPaths()
+        def flow2Isls = isls.all().findInPath(flow2.retrieveAllEntityPaths())
 
         then: "The flow is built through the most preferable path (path of the first flow)"
-        flow2Path.getInvolvedIsls() == initialFlowIsls
+        flow2Isls == initialFlowIsls
 
         when: "Create the third flow with diversity enabled"
         def flow3 = flowFactory.getBuilder(switchPair, false, (flow1.occupiedEndpoints() + flow2.occupiedEndpoints()))
                 .withDiverseFlow(flow2.flowId).build()
                 .create()
-        def flow3Path = flow3.retrieveAllEntityPaths()
+        def flow3Isls = isls.all().findInPath(flow3.retrieveAllEntityPaths())
 
         then: "The flow is built through one of alternative paths because they are preferable already"
-        def involvedIsls = [flow2Path, flow3Path].collectMany {path -> path.getInvolvedIsls() }
-        flow3Path.getInvolvedIsls() != flow2Path.getInvolvedIsls()
+        def involvedIsls = flow2Isls + flow3Isls
+        flow3Isls != flow2Isls
         involvedIsls.unique(false) == involvedIsls
     }
 

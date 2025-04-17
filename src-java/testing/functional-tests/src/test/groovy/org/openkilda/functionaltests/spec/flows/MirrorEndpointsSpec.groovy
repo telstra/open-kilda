@@ -44,7 +44,6 @@ import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.FlowBidirectionalExam
@@ -576,20 +575,21 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     def "Unable to create a mirror endpoint with #data.testDescr on the transit switch"() {
         given: "A flow with transit switch"
         def swPair = switchPairs.all().nonNeighbouring().random()
-        def availablePaths = swPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+        def availablePaths = swPair.retrieveAvailablePaths().collect { isls.all().findInPath(it)}
         //2 isls == 3 switches in a path
         def pathIsls = availablePaths.find { it.size() == 2 }
-        List<Switch> involvedSwitches = islHelper.retrieveInvolvedSwitches(pathIsls)
         // Sometimes a pair has >3 involvedSwitches and the required path cannot be found
         assumeTrue(pathIsls != null, "Could not find a path with 1 transit switch.")
+        List<SwitchId> involvedSwitches = pathIsls.collectMany { it.involvedSwIds }
 
-        availablePaths.findAll { it != pathIsls }.each { islHelper.makePathIslsMorePreferable(pathIsls, it) }
+        availablePaths.findAll { it != pathIsls }.each { isls.all().makePathIslsMorePreferable(pathIsls, it) }
         def flow = flowFactory.getBuilder(swPair).build().create()
+        assert isls.all().findInPath(flow.retrieveAllEntityPaths()) == pathIsls
 
         when: "Try to add a mirror endpoint on the transit switch"
         def freePort = (swPair.dst.getPorts() - flow.destination.portNumber)[0]
-        SwitchId mirrorEpSinkSwitch = data.sinkEndpointSwitch(involvedSwitches).dpId
-        SwitchId mirrorPointSwitch = data.mirrorPointSwitch(involvedSwitches).dpId
+        SwitchId mirrorEpSinkSwitch = data.sinkEndpointSwitch(involvedSwitches)
+        SwitchId mirrorPointSwitch = data.mirrorPointSwitch(involvedSwitches)
         flow.createMirrorPoint(mirrorEpSinkSwitch, freePort, randomVlan(), FORWARD, mirrorPointSwitch, false)
 
         then: "Error is returned, cannot create mirror point on given sw"
@@ -600,25 +600,25 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         data << [
                 [
                         testDescr         : "mirrorEndpoint and sinkEndpoint",
-                        mirrorPointSwitch : { List<Switch> involved -> involved[1] },
-                        sinkEndpointSwitch: { List<Switch> involved -> involved[1] },
-                        errorDesc         : { List<Switch> involved -> "Invalid mirror point switch id: ${involved[1].dpId}" }
+                        mirrorPointSwitch : { List<SwitchId> involved -> involved[1] },
+                        sinkEndpointSwitch: { List<SwitchId> involved -> involved[1] },
+                        errorDesc         : { List<SwitchId> involved -> "Invalid mirror point switch id: ${involved[1]}" }
                 ],
                 [
                         testDescr         : "sinkEndpoint",
-                        mirrorPointSwitch : { List<Switch> involved -> involved[0] },
-                        sinkEndpointSwitch: { List<Switch> involved -> involved[1] },
-                        errorDesc         : { List<Switch> involved ->
-                            "Invalid sink endpoint switch id: ${involved[1].dpId}. In the current " +
+                        mirrorPointSwitch : { List<SwitchId> involved -> involved[0] },
+                        sinkEndpointSwitch: { List<SwitchId> involved -> involved[1] },
+                        errorDesc         : { List<SwitchId> involved ->
+                            "Invalid sink endpoint switch id: ${involved[1]}. In the current " +
                                     "implementation, the sink switch id cannot differ from the mirror point switch id."
                         }
                 ],
                 [
                         testDescr         : "mirrorEndpoint",
-                        mirrorPointSwitch : { List<Switch> involved -> involved[1] },
-                        sinkEndpointSwitch: { List<Switch> involved -> involved[0] },
-                        errorDesc         : { List<Switch> involved ->
-                            "Invalid sink endpoint switch id: ${involved[0].dpId}. In the current " +
+                        mirrorPointSwitch : { List<SwitchId> involved -> involved[1] },
+                        sinkEndpointSwitch: { List<SwitchId> involved -> involved[0] },
+                        errorDesc         : { List<SwitchId> involved ->
+                            "Invalid sink endpoint switch id: ${involved[0]}. In the current " +
                                     "implementation, the sink switch id cannot differ from the mirror point switch id."
                         }
                 ]

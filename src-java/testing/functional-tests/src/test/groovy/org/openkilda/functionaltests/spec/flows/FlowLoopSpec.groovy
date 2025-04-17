@@ -292,8 +292,8 @@ class FlowLoopSpec extends HealthCheckSpecification {
         }
 
         when: "Fail a flow ISL (bring switch port down)"
-        def islToFail = flowPath.getInvolvedIsls().last()
-        islHelper.breakIsl(islToFail)
+        def islToFail = isls.all().findInPath(flowPath).last()
+        islToFail.breakIt()
 
         then: "The flow was rerouted"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
@@ -419,8 +419,8 @@ class FlowLoopSpec extends HealthCheckSpecification {
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def flowPathInfo = flow.retrieveAllEntityPaths()
         def initialProtectedPath = flowPathInfo.getPathNodes(Direction.FORWARD, true)
-        def islToBreak = flowPathInfo.flowPath.path.forward.getInvolvedIsls().first()
-        islHelper.breakIsl(islToBreak)
+        def islToBreak = isls.all().findInPath(flowPathInfo.getMainPath()).first()
+        islToBreak.breakIt()
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {

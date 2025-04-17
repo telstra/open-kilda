@@ -16,7 +16,6 @@ import static org.openkilda.functionaltests.model.stats.Origin.SERVER_42
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -413,7 +412,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     def "ISL Rtt stats are available in case link is RTL and a switch is disconnected"() {
         given: "An active RTL ISL with both switches having server42"
         def swPair = allServer42Pairs.find { pair ->
-            pair.toList().every { it.getDbFeatures().contains(NOVIFLOW_COPY_FIELD)}
+            pair.toList().every { it.isRtlSupported() }
         } ?: assumeTrue(false, "Wasn't able to find required switches (ISL RTT support)")
 
         Isl isl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
