@@ -45,6 +45,10 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
     @Autowired
     FlowStats flowStats
 
+    def setupSpec() {
+        northbound.getAllLinks()
+    }
+
     @IterationTags([
             @IterationTag(tags = [TOPOLOGY_DEPENDENT], iterationNameRegex = /VXLAN/),
             @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /TRANSIT_VLAN/)

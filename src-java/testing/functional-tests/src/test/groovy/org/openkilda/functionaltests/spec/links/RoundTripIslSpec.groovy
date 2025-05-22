@@ -32,7 +32,12 @@ class RoundTripIslSpec extends HealthCheckSpecification {
     List<SwitchExtended> switchesWithRtl
 
     def setupSpec() {
+        northbound.getAllLinks()
         switchesWithRtl = switches.all().withRtlSupport().getListOfSwitches()
+    }
+
+    def cleanupSpec() {
+        northbound.getAllLinks()
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)

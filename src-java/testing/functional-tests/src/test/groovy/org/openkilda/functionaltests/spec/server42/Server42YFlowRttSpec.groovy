@@ -69,6 +69,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
     SwitchTriplet switchTripletWithYPointOnSubFlowEnd
 
     def setupSpec() {
+        northbound.getAllLinks()
         switchTripletWithYPointOnSharedEp = switchTriplets.all().withAllDifferentEndpoints().withS42Support()
                 .withSharedEpInTheMiddleOfTheChain().random()
         switchTripletWithYPointOnSubFlowEnd = switchTriplets.all().withAllDifferentEndpoints().withS42Support()

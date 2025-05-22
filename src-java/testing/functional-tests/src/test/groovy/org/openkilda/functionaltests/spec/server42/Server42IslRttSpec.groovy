@@ -58,6 +58,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     int statsWaitSeconds = 4
 
     def setupSpec() {
+        northbound.getAllLinks()
         allServer42Pairs = switchPairs.all(true).neighbouring()
                 .withBothSwitchesConnectedToServer42().getSwitchPairs()
     }

@@ -2,8 +2,8 @@ package org.openkilda.functionaltests.helpers.model
 
 import static org.openkilda.functionaltests.helpers.KildaProperties.PRODUCER_PROPS
 import static org.openkilda.functionaltests.helpers.KildaProperties.TOPO_DISCO_TOPIC
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.PORT_DISCOVERY
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.PORT_UP
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_ISL
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -113,7 +113,7 @@ class PortExtended {
 
     def setDiscovery(boolean expectedStatus) {
         if (!expectedStatus) {
-            cleanupManager.addAction(RESTORE_ISL, { setDiscovery(true) })
+            cleanupManager.addAction(PORT_DISCOVERY, { setDiscovery(true) })
         }
         return northboundV2.updatePortProperties(sw.dpId, port, new PortPropertiesDto(discoveryEnabled: expectedStatus))
     }

@@ -74,6 +74,9 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Value('${flow.sla.check.interval.seconds}')
     Integer flowSlaCheckIntervalSeconds
 
+    def setupSpec() {
+        northbound.getAllLinks()
+    }
     @Tags(TOPOLOGY_DEPENDENT)
     @IterationTag(tags = [HARDWARE], iterationNameRegex = /(NS|WB)/)
     def "Create a #flowDescription flow with server42 Rtt feature and check datapoints in tsdb"() {
