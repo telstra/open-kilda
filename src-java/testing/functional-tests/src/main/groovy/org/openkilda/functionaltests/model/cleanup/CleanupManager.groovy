@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.model.cleanup
 
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.PORT_DISCOVERY
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Scope
@@ -103,6 +104,7 @@ class CleanupManager {
         exceptions += runActionsSynchronously(actions[DELETE_LAG_LOGICAL_PORT].reverse())
         exceptions += runActionsSynchronously(actions[RESTORE_A_SWITCH_FLOWS].reverse())
         exceptions += runActionsAsynchronously(actions[PORT_UP])
+        exceptions += runActionsAsynchronously(actions[PORT_DISCOVERY])
         exceptions += runActionsAsynchronously(actions[RESTORE_ISL])
         exceptions += runActionsAsynchronously(actions[CLEAN_LINK_DELAY])
         if (actions[DELETE_ISLS_PROPERTIES]) {

@@ -90,9 +90,26 @@ class SwitchPair {
         SwitchPair swP-> !swP.src.wb5164 && !swP.dst.wb5164
     }
 
-    List<Path> retrieveAvailablePaths(){
-       convertToPathNodePayload(paths).collect{
-           new Path(it, topologyDefinition)
-       }
+    List<Path> retrieveAvailablePaths() {
+        convertToPathNodePayload(paths).collect {
+            new Path(it, topologyDefinition)
+        }
+    }
+
+    int getSizeOfTheLongestPath(){
+        paths.max { it.size() }.size()
+    }
+
+    List<Path> retrievePathsWithNodesCount(int nodesCount) {
+        convertToPathNodePayload(paths.findAll { it.size() == nodesCount }).collect {
+            new Path(it, topologyDefinition)
+        }
+    }
+
+    Path retrieveLongestPathWithLessThanNNodesCount(int nodesCount) {
+        def longestPathNodesCount = paths.findAll { it.size() < nodesCount }.max { it.size() }.size()
+        convertToPathNodePayload(paths.findAll { it.size() == longestPathNodesCount }).collect {
+            new Path(it, topologyDefinition)
+        }.first()
     }
 }
