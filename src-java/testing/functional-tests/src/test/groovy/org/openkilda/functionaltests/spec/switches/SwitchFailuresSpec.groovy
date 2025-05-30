@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -46,10 +45,9 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
     def "ISL is still able to properly fail even if switches have reconnected"() {
         given: "A flow"
-        def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
-        assumeTrue(isl.asBoolean(), "No a-switch ISL found for the test")
-        def srcSw = switches.all().findSpecific(isl.srcSwitch.dpId)
-        def dstSw = switches.all().findSpecific(isl.dstSwitch.dpId)
+        def isl = isls.all().withASwitch().first()
+        def srcSw = switches.all().findSpecific(isl.srcSwId)
+        def dstSw = switches.all().findSpecific(isl.dstSwId)
         def flow = flowFactory.getRandom(srcSw, dstSw)
 
         when: "Two neighbouring switches of the flow go down simultaneously"
@@ -59,9 +57,9 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
         and: "ISL between those switches looses connection"
-        cleanupManager.addAction(OTHER, {northbound.synchronizeSwitch(isl.srcSwitch.dpId, true)})
-        cleanupManager.addAction(OTHER, {northbound.synchronizeSwitch(isl.dstSwitch.dpId, true)})
-        aSwitchFlows.removeFlows([isl.aswitch])
+        cleanupManager.addAction(OTHER, {northbound.synchronizeSwitch(isl.srcSwId, true)})
+        cleanupManager.addAction(OTHER, {northbound.synchronizeSwitch(isl.dstSwId, true)})
+        aSwitchFlows.removeFlows([isl.getASwitch()])
 
         and: "Switches go back up"
         lockKeeper.reviveSwitch(srcSw.sw, srcBlockData)
@@ -69,18 +67,16 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         then: "ISL still remains up right before discovery timeout should end"
         sleep(untilIslShouldFail() - 2500)
-        islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
+        isl.getNbDetails().state == IslChangeType.DISCOVERED
 
         and: "ISL fails after discovery timeout"
-        Wrappers.wait(untilIslShouldFail() / 1000 + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
-        }
+        isl.waitForStatus(IslChangeType.FAILED, untilIslShouldFail() / 1000 + WAIT_OFFSET)
 
         //depends whether there are alt paths available
         and: "The flow goes down OR changes path to avoid failed ISL after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            def currentIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
-            def pathChanged = !currentIsls.contains(isl) && !currentIsls.contains(isl.reversed)
+            def currentIsls = isls.all().findInPath(flow.retrieveAllEntityPaths())
+            def pathChanged = !isl.isIncludedInPath(currentIsls)
             assert pathChanged || (flow.retrieveFlowStatus().status == FlowState.DOWN &&
                     flow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE_FAILED).find {
                         it.taskId =~ (/.+ : retry #1 ignore_bw true/)

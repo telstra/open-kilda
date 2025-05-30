@@ -86,12 +86,11 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         assert !paths.sharedPath.path.forward.nodes.nodes
 
         String subFlowWithBrokenIsl = paths.subFlowPaths.first().flowId
-        def islToFail = paths.subFlowPaths.find { it.flowId == subFlowWithBrokenIsl}
-                .path.forward.getInvolvedIsls().first()
-        String subFlowWithActiveIsl = paths.subFlowPaths.flowId.find { it != subFlowWithBrokenIsl }
+        def islToFail = isls.all().findInPath(paths, subFlowWithBrokenIsl).first()
+        String subFlowWithActiveIsl = paths.subFlowPaths.last().flowId
 
         when: "Fail one of the HA-subflows ISL (bring switch port down)"
-        islHelper.breakIsl(islToFail)
+        islToFail.breakIt()
         def afterFailTime = new Date().getTime()
 
         then: "Periodic pings are still enabled"
@@ -101,7 +100,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         wait(pingInterval + WAIT_OFFSET * 2, 2) {
             def stats = flowStats.of(subFlowWithBrokenIsl)
             [FORWARD, REVERSE].each { Direction direction ->
-                stats.get(LATENCY, direction, ERROR).dataPoints.keySet().find { it >= afterFailTime}
+                assert stats.get(LATENCY, direction, ERROR).dataPoints.keySet().find { it >= afterFailTime}
             }
         }
 
@@ -109,7 +108,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         wait(pingInterval + WAIT_OFFSET * 4, 2) {
             def stats = flowStats.of(subFlowWithActiveIsl)
             [FORWARD, REVERSE].each { Direction direction ->
-                stats.get(LATENCY, direction, SUCCESS).hasNonZeroValuesAfter(afterFailTime)
+                assert stats.get(LATENCY, direction, SUCCESS).hasNonZeroValuesAfter(afterFailTime)
             }
         }
     }

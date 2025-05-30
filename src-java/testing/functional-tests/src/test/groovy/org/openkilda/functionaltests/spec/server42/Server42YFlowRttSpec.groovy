@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.server42
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -63,16 +64,16 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
     Integer flowSlaCheckIntervalSeconds
 
     @Shared
-    SwitchTriplet switchTripletWithYPointOnSharedEp
+    List<SwitchTriplet> switchTripletWithYPointOnSharedEp
 
     @Shared
-    SwitchTriplet switchTripletWithYPointOnSubFlowEnd
+    List<SwitchTriplet> switchTripletWithYPointOnSubFlowEnd
 
     def setupSpec() {
         switchTripletWithYPointOnSharedEp = switchTriplets.all().withAllDifferentEndpoints().withS42Support()
-                .withSharedEpInTheMiddleOfTheChain().random()
+                .withSharedEpInTheMiddleOfTheChain().getSwitchTriplets()
         switchTripletWithYPointOnSubFlowEnd = switchTriplets.all().withAllDifferentEndpoints().withS42Support()
-                .withSharedEpEp1Ep2InChain().random()
+                .withSharedEpEp1Ep2InChain().getSwitchTriplets()
     }
 
     @IterationTags([
@@ -80,10 +81,9 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
     ])
     def "Create an Y-Flow (#description) with server42 Rtt feature and check datapoints in tsdb"() {
         given: "Three active switches with server42 connected"
-        assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
+        assumeFalse(availableSwitches.isEmpty(), "There is no switch triplet for the further Y-Flow creation")
 
-        def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
-        assert swT, "There is no switch triplet for the further Y-Flow creation"
+        def swT = availableSwitches.first()
         isSharedEndpointYPoint ?: makeBothYFlowSubFlowsHaveTheLongestSharedPath(swT)
 
         when: "Set server42FlowRtt toggle to true"
@@ -134,14 +134,16 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         "all endpoints qnq, shared ep is y-point, encapsulation TRANSIT_VLAN"              | true                   | { YFlowBuilder builder -> builder.withSharedEpQnQ().withEp1QnQ().withEp2QnQ().build() }
         "tagged flow, shared ep is y-point, protected path, encapsulation VXLAN"           | true                   | { YFlowBuilder builder -> builder.withProtectedPath(true).withEncapsulationType(VXLAN).build() }
         "ep1 and ep2 qnq, ep1/ep2 is y-point, encapsulation TRANSIT_VLAN"                  | false                  | { YFlowBuilder builder -> builder.withEp1QnQ().withEp2QnQ().build() }
+
+        availableSwitches = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd as List<SwitchTriplet>
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
     def "Y-Flow rtt stats are available if both endpoints are connected to the same server42(same pop)"() {
         given: "Three active switches with server42 connected"
-        assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
+        assumeFalse(availableSwitches.isEmpty(), "There is no switch triplet for the further Y-Flow creation")
 
-        def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
+        def swT = availableSwitches.first()
         isSharedEndpointYPoint ?: makeBothYFlowSubFlowsHaveTheLongestSharedPath(swT)
 
         and: "server42FlowRtt feature enabled globally and on src/dst switch"
@@ -202,15 +204,15 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         }
 
         where:
-        isSharedEndpointYPoint << [true, false]
+        isSharedEndpointYPoint | availableSwitches
+        true                   | switchTripletWithYPointOnSharedEp
+        false                  | switchTripletWithYPointOnSubFlowEnd
+
     }
 
     @Tags(LOW_PRIORITY)
     def "Rtt statistic is available for a Y-Flow in case switch is not connected to server42"() {
-        given: "Three active switches with server42 connected"
-        assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
-
-        and: "Switches triplet with ONLY shared switch that supports server42 feature"
+        given: "Switches triplet with ONLY shared switch that supports server42 feature"
         def swT = switchTriplets.all().withAllDifferentEndpoints().findSwitchTripletWithOnlySharedSwS42Support()
         assumeTrue(swT as boolean, "Unable to find requested switchTriplet")
 
@@ -270,10 +272,10 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Able to swapEndpoint for a Y-Flow with enabled server42 on it"() {
         given: "Three active switches with server42 connected"
-        assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
+        assumeFalse(switchTripletWithYPointOnSharedEp.isEmpty(), "There is no switch triplet for the further Y-Flow creation")
 
         and: "Switches triplet doesn't contain WB164 switch"
-        def swT = switchTripletWithYPointOnSharedEp
+        def swT = switchTripletWithYPointOnSharedEp.first()
 
         and: "server42FlowRtt feature enabled globally and switch ON for appropriate switches(swT)"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
@@ -362,9 +364,10 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
     //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
     def "Able to synchronize a Y-Flow (install missing server42 rules)"() {
         given: "Three active switches with server42 connected"
-        assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
+        assumeFalse(availableSwitches.isEmpty(), "There is no switch triplet for the further Y-Flow creation")
 
-        def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
+        def swT = availableSwitches.first()
+        assert swT, "There is no switch triplet for the further Y-Flow creation"
         isSharedEndpointYPoint ?: makeBothYFlowSubFlowsHaveTheLongestSharedPath(swT)
 
         and: "server42FlowRtt feature enabled globally and switch ON for appropriate switches(swT)"
@@ -448,16 +451,15 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         }
 
         where:
-        isSharedEndpointYPoint << [true, false]
+        isSharedEndpointYPoint | availableSwitches
+        true                   | switchTripletWithYPointOnSharedEp
+        false                  | switchTripletWithYPointOnSubFlowEnd
     }
 
     @Tags(HARDWARE)
     //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
     def "Y-Flow rtt stats are still available after updating Y-Flow: #description"() {
-        given: "Three active switches with server42 connected"
-        assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
-
-        and: "Switches triplet doesn't contain WB164 switch"
+        given: "Switches triplet doesn't contain WB164 switch with server42 support"
         def swT = switchTriplets.all().withAllDifferentEndpoints().withoutWBSwitch().withS42Support()
                 .withSharedEpInTheMiddleOfTheChain().random()
 
@@ -549,9 +551,10 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Y-Flow rtt stats are available only if both global and switch toggles are 'ON' on both endpoints"() {
         given: "Three active switches with server42 connected"
-        assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
+        assumeFalse(availableSwitches.isEmpty(), "There is no switch triplet for the further Y-Flow creation")
 
-        def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
+        def swT = availableSwitches.first()
+        assert swT, "There is no switch triplet for the further Y-Flow creation"
         isSharedEndpointYPoint ?: makeBothYFlowSubFlowsHaveTheLongestSharedPath(swT)
         def statsWaitSeconds = 4
 
@@ -649,13 +652,15 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         }
 
         where:
-        isSharedEndpointYPoint << [true, false]
+        isSharedEndpointYPoint | availableSwitches
+        true                   | switchTripletWithYPointOnSharedEp
+        false                  | switchTripletWithYPointOnSubFlowEnd
     }
 
     private void makeBothYFlowSubFlowsHaveTheLongestSharedPath(SwitchTriplet swT) {
         def pathToManipulate = swT.pathsEp1[0].size() >  swT.pathsEp2[0].size()
                 ? swT.retrieveAvailablePathsEp2().first() : swT.retrieveAvailablePathsEp1().first()
-        islHelper.updateIslsCost(pathToManipulate.getInvolvedIsls(), DEFAULT_COST - 5)
+        isls.all().collectIslsFromPaths([pathToManipulate]).updateCost(DEFAULT_COST - 5)
     }
 
 }

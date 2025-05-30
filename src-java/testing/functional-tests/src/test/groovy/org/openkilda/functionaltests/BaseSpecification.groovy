@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests
 
-import org.openkilda.functionaltests.helpers.IslHelper
 import org.openkilda.functionaltests.helpers.model.ASwitchFlows
 import org.openkilda.functionaltests.helpers.model.ASwitchPorts
 import org.openkilda.functionaltests.helpers.model.Isls
@@ -16,7 +15,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 
 import org.openkilda.functionaltests.helpers.PortAntiflapHelper
 import org.openkilda.functionaltests.helpers.StatsHelper
-import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -63,8 +61,6 @@ class BaseSpecification extends Specification {
     @Autowired @Shared
     TopologyHelper topologyHelper
     @Autowired @Shared
-    SwitchHelper switchHelper
-    @Autowired @Shared
     PortAntiflapHelper antiflap
     //component overrides getting existing flows per topology lab(flow, y-flow, ha_flow)
     @Autowired @Shared @Qualifier("islandNbV2")
@@ -79,8 +75,6 @@ class BaseSpecification extends Specification {
     SwitchPairs switchPairs
     @Autowired @Shared
     SwitchTriplets switchTriplets
-    @Autowired @Shared
-    IslHelper islHelper
     @Autowired @Shared
     ASwitchFlows aSwitchFlows
     @Autowired @Shared

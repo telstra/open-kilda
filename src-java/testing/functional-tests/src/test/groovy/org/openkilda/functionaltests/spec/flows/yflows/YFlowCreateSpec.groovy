@@ -71,7 +71,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "User is able to view Y-Flow paths"
-        def paths = yFlow.retrieveAllEntityPaths()
+        def initialPath = yFlow.retrieveAllEntityPaths()
 
         and: "Y-Flow passes flow validation"
         with(yFlow.validateAndCollectDiscrepancy()) {
@@ -92,22 +92,19 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches pass switch validation"
-        def involvedSwitches = switches.all().findSwitchesInPath(paths)
+        def involvedSwitches = switches.all().findSwitchesInPath(initialPath)
         synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         and: "Bandwidth is properly consumed on shared and non-shared ISLs(not applicable for single switch Y-Flow)"
         def allLinksAfter = northbound.getAllLinks()
-        def involvedIslsSFlow_1 = paths.subFlowPaths.first().getInvolvedIsls()
-        def involvedIslsSFlow_2 = paths.subFlowPaths.last().getInvolvedIsls()
+        def yFlowIsls = isls.all().findInPath(initialPath)
 
         if(!swT.singleSwitch) {
-            (involvedIslsSFlow_1 + involvedIslsSFlow_2).unique().each { link ->
-                [link, link.reversed].each {
-                    islUtils.getIslInfo(allLinksBefore, it).ifPresent(islBefore -> {
-                        def bwBefore = islBefore.availableBandwidth
-                        def bwAfter = islUtils.getIslInfo(allLinksAfter, it).get().availableBandwidth
-                        assert bwBefore == bwAfter + yFlow.maximumBandwidth
-                    })
+            yFlowIsls.each { isl ->
+                [isl, isl.reversed].each {
+                    def bwBefore = isl.getInfo(allLinksBefore).availableBandwidth
+                    def bwAfter = isl.getInfo(allLinksAfter).availableBandwidth
+                    assert bwBefore == bwAfter + yFlow.maximumBandwidth
                 }
             }
         }
@@ -381,8 +378,8 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
         */
 
         given: "three switches and potential Y-Flow point"
-        def slowestLinkOnTheWest = database.getIsls(topology.getIsls()).sort { it.getMaxBandwidth() }.first()
-        def slowestLinkSwitchIds = [slowestLinkOnTheWest.getSrcSwitchId(), slowestLinkOnTheWest.getDestSwitchId()]
+        def slowestLinkOnTheWest = northbound.getAllLinks().sort { it.maxBandwidth }.first()
+        def slowestLinkSwitchIds = [slowestLinkOnTheWest.source.switchId, slowestLinkOnTheWest.destination.switchId]
         def switchTriplet = switchTriplets.all(true, false).getSwitchTriplets()
                 .find {
                     def yPoints = it.findPotentialYPoints()
@@ -393,7 +390,7 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
 
         when: "Y-Flow plan for them with bandwidth equal to ISL bandwidth"
         def yFlow = yFlowFactory.getBuilder(switchTriplet, false)
-                .withBandwidth(slowestLinkOnTheWest.getMaxBandwidth()).build()
+                .withBandwidth(slowestLinkOnTheWest.maxBandwidth).build()
 
         then: "Y-Flow is created and UP"
         yFlow.create()

@@ -14,7 +14,9 @@ import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.switches.PortDescription
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -93,8 +95,7 @@ class PortExtended {
     void waitForStabilization(Long since = 0) {
         // '* 2' it takes more time on a hardware env for link via 'a-switch'
         Wrappers.wait(KildaProperties.ANTIFLAP_COOLDOWN + WAIT_OFFSET * 2) {
-            def history = northboundV2.getPortHistory(sw.dpId, port, since, null)
-
+            def history = retrieveHistory(since, null)
             if (!history.empty) {
                 def antiflapEvents = history.collect { PortHistoryEvent.valueOf(it.event) }.findAll {
                     it in [PortHistoryEvent.ANTI_FLAP_ACTIVATED, PortHistoryEvent.ANTI_FLAP_DEACTIVATED]
@@ -130,7 +131,11 @@ class PortExtended {
         northbound.getPort(sw.dpId, port)
     }
 
-    def getNbProps() {
+    PortPropertiesResponse getNbProps() {
         northboundV2.getPortProperties(sw.dpId, port)
+    }
+
+    List<PortHistoryResponse> retrieveHistory(Long timeFrom = null, Long timeTo = null) {
+        northboundV2.getPortHistory(sw.dpId, port, timeFrom, timeTo)
     }
 }

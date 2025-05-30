@@ -227,7 +227,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     def "New connected switch is properly discovered with related ISLs in a reasonable time"() {
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def sw = switches.all().first()
-        def isls = topology.getRelatedIsls(sw.switchId)
+        def isls = isls.all().relatedTo(sw).getListOfIsls()
         /*in case supportedTransitEncapsulation == ["transit_vlan", "vxlan"]
         then after removing/adding the same switch this fields will be changed (["transit_vlan"])
         vxlan encapsulation is not set by default*/
@@ -238,7 +238,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             sw.collectForwardAndReverseRelatedLinks().each { assert it.actualState == FAILED }
         }
 
-        isls.each { northbound.deleteLink(islUtils.toLinkParameters(it), true) }
+        isls.each { it.delete(true) }
         cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, { northbound.updateSwitchProperties(sw.switchId, initSwProps) })
         Wrappers.retry(2) { sw.delete() }
 

@@ -70,8 +70,8 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         }
 
         haFlowPathInfoAfter.subFlowPaths.each { subFlow ->
-            assert subFlow.path.forward == haFlowPathInfoBefore.subFlowPaths.find { it.flowId == subFlow.flowId}.protectedPath.forward
-            assert subFlow.protectedPath.forward == haFlowPathInfoBefore.subFlowPaths.find { it.flowId == subFlow.flowId}.path.forward
+            assert subFlow.path.forward == haFlowPathInfoBefore.getSubFlowProtectedPath(subFlow.flowId)
+            assert subFlow.protectedPath.forward == haFlowPathInfoBefore.getSubFlowMainPath(subFlow.flowId)
         }
 
         and: "HA-Flow and related sub-flows are valid"

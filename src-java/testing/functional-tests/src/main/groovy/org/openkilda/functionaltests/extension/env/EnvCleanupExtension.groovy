@@ -12,6 +12,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto
+import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
@@ -67,11 +68,13 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
     }
 
     def unsetLinkMaintenance(List<IslInfoData> links) {
-        def maintenanceLinks = northbound.getAllLinks().findAll { it.underMaintenance }
+        def maintenanceLinks = links.findAll { it.underMaintenance }
         if (maintenanceLinks) {
             log.info("Unset maintenance mode for affected links: $maintenanceLinks")
             maintenanceLinks.each {
-                northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(it, false, false))
+                def linkParams = new LinkUnderMaintenanceDto(it.source.switchId.toString(), it.source.portNo,
+                       it.destination.switchId.toString(), it.destination.portNo, false, false)
+                northbound.setLinkMaintenance(linkParams)
             }
         }
     }

@@ -8,7 +8,6 @@ import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.Constants.HEALTH_CHECK_TIME
 
-import org.openkilda.functionaltests.exception.IslNotFoundException
 import org.openkilda.functionaltests.extension.spring.SpringContextListener
 import org.openkilda.functionaltests.extension.spring.SpringContextNotifier
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -211,12 +210,10 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
         assert links.findAll { it.state != IslChangeType.DISCOVERED }.empty
 
         def topoLinks = topologyDefinition.islsForActiveSwitches.collectMany { isl ->
-            [islUtils.getIslInfo(links, isl).orElseThrow { new IslNotFoundException(isl.toString()) },
-             islUtils.getIslInfo(links, isl.reversed).orElseThrow {
-                 new IslNotFoundException(isl.reversed.toString())
-             }]
+            [northbound.getLinks(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort).first(),
+             northbound.getLinks(isl.dstSwitch.dpId, isl.dstPort, isl.srcSwitch.dpId, isl.srcPort).first()]
         }
-        def missingLinks = links.findAll { it.state == IslChangeType.DISCOVERED } - topoLinks
+        def missingLinks = links.findAll { it.state == IslChangeType.DISCOVERED }.id - topoLinks.id
         assert missingLinks.empty, "These links are missing in topology.yaml"
     }
 
