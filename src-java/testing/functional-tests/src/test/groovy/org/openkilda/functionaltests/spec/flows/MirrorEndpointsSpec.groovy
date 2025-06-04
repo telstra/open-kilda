@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -217,7 +216,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         [swPair, mirrorDirection] << [getUniqueSwitchPairs({ !it.src.traffGenPorts.isEmpty() && !it.dst.traffGenPorts.isEmpty() }),
                                       [FORWARD, REVERSE]].combinations()
         //means there is no second traffgen for target switch and we are not checking the counter on receiving interface
-        trafficDisclaimer = swPair.src.traffGenPorts.size() < 2 ? " !WARN: No mirrored traffic check!" : ""
+        //flaky test [WB5164-E NW570.7.2]-FORWARD: disable traffic check
+        trafficDisclaimer = swPair.src.traffGenPorts.size() < 2 || swPair.src.isWb5164() && mirrorDirection == FORWARD ? " !WARN: No mirrored traffic check!" : ""
         description = "[${swPair.src.hwSwString()}] $mirrorDirection $trafficDisclaimer"
     }
 
