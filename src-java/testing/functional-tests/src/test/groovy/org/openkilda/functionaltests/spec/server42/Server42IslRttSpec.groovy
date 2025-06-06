@@ -114,6 +114,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT,
     HARDWARE //Temporarily disable for virtual. wait for real virtual s42
     ])
+    @Ignore("https://github.com/telstra/open-kilda/issues/5776")
     def "ISL RTT stats are available if both endpoints are connected to the same server42 (same pop)"() {
         given: "An active ISL with both switches connected to the same server42 instance"
         def swPair = allServer42Pairs.shuffled().find {
