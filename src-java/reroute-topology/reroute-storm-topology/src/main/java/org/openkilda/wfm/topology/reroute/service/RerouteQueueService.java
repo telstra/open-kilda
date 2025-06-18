@@ -159,7 +159,8 @@ public class RerouteQueueService {
         FlowResponse flowData;
         RerouteQueue rerouteQueue = getRerouteQueue(flowId);
         if (rerouteQueue.hasInProgress()) {
-            rerouteQueue.putToInProgress(null);
+            rerouteQueue.setInProgress(null);
+            rerouteQueue.setPending(null);
             flowData = new FlowResponse(FlowDto.builder()
                     .state(FlowState.IN_PROGRESS)
                     .statusInfo("Reroute has flushed").build());
