@@ -557,7 +557,9 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Flow is created on a target switch with devices feature 'off'"
         def dst = switches.all().getListOfSwitches().find { it != sw }
-        def flow = flowFactory.getBuilder(sw, dst).withDetectedDevicesOnSrc(false, false)
+        def flow = flowFactory.getBuilder(sw, dst)
+                .withSourcePort(tg.switchPort)
+                .withDetectedDevicesOnSrc(false, false)
                 .build().create()
 
         when: "Devices send lldp and arp packets into a flow port"
@@ -634,7 +636,9 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         and: "A single-sw flow with devices feature 'on'"
-        def expectedFlowEntity = flowFactory.getSingleSwBuilder(sw).withDetectedDevicesOnSrc(true, true)
+        def expectedFlowEntity = flowFactory.getSingleSwBuilder(sw)
+                .withSourcePort(tg.switchPort)
+                .withDetectedDevicesOnSrc(true, true)
         def flow = expectedFlowEntity.build().create()
 
         and: "A single-sw default flow with devices feature 'on'"
