@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.messaging.payload.flow.FlowState.UP
@@ -16,7 +17,7 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 @Narrative("Verify that ISL's bandwidth behaves consistently and does not allow any oversubscribtions etc.")
-
+@Tags([FLOW])
 class BandwidthSpec extends HealthCheckSpecification {
 
     @Autowired

@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -48,7 +49,7 @@ import javax.inject.Provider
 terminating switch so any flow traffic is returned to switch-port where it was received. Such flow has 'looped=true'
 flag and supports all flow operations. When the loop removed system should restore the original flow rules.
 Enabling flowLoop in flow history is registered as the 'update' operation.""")
-
+@Tags([FLOW])
 class FlowLoopSpec extends HealthCheckSpecification {
 
     @Autowired

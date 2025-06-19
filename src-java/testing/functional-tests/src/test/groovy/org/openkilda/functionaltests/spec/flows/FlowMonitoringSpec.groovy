@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static org.openkilda.functionaltests.ResourceLockConstants.FLOW_MON_TOGGLE
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
@@ -31,7 +32,7 @@ import spock.lang.See
 import spock.lang.Shared
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-monitoring")
-@Tags([VIRTUAL, LOW_PRIORITY])
+@Tags([VIRTUAL, LOW_PRIORITY, FLOW])
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class FlowMonitoringSpec extends HealthCheckSpecification {
     @Shared

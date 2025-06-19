@@ -1,11 +1,13 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.Y_FLOW
 import static org.openkilda.functionaltests.helpers.FlowNameGenerator.FLOW
 import static org.openkilda.functionaltests.helpers.model.SwitchExtended.randomVlan
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotModifiedExpectedError
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.YFlowActionType
 import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.messaging.payload.flow.FlowState
@@ -23,6 +25,7 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 @Narrative("Verify different actions for a sub-flow.")
+@Tags([Y_FLOW])
 class SubFlowSpec extends HealthCheckSpecification {
     @Autowired
     @Shared

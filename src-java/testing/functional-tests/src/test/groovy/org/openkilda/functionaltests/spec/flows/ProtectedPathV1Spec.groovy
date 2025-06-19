@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -53,7 +54,7 @@ System can start to use protected path in two case:
 A flow has the status degraded in case when the main path is up and the protected path is down.
 
 Main and protected paths can't use the same link.""")
-@Tags([LOW_PRIORITY])
+@Tags([LOW_PRIORITY, FLOW])
 class ProtectedPathV1Spec extends HealthCheckSpecification {
 
     @Autowired

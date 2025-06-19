@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
@@ -29,7 +30,7 @@ import java.util.concurrent.TimeUnit
 - In case of isl down such flow should be marked as DOWN.
 - On Isl up event such flow shouldn't be re-routed as well.
   Instead kilda should verify that it's path is online and mark flow as UP.""")
-
+@Tags([FLOW])
 class PinnedFlowSpec extends HealthCheckSpecification {
 
     @Autowired

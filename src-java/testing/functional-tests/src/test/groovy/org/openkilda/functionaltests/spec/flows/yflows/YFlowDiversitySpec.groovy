@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.Y_FLOW
+
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 
 import groovy.util.logging.Slf4j
@@ -17,11 +19,11 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 import static groovyx.gpars.GParsExecutorsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 
 @Slf4j
 @Narrative("Verify the ability to create diverse y-flows in the system.")
+@Tags([Y_FLOW])
 class YFlowDiversitySpec extends HealthCheckSpecification {
     @Autowired
     @Shared

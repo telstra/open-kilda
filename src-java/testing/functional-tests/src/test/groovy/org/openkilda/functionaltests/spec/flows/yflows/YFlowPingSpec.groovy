@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows.yflows
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.Y_FLOW
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -9,7 +10,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.factory.YFlowFactory
-import org.openkilda.model.cookie.Cookie
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -17,6 +17,7 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 @Narrative("""This spec tests 'periodic ping' functionality.""")
+@Tags([Y_FLOW])
 class YFlowPingSpec extends HealthCheckSpecification {
     @Autowired
     @Shared

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SERVER42
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.VXLAN
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
@@ -60,7 +61,7 @@ switch timestamps, thus we may see no stats in otsdb if time on switch is incorr
  */
 @ResourceLock(S42_TOGGLE)
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
-
+@Tags([SERVER42])
 class Server42FlowRttSpec extends HealthCheckSpecification {
 
     @Autowired

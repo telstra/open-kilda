@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -34,7 +35,7 @@ This spec tests all the functionality related to flow pings.
 Flow ping feature sends a 'ping' packet at the one end of the flow, expecting that this packet will 
 be delivered at the other end. 'Pings' the flow in both directions(forward and reverse).
 """)
-
+@Tags([FLOW])
 class FlowPingSpec extends HealthCheckSpecification {
 
     @Value('${flow.ping.interval}')

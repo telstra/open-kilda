@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -38,7 +39,7 @@ flow with protected path, default flow) for a flow with VXLAN encapsulation.
 
 NOTE: A flow with the 'VXLAN' encapsulation is supported on a Noviflow switches.
 So, flow can be created on a Noviflow(src/dst/transit) switches only.""")
-
+@Tags([FLOW])
 class VxlanFlowSpec extends HealthCheckSpecification {
     @Autowired
     @Shared

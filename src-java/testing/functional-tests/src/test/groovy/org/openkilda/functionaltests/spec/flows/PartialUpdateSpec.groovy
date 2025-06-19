@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
@@ -41,7 +42,7 @@ Covers PATCH /api/v2/flows/:flowId and PATCH /api/v1/flows/:flowId
 This API allows to partially update a flow, i.e. update a flow without specifying a full flow payload. 
 Depending on changed fields flow will be either updated+rerouted or just have its values changed in database.
 """)
-
+@Tags([FLOW])
 class PartialUpdateSpec extends HealthCheckSpecification {
 
     @Autowired

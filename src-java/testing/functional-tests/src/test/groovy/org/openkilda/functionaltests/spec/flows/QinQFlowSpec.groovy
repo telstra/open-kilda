@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeFalse
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -39,7 +40,7 @@ import spock.lang.Shared
 import javax.inject.Provider
 
 @Slf4j
-
+@Tags([FLOW])
 class QinQFlowSpec extends HealthCheckSpecification {
 
     @Autowired

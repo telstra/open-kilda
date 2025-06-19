@@ -28,5 +28,10 @@ enum Tag {
     SWITCH_RECOVER_ON_FAIL,
 
     //flow type specific tag
-    HA_FLOW
+    FLOW,
+    Y_FLOW,
+    HA_FLOW,
+
+    // s42-related
+    SERVER42
 }
