@@ -99,6 +99,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
     }
 
     def "Y-Flows can be evacuated (rerouted) from a particular link when setting maintenance mode for it"() {
+        // dummy comment to know PullRequest process
         given: "Switch triplet with two possible paths at least for non-neighbouring switches"
         def swTriplet = switchTriplets.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
