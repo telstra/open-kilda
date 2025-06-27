@@ -196,7 +196,7 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<FlowResponseV2> createFlow(FlowRequestV2 request) {
-        log.info("API request: Processing flow creation: {}", request);
+        log.info("API request: Process flow create request: {}", request);
 
         final String correlationId = RequestCorrelationId.getId();
         FlowRequest flowRequest;
