@@ -106,9 +106,30 @@ class SwitchTriplet {
             new Path(it, topology)
         }
     }
+
     List<Path> retrieveAvailablePathsEp2(){
         convertToPathNodePayload(pathsEp2).collect{
             new Path(it, topology)
         }
+    }
+
+    List<Path> retrievePathsEp1WithNodesCount(int nodeCount){
+        convertToPathNodePayload(pathsEp1.findAll { it.size() == nodeCount }).collect{
+            new Path(it, topology)
+        }
+    }
+
+    List<Path> retrievePathsEp2WithNodesCount(int nodeCount){
+        convertToPathNodePayload(pathsEp2.findAll { it.size() == nodeCount }).collect{
+            new Path(it, topology)
+        }
+    }
+
+    int getSizeOfTheShortestPathEp1(){
+        pathsEp1.min { it.size() }.size()
+    }
+
+    int getSizeOfTheShortestPathEp2(){
+        pathsEp2.min { it.size() }.size()
     }
 }

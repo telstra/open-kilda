@@ -4,16 +4,15 @@ import static groovyx.gpars.dataflow.Dataflow.task
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
-import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchFeature
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -37,8 +36,8 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
     def "System properly handles ISL statuses during connection problems between Floodlights and Kafka"() {
         setup: "All switches that have multiple management floodlights now remain with only 1"
-        def updatedRegions = topology.switches.collectEntries{ [(it.dpId): it.regions] }
         def activeSwitches = switches.all().getListOfSwitches()
+        def updatedRegions = activeSwitches.collectEntries{ [(it.switchId): it.regions] }
         def knockoutData = []
         activeSwitches.eachWithIndex { switchExtended, i ->
             def rwRegions = flHelper.filterRegionsByMode(switchExtended.regions, RW)
@@ -53,9 +52,9 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
         and: "Pick a region to break, find which isls are between regions"
         def regionToBreak = flHelper.fls.findAll{ it.mode == RW }*.region.first()
-        def islsBetweenRegions = topology.islsForActiveSwitches.findAll {
-            [it.srcSwitch, it.dstSwitch].any { updatedRegions[it.dpId].contains(regionToBreak) } &&
-                    updatedRegions[it.srcSwitch.dpId] != updatedRegions[it.dstSwitch.dpId]
+        def islsBetweenRegions = isls.all().getListOfIsls().findAll {
+            [it.srcSwId, it.dstSwId].any { regionToBreak in updatedRegions[it] } &&
+                    updatedRegions[it.srcSwId] != updatedRegions[it.dstSwId]
         }
 
         when: "Region 1 controller loses connection to Kafka"
@@ -63,14 +62,13 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         def flOut = true
 
         then: "Non-rtl links between failed region and alive regions fail due to discovery timeout"
+        def rtlSupportedSws = switches.all().withRtlSupport().getListOfSwitches()
         def nonRtlTransitIsls = islsBetweenRegions.findAll { isl ->
-            [isl.srcSwitch, isl.dstSwitch].any { sw ->
-                !activeSwitches.find{ sw.dpId == it.switchId}.getDbFeatures().contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
-            }
+            [isl.srcSwId, isl.dstSwId].any { swId -> swId !in rtlSupportedSws.switchId }
         }
         def nonRtlShouldFail = task {
             wait(WAIT_OFFSET + discoveryTimeout) {
-                nonRtlTransitIsls.forEach { assert northbound.getLink(it).state == IslChangeType.FAILED }
+                nonRtlTransitIsls.forEach { assert it.getNbDetails().state == FAILED }
             }
         }
 
@@ -78,27 +76,26 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         and: "links inside regions are discovered"
         and: "rtl links between regions are discovered"
         double interval = floodlightAliveTimeout * 0.4
-        def linksToRemainAlive = topology.islsForActiveSwitches.findAll { !nonRtlTransitIsls.contains(it) }
+        def linksToRemainAlive = isls.all().excludeIsls(nonRtlTransitIsls).getListOfIsls()
         timedLoop(floodlightAliveTimeout - interval) {
             assert northbound.activeSwitches.size() == activeSwitches.size()
-            def isls = northbound.getAllLinks()
-            linksToRemainAlive.each { assert islUtils.getIslInfo(isls, it).get().state == IslChangeType.DISCOVERED }
+            linksToRemainAlive.each { assert it.getNbDetails().state == DISCOVERED }
             sleep(500)
         }
 
         and: "After controller alive timeout switches in broken region become inactive but links are still discovered"
         wait(interval + WAIT_OFFSET) {
             assert northbound.activeSwitches.size() == activeSwitches.findAll {
-                !updatedRegions[it.switchId].contains(regionToBreak) }.size()
+                regionToBreak !in updatedRegions[it.switchId]}.size()
         }
-        linksToRemainAlive.each { assert northbound.getLink(it).state == IslChangeType.DISCOVERED }
+        linksToRemainAlive.each { assert it.getNbDetails().state == DISCOVERED }
 
         when: "System remains in this state for discovery timeout for ISLs"
         TimeUnit.SECONDS.sleep(discoveryTimeout + 1)
         nonRtlShouldFail.get()
 
         then: "All links except for non-rtl transit ones are still discovered"
-        linksToRemainAlive.each { assert northbound.getLink(it).state == IslChangeType.DISCOVERED }
+        linksToRemainAlive.each { assert it.getNbDetails().state == DISCOVERED }
 
         when: "Controller restores connection to Kafka"
         lockKeeper.reviveFloodlight(regionToBreak)
@@ -106,13 +103,13 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
         then: "All links are discovered and switches become active"
         wait(PERIODIC_SYNC_TIME) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+            assert northbound.getActiveLinks().size() == isls.all().getListOfIsls().size() * 2
             assert northbound.activeSwitches.size() == activeSwitches.size()
         }
 
         and: "System is able to successfully create a valid flow between regions"
         def swPair = switchPairs.all().getSwitchPairs().find { pair ->
-            [pair.src, pair.dst].any { updatedRegions[it.switchId].contains(regionToBreak) }  &&
+            [pair.src, pair.dst].any { regionToBreak in updatedRegions[it.switchId] }  &&
                     updatedRegions[pair.src.switchId] != updatedRegions[pair.dst.switchId]
         }
         def flow = flowFactory.getBuilder(swPair).build().sendCreateRequest()
@@ -127,8 +124,8 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         if(flOut) {
             lockKeeper.reviveFloodlight(regionToBreak)
             wait(PERIODIC_SYNC_TIME) {
-                assert northbound.activeSwitches.size() == topology.activeSwitches.size()
-                assert northbound.getAllLinks().size() == topology.islsForActiveSwitches.size() * 2
+                assert northbound.activeSwitches.size() == switches.all().getListOfSwitches().size()
+                assert northbound.getAllLinks().size() == isls.all().getListOfIsls().size() * 2
             }
         }
     }
@@ -141,31 +138,23 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         wait(floodlightAliveTimeout + WAIT_OFFSET) { assert northbound.activeSwitches.size() == 0 }
 
         and: "Switch port for certain ISL goes down"
-        def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
+        def isl = isls.all().withASwitch().first()
         //port down on A-switch will lead to a port down on a connected Kilda switch
-        lockKeeper.portsDown([isl.aswitch.inPort])
+        lockKeeper.portsDown([isl.getASwitch().inPort])
 
         and: "Controllers restore connection to kafka"
         regions.each { lockKeeper.reviveFloodlight(it) }
         regionsOut = false
 
         then: "System detects that certain port has been brought down and fails the related link"
-        wait(WAIT_OFFSET) {
-            def isls = northbound.getAllLinks()
-            assert islUtils.getIslInfo(isls, isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(isls, isl.reversed).get().state == IslChangeType.FAILED
-        }
+        isl.waitForStatus(FAILED, WAIT_OFFSET)
 
         cleanup:
         regionsOut && regions.each { lockKeeper.reviveFloodlight(it) }
-        lockKeeper.portsUp([isl.aswitch.inPort])
-        wait(WAIT_OFFSET) { assert northbound.activeSwitches.size() == topology.activeSwitches.size() }
-        wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
-            def isls = northbound.getAllLinks()
-            assert islUtils.getIslInfo(isls, isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(isls, isl.reversed).get().state == IslChangeType.DISCOVERED
-        }
-        database.resetCosts(topology.isls)
+        lockKeeper.portsUp([isl.getASwitch().inPort])
+        wait(WAIT_OFFSET) { assert northbound.activeSwitches.size() == switches.all().getListOfSwitches().size() }
+        isl.waitForStatus(DISCOVERED)
+        isls.all().resetCostsInDb()
     }
 
     def "System can detect switch state changes if they happen while Floodlight was disconnected after it reconnects"() {
@@ -202,10 +191,10 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         cleanup:
         regionsOut && regions.each { lockKeeper.reviveFloodlight(it) }
         knockoutData && lockKeeper.reviveSwitch(swToManipulate.sw, knockoutData)
-        wait(WAIT_OFFSET) { assert northbound.activeSwitches.size() == topology.activeSwitches.size() }
+        wait(WAIT_OFFSET) { assert northbound.activeSwitches.size() == switches.all().getListOfSwitches().size() }
         wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
-            northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED }
+            northbound.getAllLinks().findAll { it.state == FAILED }.isEmpty()
         }
-        database.resetCosts(topology.isls)
+        isls.all().resetCostsInDb()
     }
 }

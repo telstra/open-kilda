@@ -1,8 +1,8 @@
 package org.openkilda.functionaltests.spec.server42
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.VXLAN
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
@@ -14,6 +14,8 @@ import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOU
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -42,14 +44,14 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
     @Autowired
     FlowStats flowStats
 
-    @Tags(TOPOLOGY_DEPENDENT)
+    @IterationTags([
+            @IterationTag(tags = [TOPOLOGY_DEPENDENT], iterationNameRegex = /VXLAN/),
+            @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /TRANSIT_VLAN/)
+    ])
     def "Create an Ha-Flow (#description) with server42 Rtt feature and check datapoints in tsdb"() {
         given: "Three active switches with server42 connected"
-        assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
-
         def swT = switchTriplets.all().withAllDifferentEndpoints().withS42Support()
                 .withSharedEpInTheMiddleOfTheChain().random()
-        assert swT, "There is no switch triplet for the further ha-flow creation"
 
         when: "Set server42FlowRtt toggle to true"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
@@ -94,10 +96,7 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
 
     @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
     def "Able to synchronize an Ha-Flow(shared path: #isHaFlowWithSharedPath) with the following installation of missing server42 rules"() {
-        given: "Three active switches with server42 connected"
-        assert swT, "There is no switch triplet for the ha-flow creation"
-
-        and: "Set server42FlowRtt toggle to true"
+        given: "Set server42FlowRtt toggle to true"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
         switches.all().waitForS42SwRulesSetup()
 

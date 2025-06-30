@@ -34,7 +34,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         given: "Switches with three not overlapping paths at least"
         def swT = switchTriplets.all(false, false).withAllDifferentEndpoints()
                 .withAtLeastNNonOverlappingPaths(4).random()
-        assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create three Y-Flows with diversity enabled"
         def yFlow1 = yFlowFactory.getRandom(swT, false)
@@ -57,8 +56,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
         and: "All Y-Flows have different paths"
         def allInvolvedIsls = [yFlow1, yFlow2, yFlow3].collectMany { yFlow ->
-           yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == yFlow.subFlows.first().flowId }.getInvolvedIsls()
-
+            isls.all().findInPath(yFlow.retrieveAllEntityPaths(), yFlow.subFlows.first().flowId)
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
@@ -88,16 +86,18 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
     def "Able to update Y-Flow to became diverse with simple multiSwitch flow"() {
         given: "Switches with two not overlapping paths at least"
         def swT = switchTriplets.all().withAtLeastNNonOverlappingPaths(2).random()
-        assumeTrue(swT != null, "Unable to find suitable switches")
 
         and: "Y-Flow created"
         def yFlow = yFlowFactory.getRandom(swT, false)
 
         and: "Simple multiSwitch flow on the same path as first sub-flow"
         def flow = flowFactory.getRandom(swT.shared, swT.ep1, false)
-        def subFlowId = yFlow.subFlows.first().flowId
-        def involvedIslSubFlow = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == subFlowId }.getInvolvedIsls()
-        def involvedIslSimpleFlow = flow.retrieveAllEntityPaths().getInvolvedIsls()
+        def yFlowPath= yFlow.retrieveAllEntityPaths()
+        def subFlowId = yFlowPath.subFlowPaths
+                .find { it.path.forward.retrieveNodes().last().switchId == swT.ep1.switchId }.flowId
+
+        def involvedIslSubFlow = isls.all().findInPath(yFlowPath, subFlowId)
+        def involvedIslSimpleFlow = isls.all().findInPath(flow.retrieveAllEntityPaths())
         assert involvedIslSubFlow == involvedIslSimpleFlow
 
         when: "Update Y-Flow to become diverse with simple multiSwitch flow"
@@ -122,7 +122,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         }
 
         and: "First sub-flow became diverse and changed path"
-        def involvedIslSubFlowAfterUpdate = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == subFlowId }.getInvolvedIsls()
+        def involvedIslSubFlowAfterUpdate = isls.all().findInPath(yFlow.retrieveAllEntityPaths(), subFlowId)
         assert involvedIslSubFlowAfterUpdate != involvedIslSimpleFlow
 
         and: "First sub flow history contains 'groupId' information"
@@ -190,8 +190,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         given: "Switches with three not overlapping paths at least"
         def swT = switchTriplets.all().withAtLeastNNonOverlappingPaths(3).random()
 
-        assumeTrue(swT != null, "Unable to find suitable switches")
-
         when: "Create three Y-Flows with diversity enabled"
         def yFlow1 = yFlowFactory.getRandom(swT, false)
 
@@ -245,7 +243,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
     def "Able to get Y-Flow paths with correct overlapping segments stats with one-switch Y-Flow"() {
         given: "Three switches"
         def swT = switchTriplets.all().withAllDifferentEndpoints().random()
-        assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create y-flow"
         def yFlow1 = yFlowFactory.getRandom(swT, false)
@@ -286,7 +283,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
     def "Able to get Y-Flow paths with with diversity part when flows become diverse after partial update"() {
         given: "Switches with three not overlapping paths at least"
         def swT = switchTriplets.all().withAtLeastNNonOverlappingPaths(3).random()
-        assumeTrue(swT != null, "Unable to find suitable switches")
 
         and: "Create two Y-Flows"
         def yFlow1 = yFlowFactory.getRandom(swT, false)

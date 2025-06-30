@@ -12,6 +12,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto
+import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
@@ -19,6 +20,7 @@ import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.IslUtils
+import org.openkilda.testing.tools.TopologyPool
 
 import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.AbstractGlobalExtension
@@ -31,6 +33,9 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
 
     @Autowired
     TopologyDefinition topology
+
+    @Autowired
+    TopologyPool topologyPool
 
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
@@ -63,11 +68,13 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
     }
 
     def unsetLinkMaintenance(List<IslInfoData> links) {
-        def maintenanceLinks = northbound.getAllLinks().findAll { it.underMaintenance }
+        def maintenanceLinks = links.findAll { it.underMaintenance }
         if (maintenanceLinks) {
             log.info("Unset maintenance mode for affected links: $maintenanceLinks")
             maintenanceLinks.each {
-                northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(it, false, false))
+                def linkParams = new LinkUnderMaintenanceDto(it.source.switchId.toString(), it.source.portNo,
+                       it.destination.switchId.toString(), it.destination.portNo, false, false)
+                northbound.setLinkMaintenance(linkParams)
             }
         }
     }
@@ -98,23 +105,26 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
 
     def resetCosts() {
         log.info("Resetting all link costs")
-        database.resetCosts(topology.isls)
+        database.resetCosts()
     }
 
     def resetBandwidth(List<IslInfoData> links) {
-        def topoIsls = topology.isls.collectMany { [it, it.reversed] }
-        links.each { link ->
-            if (link.availableBandwidth != link.speed || link.maxBandwidth != link.speed
-                    || link.defaultMaxBandwidth != link.speed) {
-                def isl = topoIsls.find {
-                    it.srcSwitch.dpId == link.source.switchId && it.srcPort == link.source.portNo &&
-                            it.dstSwitch.dpId == link.destination.switchId && it.dstPort == link.destination.portNo
+        List<TopologyDefinition> topologies = [topology, topologyPool.topologies].flatten()
+        topologies.each { topo ->
+            def topoIsls = topo.isls.collectMany { [it, it.reversed] }
+            links.each { link ->
+                if (link.availableBandwidth != link.speed || link.maxBandwidth != link.speed
+                        || link.defaultMaxBandwidth != link.speed) {
+                    def isl = topoIsls.find {
+                        it.srcSwitch.dpId == link.source.switchId && it.srcPort == link.source.portNo &&
+                                it.dstSwitch.dpId == link.destination.switchId && it.dstPort == link.destination.portNo
+                    }
+                    if (!isl) {
+                        throw new IslNotFoundException("Wasn't able to find isl: $link")
+                    }
+                    log.info("Resetting available bandwidth on ISL: $isl")
+                    database.resetIslBandwidth(isl)
                 }
-                if (!isl) {
-                    throw new IslNotFoundException("Wasn't able to find isl: $link")
-                }
-                log.info("Resetting available bandwidth on ISL: $isl")
-                database.resetIslBandwidth(isl)
             }
         }
     }
@@ -149,6 +159,7 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
         }
     }
 
+    //used for HW env(no parallel topologies)
     def resetAswRules() {
         def requiredAswRules = topology.isls.collectMany {
             if (it.aswitch?.inPort && it.aswitch?.outPort) {

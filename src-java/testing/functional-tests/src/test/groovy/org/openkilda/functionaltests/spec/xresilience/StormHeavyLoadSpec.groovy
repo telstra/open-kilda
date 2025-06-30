@@ -25,7 +25,6 @@ import spock.lang.Shared
 
 @Slf4j
 class StormHeavyLoadSpec extends HealthCheckSpecification {
-
     @Value("#{kafkaTopicsConfig.getTopoDiscoTopic()}")
     String topoDiscoTopic
 
@@ -36,8 +35,6 @@ class StormHeavyLoadSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     FlowFactory flowFactory
-
-    def r = new Random()
 
     /**
      * Test produces multiple port up/down messages to the topo.disco kafka topic,
@@ -50,25 +47,26 @@ class StormHeavyLoadSpec extends HealthCheckSpecification {
         def operations = 2 //port up, port down
         def threads = 10
         def producers = (1..threads).collect { new KafkaProducer<>(producerProps) }
-        def isl = topology.islsForActiveSwitches[0]
+        def isl = isls.all().first()
         withPool(threads) {
             messages.intdiv(threads * operations).times {
-                def sw = isl.srcSwitch.dpId
+                def swId = isl.srcSwId
                 producers.eachParallel {
-                    it.send(new ProducerRecord(topoDiscoTopic, sw.toString(),
-                            buildMessage(new PortInfoData(sw, isl.srcPort, null,
+                    it.send(new ProducerRecord(topoDiscoTopic, swId.toString(),
+                            buildMessage(new PortInfoData(swId, isl.srcPort, null,
                                     null, PortChangeType.DOWN, null)).toJson())).get()
                     sleep(1)
-                    it.send(new ProducerRecord(topoDiscoTopic, sw.toString(),
-                            buildMessage(new PortInfoData(sw, isl.srcPort, null,
+                    it.send(new ProducerRecord(topoDiscoTopic, swId.toString(),
+                            buildMessage(new PortInfoData(swId, isl.srcPort, null,
                                     null, PortChangeType.UP, null)).toJson())).get()
                 }
             }
         }
 
         then: "Still able to create and delete flows while Storm is swallowing the messages"
-        def src = switches.all().findSpecific(topology.islsForActiveSwitches[1].srcSwitch.dpId)
-        def dst = switches.all().findSpecific( topology.islsForActiveSwitches[1].dstSwitch.dpId)
+        def randomIsl = isls.all().random()
+        def src = switches.all().findSpecific(randomIsl.srcSwId)
+        def dst = switches.all().findSpecific(randomIsl.dstSwId)
         def checkFlowCreation = {
             def flow = flowFactory.getBuilder(src, dst).build()
             flow.create()
@@ -89,12 +87,12 @@ class StormHeavyLoadSpec extends HealthCheckSpecification {
         northbound.activeSwitches.size() == topology.activeSwitches.size()
         Wrappers.wait(WAIT_OFFSET * 2 + antiflapCooldown) {
             assert northbound.getAllLinks().findAll { it.state == IslChangeType.DISCOVERED }
-                    .size() == topology.islsForActiveSwitches.size() * 2
+                    .size() == isls.all().getListOfIsls().size() * 2
         }
 
         cleanup:
         producers.each { it.close() }
-        database.resetCosts(topology.isls)
+        isls.all().resetCostsInDb()
     }
 
     private static Message buildMessage(final InfoData data) {

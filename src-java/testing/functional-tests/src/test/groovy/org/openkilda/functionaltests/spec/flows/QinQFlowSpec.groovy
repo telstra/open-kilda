@@ -715,9 +715,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def flow = flowEntity.create()
 
         when: "Make the current path less preferable than alternatives"
-        def initialPathIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
-        switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { it != initialPathIsls }
-                .each { islHelper.makePathIslsMorePreferable(it, initialPathIsls) }
+        def initialPathIsls = isls.all().findInPath(flow.retrieveAllEntityPaths())
+        switchPair.retrieveAvailablePaths().collect { isls.all().findInPath(it) }.findAll { it != initialPathIsls }
+                .each { isls.all().makePathIslsMorePreferable(it, initialPathIsls) }
 
         and: "Update the flow: port number and vlanId on the src/dst endpoints"
         def updatedFlow = flow.deepCopy().tap {
@@ -734,7 +734,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is not rerouted"
         Wrappers.timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
-            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialPathIsls
+            assert isls.all().findInPath(flow.retrieveAllEntityPaths()) == initialPathIsls
         }
 
         and: "System allows traffic on the flow"

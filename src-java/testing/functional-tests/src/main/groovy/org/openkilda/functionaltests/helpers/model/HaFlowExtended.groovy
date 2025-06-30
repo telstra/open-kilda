@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers.model
 
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2
 import org.openkilda.testing.service.database.Database
 
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -265,7 +266,14 @@ class HaFlowExtended {
 
     HaFlowRerouteResult reroute() {
         log.debug("Reroute ha-flow '${haFlowId}'")
-        northboundV2.rerouteHaFlow(haFlowId)
+        HaFlowRerouteResult response = northboundV2.rerouteHaFlow(haFlowId)
+        response.subFlowPaths.each {
+            def newNodes = it.nodes.collect {
+                PathNodeV2.builder().switchId(it.switchId).portNo(it.portNo).segmentLatency(null).build()
+            }
+            it.setNodes(newNodes)
+        }
+        response
     }
 
     HaFlowExtended retrieveDetails() {

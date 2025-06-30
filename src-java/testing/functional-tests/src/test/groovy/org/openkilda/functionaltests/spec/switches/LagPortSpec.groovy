@@ -272,7 +272,7 @@ on switch $sw.switchId is used as part of LAG port $lagPort.logicalPortNumber/).
         given: "A flow with mirrorPoint"
         def swP = switchPairs.all().neighbouring().random()
         def flow = flowFactory.getRandom(swP, false)
-        def mirrorPort = swP.src.getPorts().last()
+        def mirrorPort = swP.src.getRandomPortNumber(false, [flow.source.portNumber])
         def mirrorEndpoint = flow.createMirrorPoint(swP.src.switchId, mirrorPort, randomVlan())
 
         when: "Create a LAG port with port which is used as mirrorPort"

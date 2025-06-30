@@ -1,10 +1,8 @@
 package org.openkilda.functionaltests.helpers.model
 
 import static org.junit.jupiter.api.Assumptions.assumeFalse
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
-import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.functionaltests.model.switches.Manufacturer
 import org.openkilda.model.SwitchId
@@ -30,8 +28,6 @@ import org.springframework.stereotype.Component
 @Scope(SCOPE_PROTOTYPE)
 class SwitchPairs {
     List<SwitchPair> switchPairs
-    @Autowired
-    SwitchHelper switchHelper
     @Autowired
     TopologyHelper topologyHelper
     @Autowired
@@ -223,7 +219,7 @@ class SwitchPairs {
 
     SwitchPairs withIslRttSupport() {
         this.assertAllSwitchPairsAreNeighbouring()
-        switchPairs = switchPairs.findAll { [it.src, it.dst].every { it.getDbFeatures().contains(NOVIFLOW_COPY_FIELD) } }
+        switchPairs = switchPairs.findAll { [it.src, it.dst].every { it.isRtlSupported() } }
         return this
     }
 

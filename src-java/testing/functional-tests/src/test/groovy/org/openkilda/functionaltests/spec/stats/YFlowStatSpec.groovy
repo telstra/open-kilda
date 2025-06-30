@@ -60,7 +60,6 @@ class YFlowStatSpec extends HealthCheckSpecification {
 
     def setupSpec() {
         def switchTriplet = switchTriplets.all().withAllDifferentEndpoints().withTraffgensOnEachEnd().random()
-        assumeTrue(switchTriplet != null, "No suiting switches found")
 
         yFlow = yFlowFactory.getBuilder(switchTriplet).withBandwidth(10).build()
                 .create(FlowState.UP, CleanupAfter.CLASS)

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.stats
 
+import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
 import static org.openkilda.functionaltests.model.stats.Direction.*
 import static org.openkilda.messaging.payload.flow.FlowState.*
 
@@ -133,8 +134,8 @@ class FlowStatSpec extends HealthCheckSpecification {
 
         def flowPathInfo = flow.retrieveAllEntityPaths()
         assert !flowPathInfo.flowPath.protectedPath.isPathAbsent()
-        def mainPathIsls = flowPathInfo.getMainPathInvolvedIsls()
-        def protectedPathIsls = flowPathInfo.getProtectedPathInvolvedIsls()
+        def mainPathIsls = isls.all().findInPath(flowPathInfo.getMainPath())
+        def protectedPathIsls = isls.all().findInPath(flowPathInfo.getProtectedPath())
 
         when: "Generate traffic on the given flow"
         def traffExam = traffExamProvider.get()
@@ -159,10 +160,10 @@ class FlowStatSpec extends HealthCheckSpecification {
         !stats.get(FLOW_RAW_BYTES, srcSwitchId, protectedReverseCookie).hasNonZeroValues()
 
         when: "Make the current and protected path less preferable than alternatives"
-        def alternativePaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+        def alternativePaths = switchPair.retrieveAvailablePaths().collect { isls.all().findInPath(it) }
                 .findAll { it != mainPathIsls && it != protectedPathIsls }
-        alternativePaths.each { islHelper.makePathIslsMorePreferable(it, mainPathIsls) }
-        alternativePaths.each { islHelper.makePathIslsMorePreferable(it, protectedPathIsls) }
+        alternativePaths.each { isls.all().makePathIslsMorePreferable(it, mainPathIsls) }
+        alternativePaths.each { isls.all().makePathIslsMorePreferable(it, protectedPathIsls) }
 
         and: "Init intentional reroute"
         def rerouteResponse = flow.reroute()
@@ -170,7 +171,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == UP }
 
         def flowPathInfoAfterRerouting = flow.retrieveAllEntityPaths()
-        def newMainPath = flowPathInfoAfterRerouting.getMainPathInvolvedIsls()
+        def newMainPath = isls.all().findInPath(flowPathInfoAfterRerouting.getMainPath())
         newMainPath != mainPathIsls
         newMainPath != protectedPathIsls
 
@@ -237,8 +238,9 @@ class FlowStatSpec extends HealthCheckSpecification {
         !stats.get(FLOW_RAW_BYTES, srcSwitchId, protectedReverseCookie).hasNonZeroValues()
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
-        def islToBreak = flowPathInfo.flowPath.path.forward.getInvolvedIsls().first()
-        islHelper.breakIsl(islToBreak)
+        def islToBreak = isls.all().findInPath(flowPathInfo.getMainPath()).first()
+        islToBreak.breakIt()
+
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             assert flow.retrieveFlowStatus().status == UP
             assert flow.retrieveAllEntityPaths().getPathNodes(FORWARD, false) == protectedPath
@@ -277,13 +279,15 @@ class FlowStatSpec extends HealthCheckSpecification {
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def mainPathIsls = flowPathInfo.flowPath.path.forward.getInvolvedIsls()
-        def protectedPathIsls = flowPathInfo.flowPath.protectedPath.forward.getInvolvedIsls()
-        def altIsls = topology.getRelatedIsls(switchPair.src.switchId) - mainPathIsls - protectedPathIsls.first()
-        islHelper.breakIsls(altIsls)
+        def mainPathIsls = isls.all().findInPath(flowPathInfo.getMainPath())
+        def protectedPathIsls = isls.all().findInPath(flowPathInfo.getProtectedPath())
+
+        def altIsls = isls.all().relatedTo(switchPair.src)
+                .excludeIsls(mainPathIsls + protectedPathIsls.first()).getListOfIsls()
+        breakIsls(altIsls)
 
         when: "Break ISL on a protected path (bring port down) for changing the flow state to DEGRADED"
-        islHelper.breakIsl(protectedPathIsls.first())
+        protectedPathIsls.first().breakIt()
         Wrappers.wait(WAIT_OFFSET) {
             verifyAll(flow.retrieveDetails()) {
                 status == DEGRADED

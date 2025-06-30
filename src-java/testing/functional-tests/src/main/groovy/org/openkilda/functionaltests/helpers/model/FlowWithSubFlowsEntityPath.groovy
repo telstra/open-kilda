@@ -92,6 +92,16 @@ class FlowWithSubFlowsEntityPath {
         subFlowPaths.find { it.flowId == subFlowId }.getInvolvedIsls(direction)
     }
 
+    Path getSubFlowMainPath(String subFlowId, Direction direction = Direction.FORWARD) {
+        def path = subFlowPaths.find { it.flowId == subFlowId }.path
+        direction == Direction.FORWARD ? path.forward : path.reverse
+    }
+
+    Path getSubFlowProtectedPath(String subFlowId, Direction direction = Direction.FORWARD) {
+        def path = subFlowPaths.find { it.flowId == subFlowId }.protectedPath
+        direction == Direction.FORWARD ? path.forward : path.reverse
+    }
+
     List<SwitchId> getSubFlowTransitSwitches(String subFlowId, Direction direction = Direction.FORWARD) {
         subFlowPaths.find { it.flowId == subFlowId }.getTransitSwitches(direction)
     }

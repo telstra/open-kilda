@@ -42,11 +42,11 @@ class MultiFloodlightsSpec extends HealthCheckSpecification {
         def sw = switches.all().withConnectedToExactlyNManagementFls(2).first()
 
         and: "Background observer monitoring the state of switch and its ISLs"
-        def relatedIsls = topology.getRelatedIsls(sw.switchId).collectMany { [it, it.reversed] }
+        def relatedIsls = isls.all().relatedTo(sw).getListOfIsls().collectMany { [it, it.reversed] }
 
         def islObserver = new LoopTask({
             def soft = new SoftAssertions()
-            relatedIsls.each { isl -> soft.checkSucceeds { assert northbound.getLink(isl).state == DISCOVERED } }
+            relatedIsls.each { isl -> soft.checkSucceeds { assert isl.getNbDetails().state == DISCOVERED } }
             soft.verify()
         })
         def swObserver = new LoopTask({ assert sw.getDetails().state == ACTIVATED })

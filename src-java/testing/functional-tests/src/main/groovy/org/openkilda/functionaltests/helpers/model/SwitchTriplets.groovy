@@ -108,7 +108,7 @@ class SwitchTriplets {
 
     SwitchTriplet random() {
         switchTriplets.shuffle()
-        return switchTriplets.first()
+        return first()
     }
 
     SwitchTriplet first() {

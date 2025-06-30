@@ -104,16 +104,16 @@ class ContentionSpec extends BaseSpecification {
     def "Reroute can be simultaneously performed with sync rules requests, removeExcess=#removeExcess"() {
         given: "A flow with reroute potential"
         def swPair = switchPairs.all().nonNeighbouring().random()
-        def availablePaths = swPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+        def availablePaths = swPair.retrieveAvailablePaths().collect { isls.all().findInPath(it) }
         def flow = flowFactory.getRandom(swPair)
 
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def mainPathIsls = flowPathInfo.getInvolvedIsls()
+        def mainPathIsls = isls.all().findInPath(flowPathInfo)
         def newPathIsls = availablePaths.find { it != mainPathIsls }
-        availablePaths.findAll { it != newPathIsls }.each { islHelper.makePathIslsMorePreferable(newPathIsls, it) }
+        availablePaths.findAll { it != newPathIsls }.each { isls.all().makePathIslsMorePreferable(newPathIsls, it) }
 
-        List<SwitchExtended> relatedSwitches = switches.all().findSpecific((flowPathInfo.getInvolvedSwitches() +
-                islHelper.retrieveInvolvedSwitches(newPathIsls).dpId).unique() as List<SwitchId>)
+        List<SwitchExtended> relatedSwitches = switches.all()
+                .findSpecific((mainPathIsls + newPathIsls).involvedSwIds.flatten() as List<SwitchId>)
 
         when: "Flow reroute is simultaneously requested together with sync rules requests for all related switches"
         withPool {
@@ -125,7 +125,7 @@ class ContentionSpec extends BaseSpecification {
         then: "Flow is Up and path has changed"
         Wrappers.wait(WAIT_OFFSET) {
             assert flow.retrieveFlowStatus().status == FlowState.UP
-            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == newPathIsls
+            assert isls.all().findInPath(flow.retrieveAllEntityPaths()) == newPathIsls
         }
 
         and: "Related switches have no rule discrepancies"

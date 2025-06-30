@@ -2,6 +2,8 @@ package org.openkilda.functionaltests.spec.flows
 
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
+import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.CLASS
 import static org.openkilda.messaging.payload.flow.FlowState.DEGRADED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -10,12 +12,11 @@ import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExp
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.IslExtended
 import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.StatusInfo
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
@@ -48,7 +49,7 @@ A flow with LATENCY strategy:
 
 class MaxLatencySpec extends HealthCheckSpecification {
     @Shared
-    List<Isl> mainIsls, alternativeIsls, islsToBreak
+    List<IslExtended> mainIsls, alternativeIsls, islsToBreak
     @Shared
     SwitchPair switchPair
     @Autowired
@@ -60,13 +61,11 @@ class MaxLatencySpec extends HealthCheckSpecification {
         //setup: Two active switches with two diverse paths
         switchPair = switchPairs.all(false).withAtLeastNNonOverlappingPaths(2).first()
         def paths = switchPair.retrieveAvailablePaths().unique(false) { a, b -> a.retrieveNodes().intersect(b.retrieveNodes()) == [] ? 1 : 0 }
-        mainIsls = paths[0].getInvolvedIsls()
-        alternativeIsls = paths[1].getInvolvedIsls()
+        mainIsls = isls.all().findInPath(paths[0])
+        alternativeIsls = isls.all().findInPath(paths[1])
         //deactivate other paths for more clear experiment
-        def isls = mainIsls.collectMany { [it, it.reversed]} + alternativeIsls.collectMany { [it, it.reversed]}
-        islsToBreak = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll{ it != mainIsls && it != alternativeIsls}
-                .flatten().unique().collectMany{ [it, it.reversed] }.findAll { !isls.contains(it)}
-        islHelper.breakIsls(islsToBreak, CleanupAfter.CLASS)
+        islsToBreak = isls.all().relatedTo(switchPair).excludeIsls(mainIsls + alternativeIsls).getListOfIsls()
+        breakIsls(islsToBreak, CLASS)
     }
 
     def "Able to create protected flow with max_latency strategy if both paths satisfy SLA"() {
@@ -82,9 +81,9 @@ class MaxLatencySpec extends HealthCheckSpecification {
                 .build().create()
 
         then: "Flow is created, main path is the 15 latency path, protected is 10 latency"
-        def flowPath = flow.retrieveAllEntityPaths()
-        flowPath.getMainPathInvolvedIsls() == alternativeIsls
-        flowPath.getProtectedPathInvolvedIsls() == mainIsls
+        def initialPath = flow.retrieveAllEntityPaths()
+        isls.all().findInPath(initialPath.getMainPath()) == alternativeIsls
+        isls.all().findInPath(initialPath.getProtectedPath()) == mainIsls
     }
 
     @Tags([LOW_PRIORITY])
@@ -123,9 +122,9 @@ class MaxLatencySpec extends HealthCheckSpecification {
 
         then: "Flow is created, main path is the 10 latency path, protected is 15 latency"
         and: "Flow goes to DEGRADED state"
-        def flowPath = flow.retrieveAllEntityPaths()
-        flowPath.getMainPathInvolvedIsls() == mainIsls
-        flowPath.getProtectedPathInvolvedIsls() == alternativeIsls
+        def initialPath = flow.retrieveAllEntityPaths()
+        isls.all().findInPath(initialPath.getMainPath()) == mainIsls
+        isls.all().findInPath(initialPath.getProtectedPath()) == alternativeIsls
     }
 
     @Tags([LOW_PRIORITY])
@@ -142,7 +141,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
                 .build().create(DEGRADED)
 
         then: "Flow is created, flow path is the 15 latency path"
-        flow.retrieveAllEntityPaths().getInvolvedIsls() == alternativeIsls
+        isls.all().findInPath(flow.retrieveAllEntityPaths()) == alternativeIsls
     }
 
     @Tags([LOW_PRIORITY])
@@ -158,7 +157,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
                 .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
                 .build().create()
         //flow path is the 10 latency path
-        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
+        assert isls.all().findInPath(flow.retrieveAllEntityPaths()) == mainIsls
 
         and: "Update the flow(maxLatency: 10)"
         def newMaxLatency = 10
@@ -175,7 +174,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
             for example: reroute can be triggered by blinking/activating any isl (not involved in flow path)*/
             assert northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome[0..1] == ["UP", "DEGRADED"]
         }
-        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == alternativeIsls
+        assert isls.all().findInPath(flow.retrieveAllEntityPaths()) == alternativeIsls
     }
 
     def "Able to reroute a MAX_LATENCY flow if maxLatencyTier2 > pathLatency > maxLatency"() {
@@ -189,12 +188,12 @@ class MaxLatencySpec extends HealthCheckSpecification {
                 .withMaxLatencyTier2(16)
                 .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
                 .build().create()
-        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
+        def flowIsls = isls.all().findInPath(flow.retrieveAllEntityPaths())
+        assert flowIsls == mainIsls
 
         and: "Init auto reroute (bring port down on the src switch)"
         setLatencyForPaths(10, 15)
-        def islToBreak = mainIsls.first()
-        islHelper.breakIsl(islToBreak)
+        flowIsls.first().breakIt()
 
         then: "Flow is rerouted and goes to the DEGRADED state"
         wait(rerouteDelay + WAIT_OFFSET*2 ) {
@@ -207,7 +206,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
             assert flowInfo.status == DEGRADED
             assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
         }
-        flow.retrieveAllEntityPaths().getInvolvedIsls() == alternativeIsls
+        isls.all().findInPath(flow.retrieveAllEntityPaths()) == alternativeIsls
     }
 
     def "Able to create DEGRADED flow with LATENCY strategy if max_latency_tier_2 > flowPath > max_latency"() {
@@ -224,7 +223,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
 
         then: "Flow is created in DEGRADED state because flowPath doesn't satisfy max_latency value \
 but satisfies max_latency_tier2"
-        flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
+        isls.all().findInPath(flow.retrieveAllEntityPaths()) == mainIsls
     }
 
     @Tags([LOW_PRIORITY])
@@ -241,7 +240,7 @@ but satisfies max_latency_tier2"
                 .build().create()
 
         then: "Flow is created in UP"
-        flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
+        isls.all().findInPath(flow.retrieveAllEntityPaths()) == mainIsls
     }
 
     @Tags([LOW_PRIORITY])
@@ -275,11 +274,11 @@ but satisfies max_latency_tier2"
                 .withPathComputationStrategy(PathComputationStrategy.LATENCY)
                 .build().create()
 
-        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
+        def flowIsls = isls.all().findInPath(flow.retrieveAllEntityPaths())
+        assert flowIsls == mainIsls
 
         when: "Break the flow path to init autoReroute"
-        def islToBreak = mainIsls.first()
-        islHelper.breakIsl(islToBreak)
+        flowIsls.first().breakIt()
 
         then: "Flow is not rerouted and moved to the DOWN state"
         wait(WAIT_OFFSET) {
@@ -288,20 +287,18 @@ but satisfies max_latency_tier2"
                 it.statusInfo.contains("No path found.")
             }
         }
-        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
+        assert isls.all().findInPath(flow.retrieveAllEntityPaths()) == mainIsls
     }
 
     def setLatencyForPaths(int mainPathLatency, int alternativePathLatency) {
         def nanoMultiplier = 1000000
-        def mainIslCost = mainPathLatency.intdiv(mainIsls.size()) * nanoMultiplier
-        def alternativeIslCost = alternativePathLatency.intdiv(alternativeIsls.size()) * nanoMultiplier
+        def mainIslLatency = mainPathLatency.intdiv(mainIsls.size()) * nanoMultiplier
+        def alternativeIslLatency = alternativePathLatency.intdiv(alternativeIsls.size()) * nanoMultiplier
 
-        database.updateIslsLatency([mainIsls[0], mainIsls[0].reversed],
-                mainIslCost + (mainPathLatency % mainIsls.size()) * nanoMultiplier)
-        mainIsls.size() > 1 && database.updateIslsLatency(mainIsls.tail().collectMany { [it, it.reversed] }, mainIslCost)
+        mainIsls.first().updateLatencyInDb(mainIslLatency + (mainPathLatency % mainIsls.size()) * nanoMultiplier)
+        mainIsls.size() > 1 &&  mainIsls.tail().each{ it.updateLatencyInDb(mainIslLatency) }
 
-        database.updateIslsLatency([alternativeIsls[0], alternativeIsls[0].reversed],
-                alternativeIslCost + (alternativePathLatency % alternativeIsls.size()) * nanoMultiplier)
-        alternativeIsls.size() > 1 && database.updateIslsLatency(alternativeIsls.tail().collectMany { [it, it.reversed] }, alternativeIslCost)
+        alternativeIsls.first().updateLatencyInDb(alternativeIslLatency + (alternativePathLatency % alternativeIsls.size()) * nanoMultiplier)
+        alternativeIsls.size() > 1 &&  alternativeIsls.tail().each { it.updateLatencyInDb(alternativeIslLatency) }
     }
 }
