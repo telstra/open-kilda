@@ -1,4 +1,24 @@
 # Changelog
+## v1.165.0 (23/06/2025)
+
+### Bug Fixes:
+-  [#5781](https://github.com/telstra/open-kilda/pull/5781) github workflows ubuntu version up
+-  [#5782](https://github.com/telstra/open-kilda/pull/5782) clear pending queue while manual flush request. (Issue: [#5788](https://github.com/telstra/open-kilda/issues/5788))
+
+### Improvements:
+-  [#5780](https://github.com/telstra/open-kilda/pull/5780) [TEST]: ISL: New interaction approach [**tests**]
+-  [#5783](https://github.com/telstra/open-kilda/pull/5783) [TEST]: ISL: New interaction approach: Phase2 [**tests**]
+-  [#5786](https://github.com/telstra/open-kilda/pull/5786) [TEST]: Improvement: Rigel: Flaky tests [**tests**]
+-  [#5787](https://github.com/telstra/open-kilda/pull/5787) [TEST]: Improvement: Flaky test: LAG(mirror port selection) [**tests**]
+
+### Other changes:
+-  [#5784](https://github.com/telstra/open-kilda/pull/5784) chore:add gpg keys to ubuntu apt for logstash
+-  [#5785](https://github.com/telstra/open-kilda/pull/5785) fix:modify way kilda download gpg key in logstash container
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.164.0...v1.165.0).
+
+---
+
 ## v1.164.0 (03/04/2025)
 
 ### Bug Fixes:
