@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.model.FlowStatusHistoryEvent.DELETED
@@ -37,7 +38,7 @@ import java.util.concurrent.TimeUnit
 @Narrative("""Verify that history records are created for the create/update actions.
 History record is created in case the create/update action is completed successfully.""")
 @Slf4j
-
+@Tags([FLOW])
 class FlowHistorySpec extends HealthCheckSpecification {
     @Shared
     Long specStartTime

@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.Y_FLOW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.yflow.YFlowNotFoundExpectedError
@@ -21,6 +22,7 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 
 @Narrative("""Verify that missing yFlow rule is detected by switch/flow validations.
 And make sure that the yFlow rule can be installed by syncSw/syncYFlow endpoints.""")
+@Tags([Y_FLOW])
 class YFlowValidationSpec extends HealthCheckSpecification {
     @Autowired
     @Shared

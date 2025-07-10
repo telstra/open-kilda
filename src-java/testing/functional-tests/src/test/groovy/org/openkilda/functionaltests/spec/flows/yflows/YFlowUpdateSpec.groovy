@@ -1,10 +1,12 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.Y_FLOW
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.yflow.YFlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.yflow.YFlowNotUpdatedWithConflictExpectedError
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
@@ -26,6 +28,7 @@ import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify update and partial update operations on y-flows.")
+@Tags([Y_FLOW])
 class YFlowUpdateSpec extends HealthCheckSpecification {
 
     @Autowired

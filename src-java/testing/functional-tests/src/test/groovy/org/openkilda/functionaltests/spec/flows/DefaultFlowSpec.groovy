@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -23,7 +24,7 @@ import javax.inject.Provider
 @Narrative("""System allows to create default port(vlan=0) and simple flow(vlan=<any number>) on the same port.
 Default flow has lower priority than simple flow.
 Also system allows to pass tagged traffic via default flow.""")
-
+@Tags([FLOW])
 class DefaultFlowSpec extends HealthCheckSpecification {
     @Autowired
     @Shared

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
@@ -18,7 +19,7 @@ import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
 
-
+@Tags([FLOW])
 class MultiRerouteSpec extends HealthCheckSpecification {
 
     @Autowired

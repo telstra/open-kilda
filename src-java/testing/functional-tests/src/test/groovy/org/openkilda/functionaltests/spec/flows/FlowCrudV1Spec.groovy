@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -65,7 +66,7 @@ import javax.inject.Provider
 @See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud-create-full.png",
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud-delete-full.png"])
 @Narrative("Verify CRUD operations and health of most typical types of flows on different types of switches.")
-@Tags([LOW_PRIORITY])
+@Tags([LOW_PRIORITY, FLOW])
 class FlowCrudV1Spec extends HealthCheckSpecification {
     @Autowired
     @Shared

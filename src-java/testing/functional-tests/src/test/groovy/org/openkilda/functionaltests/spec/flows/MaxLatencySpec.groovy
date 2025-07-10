@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
@@ -46,7 +47,7 @@ A flow with LATENCY strategy:
     - flow with MAX_LATENCY strategy and 'max-latency' set to 0 should pick path with least latency.
     - flow with MAX_LATENCY strategy and 'max-latency' being unset(null) should pick path with least latency.
 """)
-
+@Tags([FLOW])
 class MaxLatencySpec extends HealthCheckSpecification {
     @Shared
     List<IslExtended> mainIsls, alternativeIsls, islsToBreak

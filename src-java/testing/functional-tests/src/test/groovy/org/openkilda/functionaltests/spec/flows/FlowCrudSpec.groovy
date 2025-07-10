@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
@@ -68,7 +69,7 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 @Narrative(""""Verify CRUD operations and health of basic vlan flows on different types of switches.
 More specific cases like partialUpdate/protected/diverse etc. are covered in separate specifications
 """)
-
+@Tags([FLOW])
 class FlowCrudSpec extends HealthCheckSpecification {
 
     final static Integer IMPOSSIBLY_LOW_LATENCY = 1

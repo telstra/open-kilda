@@ -2,11 +2,13 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.FlowExtended
@@ -21,7 +23,7 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 @Narrative("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/pce-affinity-flows/")
-
+@Tags([FLOW])
 class FlowAffinitySpec extends HealthCheckSpecification {
     @Autowired
     @Shared

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
@@ -19,6 +20,7 @@ import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Shared
 
+@Tags([FLOW])
 class FlowSyncSpec extends HealthCheckSpecification {
 
     @Shared

@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FA
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.helpers.Wrappers.retry
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
@@ -44,7 +45,7 @@ import java.util.concurrent.TimeUnit
 
 @Slf4j
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
-
+@Tags([FLOW])
 class AutoRerouteSpec extends HealthCheckSpecification {
 
     @Autowired
@@ -532,7 +533,7 @@ triggering one more reroute of the current path"
 @Slf4j
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 @Isolated
-
+@Tags([FLOW])
 class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
     //isolation: global toggle flowsRerouteOnIslDiscoveryEnabled is changed
     @Autowired

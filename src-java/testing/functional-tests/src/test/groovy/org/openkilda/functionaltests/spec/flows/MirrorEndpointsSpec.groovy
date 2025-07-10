@@ -2,12 +2,12 @@ package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.FlowNameGenerator.FLOW
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.TRANSIT_VLAN
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.VXLAN
 import static org.openkilda.functionaltests.helpers.model.SwitchExtended.randomVlan
@@ -26,6 +26,7 @@ import org.openkilda.functionaltests.error.flowmirror.FlowMirrorPointNotCreatedE
 import org.openkilda.functionaltests.error.flowmirror.FlowMirrorPointNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotUpdatedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.FlowNameGenerator
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
@@ -61,7 +62,7 @@ import javax.inject.Provider
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-traffic-mirroring")
-
+@Tags([FLOW])
 class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     @Autowired
@@ -850,7 +851,7 @@ flow mirror point cannot be created this flow/).matches(error)
         when: "Try adding one more mirror point that conflicts with existing mirror point"
         def mirrorPoint2 = mirrorPoint.jacksonCopy()
         def mirrorPoint2Payload = mirrorPointPayload.jacksonCopy().tap {
-            it.mirrorPointId = FLOW.generateId()
+            it.mirrorPointId = FlowNameGenerator.FLOW.generateId()
         }
         flow.createMirrorPointWithPayload(mirrorPoint2Payload, false)
 

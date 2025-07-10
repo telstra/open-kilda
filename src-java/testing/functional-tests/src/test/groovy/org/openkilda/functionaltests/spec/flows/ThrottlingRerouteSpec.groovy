@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
@@ -40,7 +41,7 @@ System should stop refreshing the timer if 'reroute.hardtimeout' is reached and 
 for each flowId).
 """)
 @Slf4j
-@Tags([VIRTUAL]) //may be unstable on hardware. not tested
+@Tags([VIRTUAL, FLOW]) //may be unstable on hardware. not tested
 class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
     @Autowired

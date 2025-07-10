@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.model.FlowDirection.FORWARD
 import static org.openkilda.functionaltests.helpers.model.FlowDirection.REVERSE
@@ -9,6 +10,7 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -29,7 +31,7 @@ import spock.lang.Shared
                  - ingress, transit and egress switches
                  - Single switch, two switch and three+ switch flow spans.
             """)
-
+@Tags([FLOW])
 class FlowValidationNegativeSpec extends HealthCheckSpecification {
 
     @Autowired

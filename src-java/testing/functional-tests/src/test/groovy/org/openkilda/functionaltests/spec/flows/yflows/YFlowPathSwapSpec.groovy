@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.Y_FLOW
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -35,6 +36,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Slf4j
 @Narrative("Verify path swap operations on y-flows.")
+@Tags([Y_FLOW])
 class YFlowPathSwapSpec extends HealthCheckSpecification {
     @Autowired
     @Shared

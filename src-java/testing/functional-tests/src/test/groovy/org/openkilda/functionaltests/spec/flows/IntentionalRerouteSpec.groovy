@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -26,7 +27,7 @@ import javax.inject.Provider
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/reroute")
 @Narrative("Verify that on-demand reroute operations are performed accurately.")
-
+@Tags([FLOW])
 class IntentionalRerouteSpec extends HealthCheckSpecification {
 
     @Autowired

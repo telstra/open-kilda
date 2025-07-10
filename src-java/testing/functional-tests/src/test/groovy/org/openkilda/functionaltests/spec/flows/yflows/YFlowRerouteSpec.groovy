@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.Y_FLOW
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.helpers.model.Isls.breakIsls
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
@@ -37,6 +38,7 @@ import javax.inject.Provider
 
 @Slf4j
 @Narrative("Verify reroute operations on y-flows.")
+@Tags([Y_FLOW])
 class YFlowRerouteSpec extends HealthCheckSpecification {
     @Autowired
     @Shared

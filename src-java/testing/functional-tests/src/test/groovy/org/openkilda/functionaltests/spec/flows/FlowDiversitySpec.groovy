@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsExecutorsPool.withPool
+import static org.openkilda.functionaltests.extension.tags.Tag.FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -35,7 +36,7 @@ path. The cost of paths for diverse flows is calculated in real time and consist
 
 Refer to https://github.com/telstra/open-kilda/issues/1231 for more details.
 """)
-
+@Tags([FLOW])
 class FlowDiversitySpec extends HealthCheckSpecification {
 
     @Value('${diversity.isl.cost}')

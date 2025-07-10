@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.Y_FLOW
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload
 
@@ -14,6 +16,7 @@ import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify reroute operations on y-flows.")
+@Tags([Y_FLOW])
 class YFlowProtectedSpec extends HealthCheckSpecification {
     @Autowired
     @Shared

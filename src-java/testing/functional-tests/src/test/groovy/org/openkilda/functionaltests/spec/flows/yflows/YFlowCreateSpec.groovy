@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.Y_FLOW
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -36,6 +37,7 @@ import javax.inject.Provider
 
 @Slf4j
 @Narrative("Verify create operations on y-flows.")
+@Tags([Y_FLOW])
 class YFlowCreateSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
