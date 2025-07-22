@@ -31,6 +31,7 @@ import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
 import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Optional;
 
@@ -54,7 +55,7 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowRerouteFsm, S
         HaFlowHistory haFlowHistory = HaFlowHistory.of(stateMachine.getCommandContext().getCorrelationId())
                 .withHaFlowId(stateMachine.getHaFlowId());
 
-        if (stateMachine.getNewHaFlowStatus() == FlowStatus.UP) {
+        if (stateMachine.getNewHaFlowStatus() == FlowStatus.UP && StringUtils.isEmpty(stateMachine.getErrorReason())) {
             dashboardLogger.onSuccessfulHaFlowReroute(stateMachine.getHaFlowId());
             haFlowHistory.withAction("HA-flow has been rerouted successfully");
 
