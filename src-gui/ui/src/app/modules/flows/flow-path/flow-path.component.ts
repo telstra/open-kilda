@@ -421,41 +421,41 @@ export class FlowPathComponent implements OnInit, OnDestroy {
 
   showCommonSwitch(type) {
     if (type == 'forward') {
-      const commmonSwitch = this.flowpathService.getcommonSwitches('forward');
+      const commonSwitch = this.flowpathService.getcommonSwitches('forward');
       if (this.commonSwitchFlagForward) {
         this.commonSwitchFlagForward = false;
       } else {
         this.commonSwitchFlagForward = true;
       }
-      for (let i = 0; i < commmonSwitch.length; i++) {
-        const switch_id = commmonSwitch[i].switch_id;
+      for (let i = 0; i < commonSwitch.length; i++) {
+        const switch_id = commonSwitch[i].switch_id;
          const element = document.getElementById('forwardDiverse_circle_' + switch_id);
          const switchcls = switch_id.split(':').join('_');
-         let classes = 'circle forwardDiverse_circle blue forwardDiverse_circle_' + commmonSwitch[i].flow + ' sw_' + switchcls;
+         let classes = 'circle forwardDiverse_circle blue forwardDiverse_circle_' + commonSwitch[i].flow + ' sw_' + switchcls;
         if (!this.commonSwitchFlagForward) {
-          classes = 'circle forwardDiverse_circle blue forwardDiverse_circle_' + commmonSwitch[i].flow + ' sw_' + switchcls;
+          classes = 'circle forwardDiverse_circle blue forwardDiverse_circle_' + commonSwitch[i].flow + ' sw_' + switchcls;
         } else {
-          classes = 'circle forwardDiverse_circle common_switch blue hover forwardDiverse_circle_' + commmonSwitch[i].flow + ' sw_' + switchcls;
+          classes = 'circle forwardDiverse_circle common_switch blue hover forwardDiverse_circle_' + commonSwitch[i].flow + ' sw_' + switchcls;
         }
         element.setAttribute('class', classes);
       }
 
     } else {
-      const commmonSwitch = this.flowpathService.getcommonSwitches('reverse');
+      const commonSwitch = this.flowpathService.getcommonSwitches('reverse');
       if (this.commonSwitchFlagReverse) {
         this.commonSwitchFlagReverse = false;
       } else {
         this.commonSwitchFlagReverse = true;
       }
-       for (let i = 0; i < commmonSwitch.length; i++) {
-        const switch_id = commmonSwitch[i].switch_id;
+       for (let i = 0; i < commonSwitch.length; i++) {
+        const switch_id = commonSwitch[i].switch_id;
         const element = document.getElementById('reverseDiverse_circle_' + switch_id);
         const switchcls = switch_id.split(':').join('_');
-        let classes = 'circle reverseDiverse_circle blue reverseDiverse_circle_' + commmonSwitch[i].flow + ' sw_' + switchcls;
+        let classes = 'circle reverseDiverse_circle blue reverseDiverse_circle_' + commonSwitch[i].flow + ' sw_' + switchcls;
         if (!this.commonSwitchFlagReverse) {
-          classes = 'circle reverseDiverse_circle blue reverseDiverse_circle_' + commmonSwitch[i].flow + ' sw_' + switchcls;
+          classes = 'circle reverseDiverse_circle blue reverseDiverse_circle_' + commonSwitch[i].flow + ' sw_' + switchcls;
          } else {
-          classes = 'circle reverseDiverse_circle common_switch blue hover reverseDiverse_circle_' + commmonSwitch[i].flow + ' sw_' + switchcls;
+          classes = 'circle reverseDiverse_circle common_switch blue hover reverseDiverse_circle_' + commonSwitch[i].flow + ' sw_' + switchcls;
         }
         element.setAttribute('class', classes);
       }
