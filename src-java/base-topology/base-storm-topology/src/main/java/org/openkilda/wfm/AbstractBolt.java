@@ -55,7 +55,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
     protected boolean active = false;
 
     @Getter
-    protected final PersistenceManager persistenceManager;
+    protected PersistenceManager persistenceManager;
 
     @Getter(AccessLevel.PROTECTED)
     private transient OutputCollector output;

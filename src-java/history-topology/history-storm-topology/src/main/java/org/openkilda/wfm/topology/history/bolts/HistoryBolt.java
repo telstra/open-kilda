@@ -27,20 +27,49 @@ import org.openkilda.wfm.share.history.service.HistoryService;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
+import java.util.Map;
+
 public class HistoryBolt extends AbstractBolt {
     private transient HistoryService historyService;
+    private static volatile PersistenceManager PERSISTENCE_MANAGER_INSTANCE;
 
     public HistoryBolt(PersistenceManager persistenceManager, String lifeCycleEventSourceComponent) {
         super(persistenceManager, lifeCycleEventSourceComponent);
     }
 
+
+    /**
+     * Called when a task for this component is initialized within a worker on the cluster.
+     * It provides the bolt with the environment in which the bolt executes.
+     * Static instance of PersistenceManager is initialized at this step.
+     *
+     * @param stormConf The Storm configuration for this bolt.
+     * @param context   This object can be used to get information about this task's place within the topology.
+     * @param collector The collector is used to emit tuples from this bolt.
+     */
+    @Override
+    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+        if (PERSISTENCE_MANAGER_INSTANCE == null) {
+            synchronized (HistoryBolt.class) {
+                if (PERSISTENCE_MANAGER_INSTANCE == null) {
+                    PERSISTENCE_MANAGER_INSTANCE = persistenceManager;
+                    PERSISTENCE_MANAGER_INSTANCE.install();
+                }
+            }
+        }
+        persistenceManager = null;
+        super.prepare(stormConf, context, collector);
+    }
+
     @Override
     protected void init() {
-        historyService = new HistoryService(persistenceManager);
+        historyService = new HistoryService(PERSISTENCE_MANAGER_INSTANCE);
     }
 
     @Override

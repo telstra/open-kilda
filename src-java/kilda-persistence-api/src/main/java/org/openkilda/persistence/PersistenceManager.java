@@ -139,6 +139,20 @@ public class PersistenceManager implements Serializable {
         return implementation;
     }
 
+    /**
+     * Get retries limit.
+     */
+    public int getTransactionRetriesLimit() {
+        return persistenceConfig.getTransactionRetriesLimit();
+    }
+
+    /**
+     * Get retries max delay.
+     */
+    public int getTransactionRetriesMaxDelay() {
+        return persistenceConfig.getTransactionRetriesMaxDelay();
+    }
+
     public void install() {
         PersistenceContextManager.install(this);
     }

@@ -24,3 +24,5 @@ bolts:
     parallelism: 1
   - id: "flows-operations-bolt"
     parallelism: {{ getv "/kilda_storm_nb_worker_flow_operations_parallelism" }}
+  - id: "history-operations-bolt"
+    parallelism: 3

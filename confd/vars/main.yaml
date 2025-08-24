@@ -194,7 +194,7 @@ kilda_storm_stats_workers_count: 2
 
 # Network
 kilda_storm_network_parallelism: 2
-kilda_storm_network_workers_count: 2
+kilda_storm_network_workers_count: 1
 
 # Reroute
 kilda_storm_reroute_parallelism: 2
@@ -207,7 +207,7 @@ kilda_storm_floodlight_router_workers_count: 2
 # NB worker
 kilda_storm_nb_worker_parallelism: 2
 kilda_storm_nb_worker_flow_operations_parallelism: 2
-kilda_storm_nbworker_workers_count: 2
+kilda_storm_nbworker_workers_count: 1
 
 # Server42 control
 kilda_storm_server42_control_parallelism: 2
@@ -217,7 +217,7 @@ kilda_storm_server42_control_count: 2
 kilda_storm_history_parallelism: 2
 kilda_storm_history_bolt_parallelism: 2
 kilda_storm_history_bolt_num_tasks: 2
-kilda_storm_history_workers_count: 2
+kilda_storm_history_workers_count: 1
 
 # Connected devices
 kilda_storm_connected_devices_parallelism: 2

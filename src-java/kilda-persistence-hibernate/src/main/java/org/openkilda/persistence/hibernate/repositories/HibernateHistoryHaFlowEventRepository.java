@@ -58,7 +58,7 @@ public class HibernateHistoryHaFlowEventRepository
     @Override
     public List<HaFlowEvent> findByHaFlowIdAndTimeFrame(String haFlowId,
                                                         Instant timeFrom, Instant timeTo, int maxCount) {
-        List<HaFlowEvent> results = getTransactionManager().doInTransaction(
+        List<HaFlowEvent> results = getTransactionManagerWithLocalPersistenceImplementation().doInTransaction(
                 () -> fetch(haFlowId, timeFrom, timeTo, maxCount).stream()
                         .map(HaFlowEvent::new)
                         .collect(Collectors.toList()));
